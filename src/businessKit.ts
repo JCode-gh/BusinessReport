@@ -1,3 +1,11 @@
+import { jsonrepair } from "jsonrepair";
+
+const OPEN_ROUTER_API_KEY = import.meta.env.VITE_OPEN_ROUTER_API_KEY as string | undefined;
+const OPEN_ROUTER_MODEL = (import.meta.env.VITE_OPEN_ROUTER_MODEL as string | undefined) || "google/gemini-flash-1.5";
+const OPEN_ROUTER_MAX_TOKENS = Number(import.meta.env.VITE_OPEN_ROUTER_MAX_COMPLETION_TOKENS) || 9000;
+const OPEN_ROUTER_HTTP_REFERER = import.meta.env.VITE_OPEN_ROUTER_HTTP_REFERER as string | undefined;
+const OPEN_ROUTER_X_TITLE = (import.meta.env.VITE_OPEN_ROUTER_X_TITLE as string | undefined) || "Entrepreneur Growth Kit";
+
 export type BusinessKitLanguage = "en" | "nl" | "fr" | "de";
 
 export type BusinessKitRequest = {
@@ -321,7 +329,18 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
   },
 };
 
-export function createBusinessKit(request: BusinessKitRequest): BusinessKitPlan {
+export async function createBusinessKit(request: BusinessKitRequest): Promise<BusinessKitPlan> {
+  if (OPEN_ROUTER_API_KEY) {
+    try {
+      return await fetchBusinessKitFromApi(request);
+    } catch {
+      // fall through to local generator
+    }
+  }
+  return buildLocalBusinessKit(request);
+}
+
+function buildLocalBusinessKit(request: BusinessKitRequest): BusinessKitPlan {
   const context = normalizeRequest(request);
 
   return {
@@ -344,6 +363,284 @@ export function createBusinessKit(request: BusinessKitRequest): BusinessKitPlan 
     assumptions: assumptionsFor(context),
     disclaimer: disclaimerFor(context.language),
   };
+}
+
+async function fetchBusinessKitFromApi(request: BusinessKitRequest): Promise<BusinessKitPlan> {
+  const userMessage = formatRequestForApi(request);
+  const modes = ["json", "compact"] as const;
+  let lastError: Error | null = null;
+
+  for (const mode of modes) {
+    try {
+      const text = await callOpenRouter(userMessage, mode);
+      const plan = parseApiPlan(text, request);
+      if (plan) return plan;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  throw lastError ?? new Error("OpenRouter did not return a valid plan.");
+}
+
+function formatRequestForApi(request: BusinessKitRequest): string {
+  const languageNames: Record<BusinessKitLanguage, string> = {
+    en: "English",
+    nl: "Dutch (Nederlands)",
+    fr: "French",
+    de: "German",
+  };
+  const languageInstructions: Record<BusinessKitLanguage, string> = {
+    en: "Write every user-facing report sentence in English. Keep JSON property names in English.",
+    nl: "Schrijf elke zichtbare rapportzin in natuurlijk Nederlands. Vertaal ook ingevoerde Engelse formuleringen naar Nederlands wanneer ze in titels, paragrafen, tabellen, templates, metrics of actiepunten terechtkomen. Laat alleen merknamen, productnamen, acroniemen en echte eigennamen onvertaald. Houd JSON-propertynamen Engels.",
+    fr: "Write every user-facing report sentence in French. Translate user-provided wording into French when it appears in titles, paragraphs, tables, templates, metrics, or action items. Keep only brand names, product names, acronyms, and proper nouns unchanged. Keep JSON property names in English.",
+    de: "Write every user-facing report sentence in German. Translate user-provided wording into German when it appears in titles, paragraphs, tables, templates, metrics, or action items. Keep only brand names, product names, acronyms, and proper nouns unchanged. Keep JSON property names in English.",
+  };
+
+  return [
+    `Report language: ${languageNames[request.language]}.`,
+    languageInstructions[request.language],
+    `Business name: ${request.businessName ?? "Not provided"}`,
+    `Business type: ${request.businessType ?? "Not provided"}`,
+    `Current offer: ${request.offer ?? "Not provided"}`,
+    `Target customer: ${request.audience ?? "Not provided"}`,
+    `Main problem: ${request.problem ?? "Not provided"}`,
+    `Goal: ${request.goal ?? "Not provided"}`,
+    `Current channels: ${request.channels ?? "Not provided"}`,
+    `Price point: ${request.pricePoint ?? "Not provided"}`,
+    `Region or market: ${request.region ?? "Not provided"}`,
+    `Preferred tone: ${request.tone ?? "Clear, direct, premium, practical"}`,
+  ].join("\n");
+}
+
+function apiSystemPrompt(mode: "json" | "compact"): string {
+  const jsonInstruction = mode === "json"
+    ? "Return only raw JSON. Start with { and end with }. Do not use markdown or commentary."
+    : "Return only raw JSON starting with {. Be concise — keep values short to stay within the token limit.";
+
+  return [
+    "You are a practical growth strategist for small businesses, solo founders, agencies, consultants, ecommerce operators, and local service companies.",
+    jsonInstruction,
+    "Create a paid-quality business growth kit that is specific, useful, and commercially realistic.",
+    "Do not make vague motivational advice. Every recommendation should be concrete enough to execute this week.",
+    "Prioritize offer clarity, pricing power, lead generation, conversion, retention, operations, and measurable next actions.",
+    "Use the user's market, offer, goal, channel, and tone when available. If details are missing, state assumptions instead of inventing fake facts.",
+    "Write every user-facing report field in the requested report language, including titles, table rows, score labels, action-plan days, templates, metrics, assumptions, and disclaimers.",
+    "Keep the JSON keys in English.",
+    "Write in confident consultant language, but keep it understandable for a busy entrepreneur.",
+    "Include scores from 0 to 100. Low scores are allowed when the business has real gaps.",
+    "Do not guarantee revenue, profit, funding, legal compliance, or medical/financial outcomes.",
+    "Keep the response bounded so the JSON is valid: short paragraphs, compact lists, no markdown tables.",
+    "Required JSON shape: { title, subtitle, executiveSummary, positioning, coreOfferRewrite, idealCustomerProfile, biggestRisks (array 3-5), quickWins (array 4-7), strategySections (array 4-6, each { title, diagnosis, moves[] }), scorecard (array 5-6, each { label, score, rationale, nextMove }), actionPlan (array 8-12, each { day, task, outcome }), templates (array 3-5, each { title, channel, body }), contentIdeas (array 5-8, each { title, angle, hook }), metrics (array 5-8, each { metric, target, why }), upsellIdeas (array 3-5), assumptions (array 3-5), disclaimer }",
+  ].join(" ");
+}
+
+async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Promise<string> {
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${OPEN_ROUTER_API_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  if (OPEN_ROUTER_HTTP_REFERER) headers["HTTP-Referer"] = OPEN_ROUTER_HTTP_REFERER;
+  if (OPEN_ROUTER_X_TITLE) headers["X-Title"] = OPEN_ROUTER_X_TITLE;
+
+  const body: Record<string, unknown> = {
+    model: OPEN_ROUTER_MODEL,
+    messages: [
+      { role: "system", content: apiSystemPrompt(mode) },
+      { role: "user", content: userMessage },
+    ],
+    temperature: 0.35,
+    max_tokens: OPEN_ROUTER_MAX_TOKENS,
+  };
+
+  if (mode === "json") {
+    body.response_format = { type: "json_object" };
+    body.plugins = [{ id: "response-healing" }];
+  }
+
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`OpenRouter ${response.status}: ${errorText.slice(0, 200)}`);
+  }
+
+  const data = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+  const content = data.choices?.[0]?.message?.content;
+  return typeof content === "string" ? content.trim() : "";
+}
+
+function parseApiPlan(rawText: string, request: BusinessKitRequest): BusinessKitPlan | null {
+  const candidates = extractJsonCandidates(rawText);
+
+  for (const candidate of candidates) {
+    for (const attempt of [candidate, tryJsonRepair(candidate)]) {
+      try {
+        const parsed = JSON.parse(attempt);
+        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+          return normalizeApiPlan(parsed as Record<string, unknown>, request);
+        }
+      } catch {
+        // try next
+      }
+    }
+  }
+
+  return null;
+}
+
+function tryJsonRepair(text: string): string {
+  try {
+    return jsonrepair(text);
+  } catch {
+    return text;
+  }
+}
+
+function extractJsonCandidates(rawText: string): string[] {
+  const trimmed = rawText.trim();
+  if (!trimmed) return [];
+
+  const candidates = new Set([trimmed]);
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1]?.trim();
+  if (fenced) candidates.add(fenced);
+
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start >= 0 && end > start) candidates.add(trimmed.slice(start, end + 1));
+
+  return Array.from(candidates);
+}
+
+function normalizeApiPlan(raw: Record<string, unknown>, request: BusinessKitRequest): BusinessKitPlan {
+  const fallback = buildLocalBusinessKit(request);
+
+  return {
+    language: request.language,
+    title: strOr(raw.title, fallback.title),
+    subtitle: strOr(raw.subtitle, fallback.subtitle),
+    executiveSummary: strOr(raw.executiveSummary, fallback.executiveSummary),
+    positioning: strOr(raw.positioning, fallback.positioning),
+    coreOfferRewrite: strOr(raw.coreOfferRewrite, fallback.coreOfferRewrite),
+    idealCustomerProfile: strOr(raw.idealCustomerProfile, fallback.idealCustomerProfile),
+    biggestRisks: strArray(raw.biggestRisks, fallback.biggestRisks, 5),
+    quickWins: strArray(raw.quickWins, fallback.quickWins, 7),
+    strategySections: normalizeStrategySections(raw.strategySections, fallback.strategySections),
+    scorecard: normalizeScorecard(raw.scorecard, fallback.scorecard),
+    actionPlan: normalizeActionPlan(raw.actionPlan, fallback.actionPlan),
+    templates: normalizeTemplates(raw.templates, fallback.templates),
+    contentIdeas: normalizeContentIdeas(raw.contentIdeas, fallback.contentIdeas),
+    metrics: normalizeMetrics(raw.metrics, fallback.metrics),
+    upsellIdeas: strArray(raw.upsellIdeas, fallback.upsellIdeas, 5),
+    assumptions: strArray(raw.assumptions, fallback.assumptions, 5),
+    disclaimer: strOr(raw.disclaimer, fallback.disclaimer),
+  };
+}
+
+function strOr(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function strArray(value: unknown, fallback: string[], max: number): string[] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value.map((v) => strOr(v, "")).filter(Boolean).slice(0, max);
+  return items.length > 0 ? items : fallback;
+}
+
+function normalizeStrategySections(value: unknown, fallback: BusinessKitPlan["strategySections"]): BusinessKitPlan["strategySections"] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      title: strOr(v.title, ""),
+      diagnosis: strOr(v.diagnosis, ""),
+      moves: strArray(v.moves, [], 5),
+    }))
+    .filter((v) => v.title && v.diagnosis && v.moves.length > 0)
+    .slice(0, 6);
+  return items.length >= 3 ? items : fallback;
+}
+
+function normalizeScorecard(value: unknown, fallback: BusinessKitPlan["scorecard"]): BusinessKitPlan["scorecard"] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      label: strOr(v.label, ""),
+      score: clampApiScore(v.score),
+      rationale: strOr(v.rationale, ""),
+      nextMove: strOr(v.nextMove, ""),
+    }))
+    .filter((v) => v.label && v.rationale && v.nextMove)
+    .slice(0, 6);
+  return items.length >= 3 ? items : fallback;
+}
+
+function normalizeActionPlan(value: unknown, fallback: BusinessKitPlan["actionPlan"]): BusinessKitPlan["actionPlan"] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      day: strOr(v.day, ""),
+      task: strOr(v.task, ""),
+      outcome: strOr(v.outcome, ""),
+    }))
+    .filter((v) => v.day && v.task && v.outcome)
+    .slice(0, 12);
+  return items.length >= 5 ? items : fallback;
+}
+
+function normalizeTemplates(value: unknown, fallback: BusinessKitPlan["templates"]): BusinessKitPlan["templates"] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      title: strOr(v.title, ""),
+      channel: strOr(v.channel, ""),
+      body: strOr(v.body, ""),
+    }))
+    .filter((v) => v.title && v.channel && v.body)
+    .slice(0, 5);
+  return items.length >= 2 ? items : fallback;
+}
+
+function normalizeContentIdeas(value: unknown, fallback: BusinessKitPlan["contentIdeas"]): BusinessKitPlan["contentIdeas"] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      title: strOr(v.title, ""),
+      angle: strOr(v.angle, ""),
+      hook: strOr(v.hook, ""),
+    }))
+    .filter((v) => v.title && v.angle && v.hook)
+    .slice(0, 8);
+  return items.length >= 3 ? items : fallback;
+}
+
+function normalizeMetrics(value: unknown, fallback: BusinessKitPlan["metrics"]): BusinessKitPlan["metrics"] {
+  if (!Array.isArray(value)) return fallback;
+  const items = value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      metric: strOr(v.metric, ""),
+      target: strOr(v.target, ""),
+      why: strOr(v.why, ""),
+    }))
+    .filter((v) => v.metric && v.target && v.why)
+    .slice(0, 8);
+  return items.length >= 3 ? items : fallback;
+}
+
+function clampApiScore(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return 50;
+  return Math.min(Math.max(Math.round(n), 0), 100);
 }
 
 export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
@@ -526,7 +823,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     .progress-track span {
       display: block;
-      width: 0%;
+      width: 0;
       height: 100%;
       border-radius: inherit;
       background: linear-gradient(90deg, var(--accent), var(--coral));

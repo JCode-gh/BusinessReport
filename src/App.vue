@@ -162,7 +162,7 @@ async function generateBusinessKit() {
 
   try {
     await wait(650);
-    const kit = createBusinessKit({...form});
+    const kit = await createBusinessKit({...form});
     const htmlText = buildBusinessKitHtml(kit);
     const nextFileName = businessKitFileName(kit);
     const nextReportUrl = setReportHtml(htmlText);
