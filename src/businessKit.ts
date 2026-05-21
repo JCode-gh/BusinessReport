@@ -514,20 +514,40 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
     body.plugins = [{ id: "response-healing" }];
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  const MAX_RETRIES = 3;
 
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(`OpenRouter ${response.status}: ${errorText.slice(0, 200)}`);
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 429) {
+      const errorData = await response.json().catch(() => ({})) as {
+        error?: { metadata?: { retry_after_seconds?: number } };
+      };
+      const retryAfter = errorData.error?.metadata?.retry_after_seconds ?? 30;
+
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+
+      throw new Error(`Rate limited. Try again in ${Math.ceil(retryAfter)} seconds.`);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "");
+      throw new Error(`OpenRouter ${response.status}: ${errorText.slice(0, 200)}`);
+    }
+
+    const data = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+    const content = data.choices?.[0]?.message?.content;
+    return typeof content === "string" ? content.trim() : "";
   }
 
-  const data = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
-  const content = data.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content.trim() : "";
+  throw new Error("OpenRouter request failed after retries.");
 }
 
 function parseApiPlan(rawText: string, request: BusinessKitRequest): BusinessKitPlan | null {
@@ -718,162 +738,167 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
   <title>${escapeHtml(plan.title)}</title>
   <style>
     :root {
-      color-scheme: light;
-      --ink: #18212a;
-      --muted: #63727d;
+      --ink: #111827;
+      --muted: #6b7280;
+      --subtle: #9ca3af;
       --paper: #ffffff;
-      --line: #d8e0e4;
-      --surface: #f4f7f8;
-      --accent: #0f766e;
+      --line: #e5e7eb;
+      --surface: #f9fafb;
+      --accent: #0d9488;
+      --accent-mid: #0f766e;
       --accent-dark: #115e59;
-      --gold: #b7791f;
-      --rose: #a23b62;
-      --navy: #18243a;
-      --coral: #c75c3f;
-      --mint: #e4f5ef;
+      --gold: #d97706;
+      --rose: #be185d;
+      --navy: #1e293b;
+      --coral: #c2410c;
+      --mint: #ecfdf5;
+      --amber: #fffbeb;
+      --sky: #f0f9ff;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    *, *::before, *::after { box-sizing: border-box; }
 
     body {
       margin: 0;
       color: var(--ink);
-      background: #eaf0f1;
-      font-family: Inter, Avenir Next, Helvetica Neue, Arial, sans-serif;
-      line-height: 1.55;
+      background: #eef2f2;
+      font-family: -apple-system, "Inter", "Helvetica Neue", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
+    h1, h2, h3, h4, p { margin-top: 0; }
+
+    /* Toolbar */
     .report-toolbar {
       position: sticky;
       top: 0;
-      z-index: 2;
+      z-index: 10;
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
-      padding: 12px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.94);
-      box-shadow: 0 12px 32px rgba(24, 33, 42, 0.08);
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 1px 0 var(--line), 0 4px 16px rgba(0,0,0,0.06);
     }
 
     .report-toolbar button {
-      min-height: 40px;
+      height: 38px;
       border: 1px solid var(--accent-dark);
       border-radius: 8px;
-      padding: 0 14px;
-      color: #ffffff;
+      padding: 0 16px;
+      color: #fff;
       background: var(--accent-dark);
-      font: inherit;
-      font-weight: 900;
+      font: 600 0.85rem/1 inherit;
       cursor: pointer;
+      letter-spacing: 0.01em;
     }
 
     .report-toolbar button.secondary {
       color: var(--accent-dark);
-      background: #ffffff;
+      background: #fff;
     }
 
+    /* Page */
     .page {
-      width: min(1080px, calc(100% - 32px));
-      margin: 24px auto;
+      width: min(1060px, calc(100% - 32px));
+      margin: 28px auto 64px;
       background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 22px 55px rgba(24, 33, 42, 0.13);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 24px 56px rgba(0,0,0,0.11);
     }
 
+    /* Cover */
     .cover {
-      padding: 56px 58px 46px;
-      color: #ffffff;
-      background:
-        linear-gradient(135deg, rgba(18, 52, 59, 0.98), rgba(15, 118, 110, 0.92) 58%, rgba(111, 63, 104, 0.9)),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-      background-size: auto, 68px 68px, 68px 68px;
+      padding: 60px 64px 52px;
+      color: #fff;
+      background: linear-gradient(135deg, #0c2340 0%, #0f766e 55%, #6d28d9 100%);
     }
 
-    .label {
-      margin: 0 0 16px;
-      font-size: 0.8rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
+    .cover-eyebrow {
+      margin: 0 0 22px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
     }
 
-    h1,
-    h2,
-    h3,
-    p {
-      margin-top: 0;
-    }
-
-    h1 {
+    .cover h1 {
       max-width: 820px;
-      margin-bottom: 14px;
-      font-size: clamp(2.2rem, 6vw, 4.6rem);
-      line-height: 0.96;
-      letter-spacing: 0;
+      margin: 0 0 14px;
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.02;
+      letter-spacing: -0.02em;
     }
 
-    .subtitle {
-      max-width: 780px;
-      margin-bottom: 28px;
-      font-size: 1.18rem;
-      color: rgba(255, 255, 255, 0.9);
+    .cover-subtitle {
+      max-width: 680px;
+      margin: 0 0 32px;
+      font-size: 1.08rem;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.82);
     }
 
-    .meta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
+    .cover-pills { display: flex; flex-wrap: wrap; gap: 8px; }
 
     .pill {
       display: inline-flex;
       align-items: center;
-      min-height: 34px;
-      border: 1px solid rgba(255, 255, 255, 0.42);
-      border-radius: 8px;
+      height: 32px;
       padding: 0 12px;
-      color: #ffffff;
-      background: rgba(255, 255, 255, 0.12);
-      font-size: 0.9rem;
-      font-weight: 800;
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.88);
+      font-size: 0.8rem;
+      font-weight: 600;
     }
 
+    /* Workspace */
     .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
-      gap: 24px;
-      margin: -36px 58px 42px;
-      border: 1px solid rgba(216, 224, 228, 0.95);
-      border-radius: 12px;
+      grid-template-columns: 1fr minmax(240px, 300px);
+      gap: 20px;
+      margin: -32px 56px 0;
       padding: 24px;
-      background: linear-gradient(135deg, #ffffff, #f6fbfa);
-      box-shadow: 0 24px 48px rgba(24, 33, 42, 0.14);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.04), 0 16px 40px rgba(0,0,0,0.1);
+    }
+
+    .workspace-eyebrow {
+      margin: 0 0 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
     }
 
     .workspace h2 {
-      margin-bottom: 10px;
-      font-size: clamp(1.8rem, 3.5vw, 3rem);
+      margin: 0 0 6px;
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.01em;
     }
 
-    .workspace-intro,
-    .section-heading-row p,
-    .small {
-      color: var(--muted);
-    }
+    .workspace-intro { margin: 0; font-size: 0.88rem; color: var(--muted); }
 
     .progress-track {
-      height: 14px;
-      margin: 24px 0 16px;
-      overflow: hidden;
+      height: 8px;
+      margin: 16px 0 12px;
       border-radius: 999px;
-      background: #e2eaed;
+      background: var(--line);
+      overflow: hidden;
     }
 
     .progress-track span {
@@ -881,208 +906,346 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       width: 0;
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, var(--accent), var(--coral));
-      transition: width 0.28s ease;
+      background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+      transition: width 0.3s ease;
     }
 
-    .workspace-stats {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
+    .workspace-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 
-    .workspace-stat {
-      min-height: 86px;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 12px;
-      background: #ffffff;
-    }
+    .workspace-stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 
     .workspace-stat strong {
       display: block;
-      color: var(--navy);
-      font-size: 1.65rem;
+      font-size: 1.5rem;
+      font-weight: 800;
       line-height: 1;
+      color: var(--navy);
     }
 
     .workspace-stat span {
       display: block;
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 0.86rem;
-      font-weight: 800;
-    }
-
-    .focus-card {
-      display: grid;
-      align-content: space-between;
-      min-height: 100%;
-      border-radius: 12px;
-      padding: 22px;
-      color: #ffffff;
-      background: linear-gradient(135deg, rgba(24, 36, 58, 0.98), rgba(162, 59, 98, 0.88));
-    }
-
-    .focus-card span {
-      color: rgba(255, 255, 255, 0.72);
-      font-size: 0.8rem;
-      font-weight: 900;
-      letter-spacing: 0.06em;
+      margin-top: 4px;
+      font-size: 0.74rem;
+      font-weight: 700;
       text-transform: uppercase;
-    }
-
-    .focus-card strong {
-      display: block;
-      margin-top: 12px;
-      font-size: 1.45rem;
-      line-height: 1.15;
+      letter-spacing: 0.06em;
+      color: var(--subtle);
     }
 
     .workspace-actions {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-top: 24px;
+      gap: 10px;
+      margin-top: 14px;
+      font-size: 0.82rem;
       color: var(--muted);
-      font-size: 0.88rem;
-      font-weight: 800;
     }
 
     .text-button {
-      min-height: 38px;
-      border: 1px solid #c9d6da;
+      height: 32px;
+      border: 1px solid var(--line);
       border-radius: 8px;
       padding: 0 12px;
       color: var(--accent-dark);
-      background: #ffffff;
-      font: inherit;
-      font-weight: 900;
+      background: #fff;
+      font: 600 0.82rem/1 inherit;
       cursor: pointer;
     }
 
-    .content {
-      padding: 42px 58px 56px;
+    .focus-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      border-radius: 12px;
+      color: #fff;
+      background: linear-gradient(140deg, var(--navy) 0%, #3b1d5e 100%);
+      min-height: 0;
     }
 
-    section {
-      margin-bottom: 38px;
-      break-inside: avoid;
+    .focus-eyebrow {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin: 0 0 10px;
     }
 
-    h2 {
-      margin-bottom: 16px;
-      font-size: 1.55rem;
-      line-height: 1.15;
-      letter-spacing: 0;
+    .focus-task {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0 0 8px;
     }
 
-    h3 {
-      margin-bottom: 8px;
-      font-size: 1.05rem;
-      letter-spacing: 0;
-    }
-
-    .lead {
-      max-width: 840px;
-      color: #31414c;
-      font-size: 1.05rem;
-    }
-
-    .grid,
-    .three-grid,
-    .score-grid {
-      display: grid;
-      gap: 14px;
-    }
-
-    .grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .three-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .score-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .panel,
-    .score-card,
-    .action-card {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 18px;
-      background: #ffffff;
-    }
-
-    .panel.tint,
-    .score-card {
-      background: var(--surface);
-    }
-
-    ul {
-      padding-left: 20px;
+    .focus-outcome {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.4;
       margin: 0;
     }
 
-    li + li {
-      margin-top: 8px;
+    /* Content */
+    .content { padding: 56px 64px 64px; }
+
+    /* Report section */
+    .report-section {
+      padding-bottom: 52px;
+      margin-bottom: 52px;
+      border-bottom: 1px solid var(--line);
     }
 
-    .score {
-      margin: 4px 0 8px;
-      color: var(--accent-dark);
-      font-size: 2rem;
-      font-weight: 900;
-      line-height: 1;
+    .report-section:last-of-type {
+      padding-bottom: 0;
+      margin-bottom: 0;
+      border-bottom: none;
     }
 
-    .section-heading-row {
+    .section-header {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 16px;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .section-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
     }
 
     .section-badge {
+      margin-left: auto;
       display: inline-flex;
       align-items: center;
-      min-height: 34px;
-      border-radius: 999px;
+      height: 28px;
       padding: 0 12px;
-      white-space: nowrap;
-      color: var(--accent-dark);
+      border-radius: 999px;
       background: var(--mint);
-      font-size: 0.86rem;
-      font-weight: 900;
+      color: var(--accent-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
     }
 
-    .action-list {
-      display: grid;
-      gap: 12px;
+    /* Executive summary */
+    .exec-lead {
+      font-size: 1.08rem;
+      line-height: 1.75;
+      color: #1f2937;
+      max-width: 820px;
+      margin: 0;
+      padding-left: 20px;
+      border-left: 4px solid var(--accent);
     }
+
+    /* Insight blocks */
+    .insight-stack { display: grid; gap: 12px; }
+
+    .insight-block {
+      display: grid;
+      grid-template-columns: 5px 1fr;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .ia { background: var(--accent); }
+    .ig { background: var(--gold); }
+    .in { background: var(--navy); }
+
+    .insight-body { padding: 18px 22px; }
+
+    .insight-label {
+      margin: 0 0 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .la { color: var(--accent-dark); }
+    .lg { color: #92400e; }
+    .ln { color: #334155; }
+
+    .insight-text { margin: 0; font-size: 0.96rem; line-height: 1.65; }
+
+    /* Quick wins */
+    .win-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+
+    .win-item {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 18px 14px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .win-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--mint);
+      color: var(--accent-dark);
+      font-size: 0.76rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .win-text { font-size: 0.93rem; line-height: 1.55; padding-top: 4px; }
+
+    /* Scorecard */
+    .scorecard-list {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .scorecard-row {
+      display: grid;
+      grid-template-columns: 190px 1fr 60px;
+      gap: 18px;
+      align-items: center;
+      padding: 16px 20px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .scorecard-row:last-child { border-bottom: none; }
+    .scorecard-row:nth-child(even) { background: var(--surface); }
+
+    .scorecard-label { font-size: 0.9rem; font-weight: 700; margin: 0 0 2px; }
+
+    .scorecard-next-move { font-size: 0.78rem; color: var(--muted); margin: 0; line-height: 1.4; }
+
+    .scorecard-bar-wrap {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--line);
+      overflow: hidden;
+      align-self: center;
+    }
+
+    .scorecard-bar { height: 100%; border-radius: inherit; }
+    .sc-high { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
+    .sc-mid  { background: linear-gradient(90deg, var(--gold), #f59e0b); }
+    .sc-low  { background: linear-gradient(90deg, var(--coral), #ef4444); }
+
+    .scorecard-score {
+      font-size: 1.45rem;
+      font-weight: 800;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .sc-high { color: var(--accent-dark); }
+    .sc-mid  { color: var(--gold); }
+    .sc-low  { color: var(--coral); }
+
+    .scorecard-rationale {
+      grid-column: 1 / -1;
+      font-size: 0.81rem;
+      color: var(--muted);
+      margin: 4px 0 0;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+
+    /* Strategy */
+    .strategy-list { display: grid; gap: 14px; }
+
+    .strategy-card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+
+    .strategy-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 22px;
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .strategy-index {
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      flex-shrink: 0;
+    }
+
+    .strategy-title { font-size: 0.95rem; font-weight: 700; margin: 0; }
+
+    .strategy-body { padding: 18px 22px; }
+
+    .strategy-diagnosis {
+      font-size: 0.91rem;
+      color: var(--muted);
+      margin: 0 0 14px;
+      line-height: 1.6;
+      padding-left: 14px;
+      border-left: 3px solid var(--line);
+    }
+
+    .strategy-moves { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+
+    .strategy-move {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 10px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .move-arr { color: var(--accent); font-weight: 700; }
+
+    /* Action plan */
+    .action-header-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .action-list { display: grid; gap: 10px; }
 
     .action-card {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 16px;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      transition: border-color 0.2s, background 0.2s;
       break-inside: avoid;
     }
 
-    .action-card.is-complete {
-      border-color: rgba(15, 118, 110, 0.42);
-      background: #f3fbf7;
-    }
-
-    .action-card.is-current {
-      border-color: rgba(199, 92, 63, 0.56);
-      box-shadow: inset 4px 0 0 var(--coral);
-    }
+    .action-card.is-complete { border-color: rgba(13,148,136,0.35); background: #f0fdf9; }
+    .action-card.is-current  { border-color: rgba(194,65,12,0.45); box-shadow: inset 4px 0 0 var(--coral); }
 
     .action-toggle {
       position: relative;
@@ -1091,197 +1254,221 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       width: 34px;
       height: 34px;
       margin-top: 2px;
-      border: 2px solid #b9c8cd;
+      border: 2px solid #d1d5db;
       border-radius: 9px;
-      background: #ffffff;
+      background: #fff;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
-    .action-toggle input {
-      position: absolute;
-      inset: 0;
-      margin: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
+    .action-toggle input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; }
 
     .action-toggle span {
-      width: 16px;
-      height: 16px;
-      border-radius: 5px;
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
       background: transparent;
-      transform: scale(0.5);
-      transition: transform 0.16s ease, background-color 0.16s ease;
+      transform: scale(0.4);
+      transition: transform 0.15s, background 0.15s;
     }
 
-    .action-card.is-complete .action-toggle {
-      border-color: var(--accent);
-      background: var(--accent);
-    }
+    .action-card.is-complete .action-toggle { border-color: var(--accent); background: var(--accent); }
 
     .action-card.is-complete .action-toggle span {
-      background: #ffffff;
+      background: #fff;
       transform: scale(1);
       clip-path: polygon(14% 48%, 34% 68%, 84% 18%, 96% 30%, 34% 92%, 2% 60%);
     }
 
-    .action-topline {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .day-pill,
-    .action-state {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      border-radius: 999px;
-      padding: 0 10px;
-      font-size: 0.78rem;
-      font-weight: 900;
-    }
+    .action-topline { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 
     .day-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 9px;
+      border-radius: 6px;
+      background: var(--surface);
       color: var(--navy);
-      background: #edf2f5;
+      font-size: 0.74rem;
+      font-weight: 700;
+      border: 1px solid var(--line);
     }
 
     .action-state {
-      color: var(--rose);
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      padding: 0 9px;
+      border-radius: 6px;
       background: #fff0f4;
+      color: var(--rose);
+      font-size: 0.74rem;
+      font-weight: 700;
     }
 
-    .action-card.is-complete .action-state {
-      color: var(--accent-dark);
-      background: var(--mint);
-    }
+    .action-card.is-complete .action-state { background: var(--mint); color: var(--accent-dark); }
 
-    .notes-field {
-      display: grid;
-      gap: 7px;
-      color: var(--muted);
-      font-size: 0.86rem;
-      font-weight: 900;
+    .action-task { font-size: 0.94rem; font-weight: 600; margin: 0 0 4px; }
+    .action-outcome { font-size: 0.85rem; color: var(--muted); margin: 0 0 10px; }
+
+    .notes-field { display: grid; gap: 5px; }
+
+    .notes-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--subtle);
     }
 
     .notes-field textarea {
       width: 100%;
-      min-height: 78px;
+      min-height: 68px;
       resize: vertical;
-      border: 1px solid #c9d6da;
-      border-radius: 10px;
-      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 12px;
       color: var(--ink);
-      background: #f8fbfb;
-      font: inherit;
-      line-height: 1.45;
+      background: var(--surface);
+      font: 0.87rem/1.45 inherit;
       outline: none;
     }
 
-    table {
+    /* Templates */
+    .template-list { display: grid; gap: 16px; }
+
+    .template-card { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+
+    .template-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .template-title { font-size: 0.92rem; font-weight: 700; margin: 0; }
+
+    .template-channel {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-dark);
+      background: var(--mint);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .template-body { padding: 20px; font-size: 0.9rem; line-height: 1.72; white-space: pre-wrap; color: #374151; }
+
+    /* Content ideas */
+    .content-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+    .content-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .content-title { font-size: 0.95rem; font-weight: 700; margin: 0; }
+    .content-angle { font-size: 0.85rem; color: var(--muted); margin: 0; line-height: 1.5; }
+
+    .content-hook {
+      font-size: 0.9rem;
+      font-style: italic;
+      margin: 0;
+      padding: 10px 14px;
+      border-left: 3px solid var(--gold);
+      background: var(--amber);
+      border-radius: 0 8px 8px 0;
+      line-height: 1.5;
+    }
+
+    /* Metrics table */
+    .metrics-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid var(--line);
-      font-size: 0.95rem;
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.91rem;
     }
 
-    th,
-    td {
-      border-bottom: 1px solid var(--line);
-      padding: 12px;
+    .metrics-table th {
+      padding: 12px 16px;
+      background: var(--navy);
+      color: #fff;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
       text-align: left;
-      vertical-align: top;
     }
 
-    th {
-      color: #ffffff;
-      background: var(--accent-dark);
-      font-size: 0.82rem;
-      letter-spacing: 0.04em;
+    .metrics-table td { padding: 13px 16px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.55; }
+    .metrics-table tr:nth-child(even) td { background: var(--surface); }
+    .metric-name { font-weight: 600; }
+    .metric-target { font-weight: 700; color: var(--accent-dark); }
+
+    /* Bottom grid */
+    .bottom-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+    .tagged-panel { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+
+    .tagged-header {
+      padding: 10px 16px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
       text-transform: uppercase;
     }
 
-    tr:nth-child(even) td {
-      background: #f8fbfb;
-    }
+    .th-risk        { background: #fff1f2; color: #be123c; border-bottom: 1px solid #fecdd3; }
+    .th-upsell      { background: var(--amber); color: #92400e; border-bottom: 1px solid #fde68a; }
+    .th-assumptions { background: var(--sky); color: #0369a1; border-bottom: 1px solid #bae6fd; }
 
-    .template {
-      white-space: pre-wrap;
-    }
+    .tagged-list { padding: 14px 16px; list-style: none; margin: 0; display: grid; gap: 10px; }
 
-    .footer {
+    .tagged-item { font-size: 0.87rem; line-height: 1.55; padding-left: 14px; position: relative; }
+
+    .tagged-item::before { content: "·"; position: absolute; left: 0; color: var(--subtle); font-size: 1.2rem; line-height: 1.1; }
+
+    /* Footer */
+    .report-footer {
+      margin-top: 48px;
+      padding-top: 20px;
       border-top: 1px solid var(--line);
-      padding-top: 22px;
-      color: var(--muted);
-      font-size: 0.9rem;
+      font-size: 0.81rem;
+      color: var(--subtle);
+      line-height: 1.6;
     }
 
-    @media (max-width: 900px) {
-      .page {
-        width: min(100%, calc(100% - 18px));
-        margin: 10px auto;
-      }
-
-      .cover,
-      .content {
-        padding: 34px 24px;
-      }
-
-      .workspace,
-      .grid,
-      .three-grid,
-      .score-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .workspace {
-        margin: -28px 18px 34px;
-        padding: 18px;
-      }
+    /* Responsive */
+    @media (max-width: 860px) {
+      .cover, .content { padding: 36px 28px; }
+      .workspace { margin: -24px 20px 0; padding: 18px; grid-template-columns: 1fr; }
+      .bottom-grid, .content-grid { grid-template-columns: 1fr; }
+      .scorecard-row { grid-template-columns: 1fr 60px; }
+      .scorecard-rationale { grid-column: 1 / -1; }
     }
 
-    @media (max-width: 620px) {
-      .workspace-stats {
-        grid-template-columns: 1fr;
-      }
-
-      .workspace-actions,
-      .action-topline {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .action-card {
-        grid-template-columns: 1fr;
-      }
+    @media (max-width: 560px) {
+      .action-card { grid-template-columns: 1fr; }
     }
 
     @media print {
-      body {
-        background: #ffffff;
-      }
-
-      .report-toolbar,
-      .workspace-actions {
-        display: none;
-      }
-
-      .page {
-        width: 100%;
-        margin: 0;
-        border: 0;
-        border-radius: 0;
-        box-shadow: none;
-      }
-
-      .workspace {
-        margin: 0 0 24px;
-        border-radius: 0;
-        box-shadow: none;
-      }
+      body { background: #fff; }
+      .report-toolbar, .workspace-actions { display: none; }
+      .page { width: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+      .workspace { margin: 0 0 24px; box-shadow: none; border-radius: 0; }
+      .report-section, .action-card, .strategy-card, .template-card { break-inside: avoid; }
     }
   </style>
 </head>
@@ -1290,12 +1477,13 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     <button type="button" onclick="window.print()">${escapeHtml(labels.printPdf)}</button>
     <button type="button" class="secondary" onclick="downloadHtmlReport()">${escapeHtml(labels.downloadHtml)}</button>
   </div>
+
   <article class="page">
     <header class="cover">
-      <p class="label">${escapeHtml(labels.productName)}</p>
+      <p class="cover-eyebrow">${escapeHtml(labels.productName)}</p>
       <h1>${escapeHtml(plan.title)}</h1>
-      <p class="subtitle">${escapeHtml(plan.subtitle)}</p>
-      <div class="meta-row">
+      <p class="cover-subtitle">${escapeHtml(plan.subtitle)}</p>
+      <div class="cover-pills">
         <span class="pill">${escapeHtml(labels.generated)} ${escapeHtml(generatedAt)}</span>
         <span class="pill">${escapeHtml(labels.strategyReport)}</span>
         <span class="pill">${escapeHtml(labels.actionPlanPill)}</span>
@@ -1305,62 +1493,96 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     ${workspacePanel(plan, labels)}
 
     <main class="content">
-      <section>
-        <h2>${escapeHtml(labels.executiveSummary)}</h2>
-        <p class="lead">${escapeHtml(plan.executiveSummary)}</p>
-      </section>
 
-      <section class="grid">
-        ${panel(labels.positioning, plan.positioning, "tint")}
-        ${panel(labels.coreOfferRewrite, plan.coreOfferRewrite, "tint")}
-        ${panel(labels.idealCustomerProfile, plan.idealCustomerProfile, "tint")}
-        ${listPanel(labels.fastestQuickWins, plan.quickWins, "tint")}
-      </section>
-
-      <section>
-        <h2>${escapeHtml(labels.growthScorecard)}</h2>
-        <div class="score-grid">
-          ${plan.scorecard.map((item) => scoreCard(item, labels)).join("")}
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">1</span>
+          <h2 class="section-title">${escapeHtml(labels.executiveSummary)}</h2>
         </div>
-      </section>
+        <p class="exec-lead">${escapeHtml(plan.executiveSummary)}</p>
+      </div>
 
-      <section>
-        <h2>${escapeHtml(labels.strategicMoves)}</h2>
-        <div class="grid">
-          ${plan.strategySections.map(strategyCard).join("")}
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">2</span>
+          <h2 class="section-title">${escapeHtml(labels.positioning)} &amp; ${escapeHtml(labels.coreOfferRewrite)}</h2>
         </div>
-      </section>
+        <div class="insight-stack">
+          ${insightBlock(labels.positioning, plan.positioning, "a")}
+          ${insightBlock(labels.coreOfferRewrite, plan.coreOfferRewrite, "g")}
+          ${insightBlock(labels.idealCustomerProfile, plan.idealCustomerProfile, "n")}
+        </div>
+      </div>
 
-      <section>
-        <div class="section-heading-row">
-          <div>
-            <h2>${escapeHtml(labels.actionPlan)}</h2>
-            <p>${escapeHtml(labels.trackerHint)}</p>
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">3</span>
+          <h2 class="section-title">${escapeHtml(labels.fastestQuickWins)}</h2>
+        </div>
+        <ol class="win-list">
+          ${plan.quickWins.map((win, i) => `<li class="win-item"><span class="win-num">${i + 1}</span><span class="win-text">${escapeHtml(win)}</span></li>`).join("")}
+        </ol>
+      </div>
+
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">4</span>
+          <h2 class="section-title">${escapeHtml(labels.growthScorecard)}</h2>
+        </div>
+        <div class="scorecard-list">
+          ${plan.scorecard.map((item) => scorecardRow(item, labels)).join("")}
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">5</span>
+          <h2 class="section-title">${escapeHtml(labels.strategicMoves)}</h2>
+        </div>
+        <div class="strategy-list">
+          ${plan.strategySections.map((item, i) => strategyCard(item, i)).join("")}
+        </div>
+      </div>
+
+      <div class="report-section">
+        <div class="action-header-row">
+          <div class="section-header" style="margin-bottom:0;flex:1">
+            <span class="section-num">6</span>
+            <h2 class="section-title">${escapeHtml(labels.actionPlan)}</h2>
           </div>
           <span class="section-badge" data-action-summary>0/${escapeHtml(String(plan.actionPlan.length))} ${escapeHtml(labels.completed)}</span>
         </div>
         <div class="action-list">
           ${plan.actionPlan.map((item, index) => actionPlanCard(item, index, labels)).join("")}
         </div>
-      </section>
+      </div>
 
-      <section>
-        <h2>${escapeHtml(labels.salesTemplates)}</h2>
-        <div class="grid">
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">7</span>
+          <h2 class="section-title">${escapeHtml(labels.salesTemplates)}</h2>
+        </div>
+        <div class="template-list">
           ${plan.templates.map(templateCard).join("")}
         </div>
-      </section>
+      </div>
 
-      <section>
-        <h2>${escapeHtml(labels.contentIdeas)}</h2>
-        <div class="grid">
-          ${plan.contentIdeas.map((item) => contentCard(item, labels)).join("")}
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">8</span>
+          <h2 class="section-title">${escapeHtml(labels.contentIdeas)}</h2>
         </div>
-      </section>
+        <div class="content-grid">
+          ${plan.contentIdeas.map(contentCard).join("")}
+        </div>
+      </div>
 
-      <section>
-        <h2>${escapeHtml(labels.metricsToTrack)}</h2>
-        <table>
+      <div class="report-section">
+        <div class="section-header">
+          <span class="section-num">9</span>
+          <h2 class="section-title">${escapeHtml(labels.metricsToTrack)}</h2>
+        </div>
+        <table class="metrics-table">
           <thead>
             <tr>
               <th>${escapeHtml(labels.metric)}</th>
@@ -1369,20 +1591,23 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
             </tr>
           </thead>
           <tbody>
-            ${plan.metrics.map((item) => `<tr><td>${escapeHtml(item.metric)}</td><td>${escapeHtml(item.target)}</td><td>${escapeHtml(item.why)}</td></tr>`).join("")}
+            ${plan.metrics.map((item) => `<tr><td class="metric-name">${escapeHtml(item.metric)}</td><td class="metric-target">${escapeHtml(item.target)}</td><td>${escapeHtml(item.why)}</td></tr>`).join("")}
           </tbody>
         </table>
-      </section>
+      </div>
 
-      <section class="three-grid">
-        ${listPanel(labels.biggestRisks, plan.biggestRisks)}
-        ${listPanel(labels.upsellIdeas, plan.upsellIdeas)}
-        ${listPanel(labels.assumptions, plan.assumptions)}
-      </section>
+      <div class="report-section">
+        <div class="bottom-grid">
+          ${taggedPanel(labels.biggestRisks, plan.biggestRisks, "risk")}
+          ${taggedPanel(labels.upsellIdeas, plan.upsellIdeas, "upsell")}
+          ${taggedPanel(labels.assumptions, plan.assumptions, "assumptions")}
+        </div>
+      </div>
 
-      <footer class="footer">${escapeHtml(plan.disclaimer)}</footer>
+      <footer class="report-footer">${escapeHtml(plan.disclaimer)}</footer>
     </main>
   </article>
+
   <script>
     function downloadHtmlReport() {
       if (typeof window.syncReportProgressAttributes === "function") {
@@ -1964,10 +2189,11 @@ function scoreLabels(language: BusinessKitLanguage): Array<{
   }
 }
 
+
 function workspacePanel(plan: BusinessKitPlan, labels: ReportLabels): string {
   return `<section class="workspace" data-report-workspace aria-labelledby="workspace-title">
     <div>
-      <p class="label" style="color: var(--accent-dark)">${escapeHtml(labels.implementationWorkspace)}</p>
+      <p class="workspace-eyebrow">${escapeHtml(labels.implementationWorkspace)}</p>
       <h2 id="workspace-title">${escapeHtml(labels.workspaceTitle)}</h2>
       <p class="workspace-intro">${escapeHtml(labels.workspaceIntro)}</p>
       <div class="progress-track" aria-hidden="true"><span data-progress-bar></span></div>
@@ -1982,26 +2208,57 @@ function workspacePanel(plan: BusinessKitPlan, labels: ReportLabels): string {
       </div>
     </div>
     <aside class="focus-card">
-      <div>
-        <span>${escapeHtml(labels.nextFocus)}</span>
-        <strong data-next-focus>${escapeHtml(plan.actionPlan[0]?.task ?? labels.allActionsDone)}</strong>
-        <p data-next-detail>${escapeHtml(plan.actionPlan[0]?.outcome ?? labels.allActionsDone)}</p>
-      </div>
+      <p class="focus-eyebrow">${escapeHtml(labels.nextFocus)}</p>
+      <p class="focus-task" data-next-focus>${escapeHtml(plan.actionPlan[0]?.task ?? labels.allActionsDone)}</p>
+      <p class="focus-outcome" data-next-detail>${escapeHtml(plan.actionPlan[0]?.outcome ?? "")}</p>
     </aside>
   </section>`;
 }
 
-function panel(title: string, body: string, variant = ""): string {
-  return `<div class="panel ${variant}"><h3>${escapeHtml(title)}</h3><p>${escapeHtml(body)}</p></div>`;
+function insightBlock(label: string, text: string, variant: "a" | "g" | "n"): string {
+  const accentClass = `i${variant}`;
+  const labelClass  = `l${variant}`;
+  return `<div class="insight-block">
+    <div class="${accentClass}"></div>
+    <div class="insight-body">
+      <p class="insight-label ${labelClass}">${escapeHtml(label)}</p>
+      <p class="insight-text">${escapeHtml(text)}</p>
+    </div>
+  </div>`;
 }
 
-function listPanel(title: string, items: string[], variant = ""): string {
-  return `<div class="panel ${variant}"><h3>${escapeHtml(title)}</h3><ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>`;
+function scorecardRow(item: BusinessScore, labels: ReportLabels): string {
+  const tier = item.score >= 70 ? "sc-high" : item.score >= 45 ? "sc-mid" : "sc-low";
+  return `<div class="scorecard-row">
+    <div class="scorecard-left">
+      <p class="scorecard-label">${escapeHtml(item.label)}</p>
+      <p class="scorecard-next-move">${escapeHtml(labels.next)}: ${escapeHtml(item.nextMove)}</p>
+    </div>
+    <div class="scorecard-bar-wrap">
+      <div class="scorecard-bar ${tier}" style="width:${escapeHtml(String(item.score))}%"></div>
+    </div>
+    <span class="scorecard-score ${tier}">${escapeHtml(String(item.score))}</span>
+    <p class="scorecard-rationale">${escapeHtml(item.rationale)}</p>
+  </div>`;
+}
+
+function strategyCard(item: StrategySection, index: number): string {
+  return `<div class="strategy-card">
+    <div class="strategy-header">
+      <span class="strategy-index">${escapeHtml(String(index + 1).padStart(2, "0"))}</span>
+      <h3 class="strategy-title">${escapeHtml(item.title)}</h3>
+    </div>
+    <div class="strategy-body">
+      <p class="strategy-diagnosis">${escapeHtml(item.diagnosis)}</p>
+      <ul class="strategy-moves">
+        ${item.moves.map((move) => `<li class="strategy-move"><span class="move-arr">→</span><span>${escapeHtml(move)}</span></li>`).join("")}
+      </ul>
+    </div>
+  </div>`;
 }
 
 function actionPlanCard(item: ActionItem, index: number, labels: ReportLabels): string {
   const taskId = `action-${index + 1}`;
-
   return `<article class="action-card" data-action-card data-action-id="${escapeHtml(taskId)}">
     <label class="action-toggle" aria-label="${escapeHtml(`${labels.markComplete}: ${item.day}`)}">
       <input type="checkbox" data-action-toggle>
@@ -2012,30 +2269,41 @@ function actionPlanCard(item: ActionItem, index: number, labels: ReportLabels): 
         <span class="day-pill">${escapeHtml(item.day)}</span>
         <span class="action-state" data-action-state>${escapeHtml(labels.notStarted)}</span>
       </div>
-      <h3 data-action-title>${escapeHtml(item.task)}</h3>
-      <p data-action-outcome>${escapeHtml(item.outcome)}</p>
+      <p class="action-task" data-action-title>${escapeHtml(item.task)}</p>
+      <p class="action-outcome" data-action-outcome>${escapeHtml(item.outcome)}</p>
       <label class="notes-field">
-        <span>${escapeHtml(labels.notes)}</span>
+        <span class="notes-label">${escapeHtml(labels.notes)}</span>
         <textarea data-action-note placeholder="${escapeHtml(labels.notesPlaceholder)}"></textarea>
       </label>
     </div>
   </article>`;
 }
 
-function scoreCard(item: BusinessScore, labels: ReportLabels): string {
-  return `<div class="score-card"><h3>${escapeHtml(item.label)}</h3><p class="score">${escapeHtml(String(item.score))}</p><p class="small">${escapeHtml(item.rationale)}</p><p class="small"><strong>${escapeHtml(labels.next)}:</strong> ${escapeHtml(item.nextMove)}</p></div>`;
-}
-
-function strategyCard(item: StrategySection): string {
-  return `<div class="panel"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.diagnosis)}</p><ul>${item.moves.map((move) => `<li>${escapeHtml(move)}</li>`).join("")}</ul></div>`;
-}
-
 function templateCard(item: BusinessTemplate): string {
-  return `<div class="panel"><h3>${escapeHtml(item.title)}</h3><p class="small">${escapeHtml(item.channel)}</p><p class="template">${escapeHtml(item.body)}</p></div>`;
+  return `<div class="template-card">
+    <div class="template-header">
+      <h3 class="template-title">${escapeHtml(item.title)}</h3>
+      <span class="template-channel">${escapeHtml(item.channel)}</span>
+    </div>
+    <div class="template-body">${escapeHtml(item.body)}</div>
+  </div>`;
 }
 
-function contentCard(item: ContentIdea, labels: ReportLabels): string {
-  return `<div class="panel"><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.angle)}</p><p class="small"><strong>${escapeHtml(labels.hook)}:</strong> ${escapeHtml(item.hook)}</p></div>`;
+function contentCard(item: ContentIdea): string {
+  return `<div class="content-card">
+    <h3 class="content-title">${escapeHtml(item.title)}</h3>
+    <p class="content-angle">${escapeHtml(item.angle)}</p>
+    <p class="content-hook">${escapeHtml(item.hook)}</p>
+  </div>`;
+}
+
+function taggedPanel(title: string, items: string[], variant: "risk" | "upsell" | "assumptions"): string {
+  return `<div class="tagged-panel">
+    <div class="tagged-header th-${escapeHtml(variant)}">${escapeHtml(title)}</div>
+    <ul class="tagged-list">
+      ${items.map((item) => `<li class="tagged-item">${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  </div>`;
 }
 
 function interactiveReportScript(reportId: string, labels: ReportLabels): string {
