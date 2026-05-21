@@ -2,7 +2,7 @@ import { jsonrepair } from "jsonrepair";
 
 const OPEN_ROUTER_API_KEY = import.meta.env.VITE_OPEN_ROUTER_API_KEY as string | undefined;
 const OPEN_ROUTER_MODEL = (import.meta.env.VITE_OPEN_ROUTER_MODEL as string | undefined) || "google/gemini-flash-1.5";
-const OPEN_ROUTER_MAX_TOKENS = Number(import.meta.env.VITE_OPEN_ROUTER_MAX_COMPLETION_TOKENS) || 9000;
+const OPEN_ROUTER_MAX_TOKENS = Number(import.meta.env.VITE_OPEN_ROUTER_MAX_COMPLETION_TOKENS) || null;
 const OPEN_ROUTER_HTTP_REFERER = import.meta.env.VITE_OPEN_ROUTER_HTTP_REFERER as string | undefined;
 const OPEN_ROUTER_X_TITLE = (import.meta.env.VITE_OPEN_ROUTER_X_TITLE as string | undefined) || "Entrepreneur Growth Kit";
 
@@ -391,48 +391,103 @@ function formatRequestForApi(request: BusinessKitRequest): string {
     de: "German",
   };
   const languageInstructions: Record<BusinessKitLanguage, string> = {
-    en: "Write every user-facing report sentence in English. Keep JSON property names in English.",
-    nl: "Schrijf elke zichtbare rapportzin in natuurlijk Nederlands. Vertaal ook ingevoerde Engelse formuleringen naar Nederlands wanneer ze in titels, paragrafen, tabellen, templates, metrics of actiepunten terechtkomen. Laat alleen merknamen, productnamen, acroniemen en echte eigennamen onvertaald. Houd JSON-propertynamen Engels.",
-    fr: "Write every user-facing report sentence in French. Translate user-provided wording into French when it appears in titles, paragraphs, tables, templates, metrics, or action items. Keep only brand names, product names, acronyms, and proper nouns unchanged. Keep JSON property names in English.",
-    de: "Write every user-facing report sentence in German. Translate user-provided wording into German when it appears in titles, paragraphs, tables, templates, metrics, or action items. Keep only brand names, product names, acronyms, and proper nouns unchanged. Keep JSON property names in English.",
+    en: "Write every user-facing field in fluent English. Keep JSON property names in English.",
+    nl: "Schrijf elke zichtbare rapportzin in vloeiend, natuurlijk Nederlands. Vertaal ook ingevoerde Engelse formuleringen naar Nederlands in titels, paragrafen, tabellen, templates, metrics en actiepunten. Laat alleen merknamen, productnamen, acroniemen en eigennamen onvertaald. Houd JSON-propertynamen in het Engels.",
+    fr: "Rédigez chaque champ visible en français courant. Traduisez les formulations fournies en anglais lorsqu'elles apparaissent dans les titres, paragraphes, tableaux, modèles, indicateurs ou plans d'action. Conservez uniquement les noms de marque, noms de produits, acronymes et noms propres en anglais. Gardez les noms de propriétés JSON en anglais.",
+    de: "Schreiben Sie jedes sichtbare Feld auf fließendem Deutsch. Übersetzen Sie vom Nutzer auf Englisch eingegebene Formulierungen, wenn sie in Titeln, Absätzen, Tabellen, Vorlagen, Kennzahlen oder Aktionsplänen erscheinen. Behalten Sie nur Markennamen, Produktnamen, Akronyme und Eigennamen auf Englisch bei. JSON-Property-Namen bleiben auf Englisch.",
   };
 
-  return [
-    `Report language: ${languageNames[request.language]}.`,
-    languageInstructions[request.language],
-    `Business name: ${request.businessName ?? "Not provided"}`,
-    `Business type: ${request.businessType ?? "Not provided"}`,
-    `Current offer: ${request.offer ?? "Not provided"}`,
-    `Target customer: ${request.audience ?? "Not provided"}`,
-    `Main problem: ${request.problem ?? "Not provided"}`,
-    `Goal: ${request.goal ?? "Not provided"}`,
-    `Current channels: ${request.channels ?? "Not provided"}`,
-    `Price point: ${request.pricePoint ?? "Not provided"}`,
-    `Region or market: ${request.region ?? "Not provided"}`,
-    `Preferred tone: ${request.tone ?? "Clear, direct, premium, practical"}`,
-  ].join("\n");
+  return `BUSINESS BRIEF
+==============
+Report language: ${languageNames[request.language]}
+Language instruction: ${languageInstructions[request.language]}
+
+Business name: ${request.businessName ?? "Not provided"}
+Business type: ${request.businessType ?? "Not provided"}
+Current offer: ${request.offer ?? "Not provided"}
+Target customer: ${request.audience ?? "Not provided"}
+Core problem they face: ${request.problem ?? "Not provided"}
+Growth goal (30 days): ${request.goal ?? "Not provided"}
+Active channels: ${request.channels ?? "Not provided"}
+Current / target price point: ${request.pricePoint ?? "Not provided"}
+Region / market: ${request.region ?? "Not provided"}
+Report tone: ${request.tone ?? "Clear, direct, premium, practical"}
+
+Build a full entrepreneur growth kit for this business. Every section must be specific to the brief above — never use placeholder text or generic advice that could apply to any business.`;
 }
 
 function apiSystemPrompt(mode: "json" | "compact"): string {
   const jsonInstruction = mode === "json"
-    ? "Return only raw JSON. Start with { and end with }. Do not use markdown or commentary."
-    : "Return only raw JSON starting with {. Be concise — keep values short to stay within the token limit.";
+    ? "Return ONLY a raw JSON object. Start with { and end with }. No markdown fences, no commentary, no text outside the JSON."
+    : "Return ONLY a raw JSON object starting with {. Keep individual string values concise to stay within the token limit, but keep all required keys.";
 
-  return [
-    "You are a practical growth strategist for small businesses, solo founders, agencies, consultants, ecommerce operators, and local service companies.",
-    jsonInstruction,
-    "Create a paid-quality business growth kit that is specific, useful, and commercially realistic.",
-    "Do not make vague motivational advice. Every recommendation should be concrete enough to execute this week.",
-    "Prioritize offer clarity, pricing power, lead generation, conversion, retention, operations, and measurable next actions.",
-    "Use the user's market, offer, goal, channel, and tone when available. If details are missing, state assumptions instead of inventing fake facts.",
-    "Write every user-facing report field in the requested report language, including titles, table rows, score labels, action-plan days, templates, metrics, assumptions, and disclaimers.",
-    "Keep the JSON keys in English.",
-    "Write in confident consultant language, but keep it understandable for a busy entrepreneur.",
-    "Include scores from 0 to 100. Low scores are allowed when the business has real gaps.",
-    "Do not guarantee revenue, profit, funding, legal compliance, or medical/financial outcomes.",
-    "Keep the response bounded so the JSON is valid: short paragraphs, compact lists, no markdown tables.",
-    "Required JSON shape: { title, subtitle, executiveSummary, positioning, coreOfferRewrite, idealCustomerProfile, biggestRisks (array 3-5), quickWins (array 4-7), strategySections (array 4-6, each { title, diagnosis, moves[] }), scorecard (array 5-6, each { label, score, rationale, nextMove }), actionPlan (array 8-12, each { day, task, outcome }), templates (array 3-5, each { title, channel, body }), contentIdeas (array 5-8, each { title, angle, hook }), metrics (array 5-8, each { metric, target, why }), upsellIdeas (array 3-5), assumptions (array 3-5), disclaimer }",
-  ].join(" ");
+  return `You are a senior growth strategist with 15 years of experience advising small businesses, boutique agencies, solo consultants, SaaS founders, ecommerce operators, and local service companies. You write in the style of a premium paid consultant report — sharp, specific, commercially grounded, and immediately actionable.
+
+${jsonInstruction}
+
+QUALITY RULES (never break these):
+- Every recommendation must name a specific action, not a category. Bad: "improve your marketing". Good: "Rewrite your LinkedIn headline to lead with the buyer's painful outcome, not your job title."
+- Every diagnosis must explain WHY the problem exists, not just that it exists.
+- Scores must reflect reality. A business with no outbound system should score 30–45 on lead generation, not 65.
+- Templates must be fully written out — real subject lines, real body copy, ready to send with only [Name] and [Company] filled in.
+- Content ideas must include a specific angle and a punchy first line (hook) someone could post today.
+- Metrics must include a realistic numeric target tied to the business's price point and stage.
+- Action plan items must state a concrete deliverable, not a vague activity. Bad: "Work on positioning". Good: "Write a one-sentence value proposition using the formula: We help [audience] achieve [outcome] without [obstacle]."
+- If a field is missing from the brief, make a clearly-labeled assumption and work with it — never output a generic placeholder.
+- Tone must match the brief's requested style throughout.
+
+SECTION-BY-SECTION INSTRUCTIONS:
+
+executiveSummary (3–4 sentences): Open with the single biggest growth lever this business has RIGHT NOW. Then name the one thing blocking that lever. Close with the key strategic shift needed in the next 30 days. Be direct — no preamble.
+
+positioning (3–4 sentences): Diagnose how this business is currently perceived versus how it SHOULD be positioned. Name the positioning gap. Prescribe the exact repositioning move: what to lead with, what to stop saying, what proof point anchors the claim.
+
+coreOfferRewrite (2–3 sentences): Rewrite the current offer as a buyer would want to hear it — outcome first, scope second, risk-reducer third. Name the deliverable, the timeframe, and the result the buyer walks away with. Kill feature-speak.
+
+idealCustomerProfile (3–4 sentences): Describe the single best-fit buyer profile with enough specificity that you could find 50 of them on LinkedIn this week. Include company size, role, trigger event that makes them ready to buy NOW, and the internal conversation they're having before they search for a solution.
+
+biggestRisks (4–5 items): Name the specific commercial risks — positioning, pricing, channel dependency, operational, competitive. Each risk must explain the consequence if unaddressed, not just name the issue.
+
+quickWins (5–7 items): These are actions completable in 1–5 days that generate a visible result. Each must be specific enough to start immediately. Prioritize by impact-to-effort ratio.
+
+strategySections (5 sections, each with a sharp title): Cover: Offer & Pricing, Acquisition, Conversion, Retention & Expansion, Operations & Leverage. Each diagnosis should be 2–3 sentences explaining the root cause. Each move (3–5 per section) must be a specific executable action, not a theme.
+
+scorecard (6 dimensions): Score: Offer Clarity, Pricing Power, Lead Generation, Conversion System, Customer Retention, Operational Leverage. Each score (0–100) needs a 1-sentence rationale explaining exactly why it earned that score and a concrete next move to improve it.
+
+actionPlan (10–12 items): Structured as Day 1, Day 2, Day 3, Day 4–5, Week 2, Week 3, Week 4, then optionally Day 30 review. Each task must be a single concrete deliverable. Outcome must be the measurable result of completing that task.
+
+templates (4–5 items): Include: a cold outreach opener, a follow-up after no reply, a discovery call confirmation, a proposal follow-up, and optionally a referral ask. Each template must be fully written with real copy — subject line included for email templates.
+
+contentIdeas (6–8 items): Mix of LinkedIn posts, email subjects, and short-form video hooks. Each must target a specific buyer pain or objection. The hook must be a complete opening sentence someone could use today.
+
+metrics (6–8 items): Include leading and lagging indicators. Each metric needs a specific numeric or percentage target grounded in the business's price point and sales cycle. The "why" must explain what goes wrong if this metric is ignored.
+
+upsellIdeas (4–5 items): Logical next offers after the first sale — priced and scoped, not just named. Explain what triggers the upsell conversation.
+
+assumptions (3–5 items): List the assumptions you made where the brief was silent. Format as "We assume [X] because [Y]. If this is wrong, adjust [Z]."
+
+disclaimer: One sentence, professional, non-alarmist.
+
+REQUIRED JSON SHAPE (all keys required):
+{
+  "title": string,
+  "subtitle": string,
+  "executiveSummary": string,
+  "positioning": string,
+  "coreOfferRewrite": string,
+  "idealCustomerProfile": string,
+  "biggestRisks": string[],
+  "quickWins": string[],
+  "strategySections": [{ "title": string, "diagnosis": string, "moves": string[] }],
+  "scorecard": [{ "label": string, "score": number, "rationale": string, "nextMove": string }],
+  "actionPlan": [{ "day": string, "task": string, "outcome": string }],
+  "templates": [{ "title": string, "channel": string, "body": string }],
+  "contentIdeas": [{ "title": string, "angle": string, "hook": string }],
+  "metrics": [{ "metric": string, "target": string, "why": string }],
+  "upsellIdeas": string[],
+  "assumptions": string[],
+  "disclaimer": string
+}`;
 }
 
 async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Promise<string> {
@@ -450,8 +505,8 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
       { role: "system", content: apiSystemPrompt(mode) },
       { role: "user", content: userMessage },
     ],
-    temperature: 0.35,
-    max_tokens: OPEN_ROUTER_MAX_TOKENS,
+    temperature: 0.45,
+    ...(OPEN_ROUTER_MAX_TOKENS ? { max_tokens: OPEN_ROUTER_MAX_TOKENS } : {}),
   };
 
   if (mode === "json") {
