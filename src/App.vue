@@ -7,12 +7,10 @@ import {
   BarChart3,
   BriefcaseBusiness,
   CheckCircle2,
-  CreditCard,
   ExternalLink,
   FileText,
   Languages,
   Loader2,
-  LockKeyhole,
   MessageSquareText,
   Send,
   ShieldCheck,
@@ -20,19 +18,13 @@ import {
   Target,
   TrendingUp,
 } from "lucide-vue-next";
+import {buildBusinessKitHtml, businessKitFileName, createBusinessKit} from "./businessKit";
 
 type GenerateStatus = "idle" | "loading" | "success" | "error";
 type ReportLanguage = "en" | "nl" | "fr" | "de";
 type GenerationStep = {
   title: string;
   detail: string;
-};
-
-type PaymentConfig = {
-  paymentRequired: boolean;
-  developmentFree: boolean;
-  stripeConfigured: boolean;
-  amountLabel: string;
 };
 
 const tonePresets = [
@@ -77,7 +69,6 @@ const generationSteps: GenerationStep[] = [
 ];
 
 const draftStorageKey = "business-kit-draft";
-const paymentStorageKey = "business-kit-payment-session";
 
 const form = reactive({
   businessName: "Northstar Studio",
@@ -98,15 +89,6 @@ const errorMessage = ref("");
 const reportUrl = ref("");
 const fileName = ref("");
 const lastGeneratedAt = ref("");
-const paymentSessionId = ref("");
-const paymentMessage = ref("");
-const paymentConfig = ref<PaymentConfig>({
-  paymentRequired: false,
-  developmentFree: true,
-  stripeConfigured: false,
-  amountLabel: "Development mode",
-});
-
 const showIndeterminate = ref(false);
 const pdfDownloading = ref(false);
 const reportHtml = ref("");
@@ -125,17 +107,11 @@ const hasBusinessContext = computed(() => {
   );
 });
 
-const hasPaidAccess = computed(() => !paymentConfig.value.paymentRequired || Boolean(paymentSessionId.value));
-const paywallBlocked = computed(() => paymentConfig.value.paymentRequired && !paymentConfig.value.stripeConfigured);
-const canGenerate = computed(() => hasBusinessContext.value && status.value !== "loading" && !paywallBlocked.value);
+const canGenerate = computed(() => hasBusinessContext.value && status.value !== "loading");
 
 const actionLabel = computed(() => {
   if (status.value === "loading") {
     return "Generating";
-  }
-
-  if (paymentConfig.value.paymentRequired && !paymentSessionId.value) {
-    return "Unlock with Stripe";
   }
 
   return "Generate growth kit";
@@ -152,10 +128,6 @@ const statusLabel = computed(() => {
 
   if (status.value === "error") {
     return "Generation failed";
-  }
-
-  if (paymentConfig.value.paymentRequired && !paymentSessionId.value) {
-    return "Payment required";
   }
 
   return "Ready to generate";
@@ -178,11 +150,6 @@ async function generateBusinessKit() {
     return;
   }
 
-  if (paymentConfig.value.paymentRequired && !paymentSessionId.value) {
-    await startCheckout();
-    return;
-  }
-
   window.scrollTo({top: 0, left: 0, behavior: "auto"});
   status.value = "loading";
   errorMessage.value = "";
@@ -194,23 +161,10 @@ async function generateBusinessKit() {
   saveDraft();
 
   try {
-    const response = await fetch("/api/createBusinessKit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...form,
-        paymentSessionId: paymentSessionId.value || undefined,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(await readError(response));
-    }
-
-    const htmlText = await response.text();
-    const nextFileName = fileNameFromResponse(response) ?? "business-growth-kit.html";
+    await wait(650);
+    const kit = createBusinessKit({...form});
+    const htmlText = buildBusinessKitHtml(kit);
+    const nextFileName = businessKitFileName(kit);
     const nextReportUrl = setReportHtml(htmlText);
 
     fileName.value = nextFileName;
@@ -229,6 +183,10 @@ async function generateBusinessKit() {
     stopLoadingSequence();
     showIndeterminate.value = false;
   }
+}
+
+function wait(duration: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, duration));
 }
 
 function startLoadingSequence() {
@@ -477,87 +435,8 @@ function prepareReportHtmlForPdf(html: string): string {
   return `<!doctype html>\n${documentForExport.documentElement.outerHTML}`;
 }
 
-async function startCheckout() {
-  status.value = "loading";
-  errorMessage.value = "";
-  showResultScreen.value = false;
-  startLoadingSequence();
-  saveDraft();
-
-  try {
-    const response = await fetch("/api/createCheckoutSession", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({product: "business_growth_kit"}),
-    });
-
-    if (!response.ok) {
-      throw new Error(await readError(response));
-    }
-
-    const body = await response.json() as { paymentRequired?: boolean; url?: string };
-
-    if (!body.paymentRequired) {
-      paymentConfig.value.paymentRequired = false;
-      status.value = "idle";
-      await generateBusinessKit();
-      return;
-    }
-
-    if (!body.url) {
-      throw new Error("Stripe checkout did not return a redirect URL.");
-    }
-
-    window.location.href = body.url;
-  } catch (error) {
-    status.value = "error";
-    errorMessage.value = error instanceof Error ? error.message : String(error);
-  } finally {
-    stopLoadingSequence();
-    showIndeterminate.value = false;
-  }
-}
-
-async function loadPaymentConfig() {
-  try {
-    const response = await fetch("/api/paymentConfig");
-
-    if (!response.ok) {
-      return;
-    }
-
-    paymentConfig.value = await response.json() as PaymentConfig;
-  } catch {
-    paymentConfig.value = {
-      paymentRequired: false,
-      developmentFree: true,
-      stripeConfigured: false,
-      amountLabel: "Development mode",
-    };
-  }
-}
-
 function useTone(tone: string) {
   form.tone = tone;
-}
-
-async function readError(response: Response): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (contentType.includes("application/json")) {
-    const body = await response.json();
-    return body.details ?? body.error ?? "Could not create the business kit.";
-  }
-
-  return await response.text();
-}
-
-function fileNameFromResponse(response: Response): string | null {
-  const disposition = response.headers.get("content-disposition") ?? "";
-  const match = disposition.match(/filename="([^"]+)"/i);
-  return match?.[1] ?? null;
 }
 
 function saveDraft() {
@@ -579,27 +458,6 @@ function restoreDraft() {
     });
   } catch {
     localStorage.removeItem(draftStorageKey);
-  }
-}
-
-function restorePaymentSession() {
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = params.get("session_id") ?? localStorage.getItem(paymentStorageKey) ?? "";
-  const paymentStatus = params.get("payment");
-
-  if (sessionId) {
-    paymentSessionId.value = sessionId;
-    localStorage.setItem(paymentStorageKey, sessionId);
-  }
-
-  if (paymentStatus === "success") {
-    paymentMessage.value = "Payment received. You can generate the full report now.";
-    window.history.replaceState({}, "", window.location.pathname);
-  }
-
-  if (paymentStatus === "cancelled") {
-    paymentMessage.value = "Payment was cancelled. Your draft is still here.";
-    window.history.replaceState({}, "", window.location.pathname);
   }
 }
 
@@ -625,8 +483,6 @@ function revokeReportUrl() {
 
 onMounted(() => {
   restoreDraft();
-  restorePaymentSession();
-  void loadPaymentConfig();
 });
 
 onBeforeUnmount(() => {
@@ -684,8 +540,8 @@ onBeforeUnmount(() => {
           <p class="eyebrow">Report complete</p>
           <h2 id="result-title">Your Growth Kit is ready.</h2>
           <p>
-            The report has been generated, localised for {{ selectedLanguageLabel }}, and prepared as a styled HTML
-            report with PDF export.
+            The report has been generated in your browser, localised for {{ selectedLanguageLabel }}, and prepared as a
+            styled HTML report with PDF export.
           </p>
 
           <div class="result-actions">
@@ -732,13 +588,13 @@ onBeforeUnmount(() => {
     </section>
 
     <header class="site-nav">
-      <a class="brand-lockup" href="#" aria-label="GrowthKit AI home">
+      <a class="brand-lockup" href="#" aria-label="GrowthKit Studio home">
         <span class="brand-mark" aria-hidden="true">
           <BriefcaseBusiness :size="24" />
         </span>
         <span>
-          <strong>GrowthKit AI</strong>
-          <small>Entrepreneur report builder</small>
+          <strong>GrowthKit Studio</strong>
+          <small>Frontend report builder</small>
         </span>
       </a>
 
@@ -783,8 +639,8 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="hero-content">
-        <p class="eyebrow">AI strategy report builder</p>
-        <h1 id="page-title">AI Entrepreneur Growth Kit</h1>
+        <p class="eyebrow">Browser strategy report builder</p>
+        <h1 id="page-title">Entrepreneur Growth Kit</h1>
         <p class="hero-copy">
           Turn a rough business brief into a polished consultant-style growth report with positioning, offers,
           scorecards, outreach templates, and a practical action plan.
@@ -832,17 +688,17 @@ onBeforeUnmount(() => {
       </article>
       <article class="proof-card">
         <ShieldCheck :size="24" />
-        <h2>Paid report flow</h2>
-        <p>Stripe-gated generation with browser-ready HTML and one-click PDF export.</p>
+        <h2>Static Netlify flow</h2>
+        <p>Browser-only generation with styled HTML output and one-click PDF export.</p>
       </article>
     </section>
 
     <section id="brief" class="brief-section" aria-labelledby="brief-title">
       <div class="section-heading">
         <p class="eyebrow">Strategy brief</p>
-        <h2 id="brief-title">Give the AI the business context that matters.</h2>
+        <h2 id="brief-title">Give the strategy engine the business context that matters.</h2>
         <p>
-          The report is generated from the brief below, then opened in a new tab only after the result is ready.
+          The report is generated locally from the brief below, then opened in a new tab only after the result is ready.
         </p>
       </div>
 
@@ -966,7 +822,6 @@ onBeforeUnmount(() => {
 
           <button class="generate-button" type="submit" :disabled="!canGenerate">
             <Loader2 v-if="status === 'loading'" class="spin" :size="20" />
-            <CreditCard v-else-if="paymentConfig.paymentRequired && !paymentSessionId" :size="20" />
             <Send v-else :size="20" />
             <span>{{ actionLabel }}</span>
           </button>
@@ -978,7 +833,6 @@ onBeforeUnmount(() => {
               <Loader2 v-if="status === 'loading'" class="spin" :size="26" />
               <CheckCircle2 v-else-if="status === 'success'" :size="26" />
               <AlertCircle v-else-if="status === 'error'" :size="26" />
-              <LockKeyhole v-else-if="paymentConfig.paymentRequired && !paymentSessionId" :size="26" />
               <FileText v-else :size="26" />
             </div>
             <div>
@@ -988,19 +842,10 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="report-content">
-            <div class="paywall-box" :data-paid="hasPaidAccess">
-              <strong>{{ paymentConfig.paymentRequired ? "Full report paywall" : "Free access" }}</strong>
-              <p v-if="paymentConfig.developmentFree">Free in development. Stripe is skipped locally.</p>
-              <p v-else-if="paymentConfig.paymentRequired && paymentSessionId">Payment confirmed for this browser.</p>
-              <p v-else-if="paymentConfig.paymentRequired">Stripe Checkout is required before the report is generated.</p>
-              <p v-else>The report generator is currently free to use.</p>
+            <div class="runtime-box">
+              <strong>Static frontend mode</strong>
+              <p>No backend, payment gateway, or API key is required. The report is generated in this browser.</p>
             </div>
-
-            <p v-if="paymentMessage" class="success-text">{{ paymentMessage }}</p>
-
-            <p v-if="paywallBlocked" class="error-text">
-              Stripe paywall is active, but the backend is missing STRIPE_SECRET_KEY or STRIPE_PRICE_ID.
-            </p>
 
             <div v-if="status === 'idle'" class="output-stack">
               <div class="mini-metric">
@@ -1022,7 +867,7 @@ onBeforeUnmount(() => {
             </div>
 
             <p v-if="status === 'loading'" class="muted-line">
-              Generation is running. The report tab opens after the API returns the finished HTML.
+              Generation is running locally. The report tab opens after the browser finishes the HTML.
             </p>
 
             <div v-if="status === 'success'" class="download-block">

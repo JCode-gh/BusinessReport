@@ -704,26 +704,21 @@ input[type="text"]:focus {
   padding: 22px;
 }
 
-.paywall-box {
+.runtime-box {
   display: grid;
   gap: 5px;
   margin-bottom: 16px;
-  border: 1px solid #d8c8de;
+  border: 1px solid #c9dfd2;
   border-radius: 8px;
   padding: 14px;
-  background: #fbf7fc;
-}
-
-.paywall-box[data-paid="true"] {
-  border-color: #c9dfd2;
   background: #f2faf5;
 }
 
-.paywall-box strong {
+.runtime-box strong {
   color: #263741;
 }
 
-.paywall-box p,
+.runtime-box p,
 .muted-line {
   margin: 0;
   color: var(--muted);
