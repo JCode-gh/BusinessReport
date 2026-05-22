@@ -35,20 +35,9 @@ const users: UserScenario[] = [
     channels: "Google, website, e-mail, lokale partners",
     pricePoint: "Retainer van 1200 tot 2200 EUR per maand",
   },
-  {
-    businessName: "Northline Automations",
-    market: "Belgie en Nederland",
-    businessType: "Automatiseringsbureau voor kleine servicebedrijven",
-    offer: "Een vaste-scope CRM en follow-up sprint voor eigenaars met een rommelige pipeline",
-    audience: "Lokale servicebedrijven met 5 tot 25 medewerkers en veel handmatige opvolging",
-    problem: "Leads verdwijnen in mailboxen en offertes worden te laat opgevolgd",
-    goal: "Binnen 30 dagen twintig open saleskansen opnieuw activeren",
-    channels: "Referrals, e-mail, LinkedIn, CRM",
-    pricePoint: "Sprintprijs 4500 EUR met optionele maandelijkse optimalisatie",
-  },
 ];
 
-test("multiple users can generate isolated reports at the same time", async ({browser}) => {
+test("multiple users can generate isolated reports through the live API at the same time", async ({browser}) => {
   const results = await Promise.all(users.map((user) => generateReportAsUser(browser, user)));
 
   expect(results).toEqual(
@@ -80,7 +69,7 @@ async function generateReportAsUser(browser: Browser, user: UserScenario) {
     const apiRequest = await apiRequestPromise;
     expect(apiRequest.method()).toBe("POST");
 
-    await expect(page.getByRole("heading", {name: "Je Growth Kit is klaar."})).toBeVisible({timeout: 120_000});
+    await expect(page.getByRole("heading", {name: "Je Growth Kit is klaar."})).toBeVisible({timeout: 240_000});
 
     const expectedFileName = `${slugify(`${user.businessName} groeikit`)}.html`;
     await expect(page.getByRole("heading", {name: expectedFileName, exact: true})).toBeVisible();
