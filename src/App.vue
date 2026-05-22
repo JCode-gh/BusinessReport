@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onMounted, reactive, ref} from "vue";
-import html2pdf from "html2pdf.js";
 import {
   AlertCircle,
   ArrowRight,
   BarChart3,
   BriefcaseBusiness,
   CheckCircle2,
+  Clock,
   ExternalLink,
   FileText,
   Languages,
@@ -18,7 +18,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-vue-next";
-import {buildBusinessKitHtml, businessKitFileName, createBusinessKit} from "./businessKit";
+import {buildBusinessKitHtml, businessKitFileName, createBusinessKit, type RetryInfo} from "./businessKit";
 
 type GenerateStatus = "idle" | "loading" | "success" | "error";
 type ReportLanguage = "en" | "nl" | "fr" | "de";
@@ -97,6 +97,15 @@ const showResultScreen = ref(false);
 const loadingStepIndex = ref(0);
 const loadingStepTimer = ref<number | null>(null);
 
+const waitingRoom = reactive({
+  active: false,
+  secondsLeft: 0,
+  totalSeconds: 0,
+  attempt: 0,
+  totalAttempts: 5,
+});
+let waitingRoomTimer: number | null = null;
+
 const hasBusinessContext = computed(() => {
   return Boolean(
     form.businessType.trim() ||
@@ -145,6 +154,11 @@ const loadingProgress = computed(() => {
   return Math.round(((loadingStepIndex.value + 1) / generationSteps.length) * 100);
 });
 
+const waitingCountdownPercent = computed(() => {
+  if (waitingRoom.totalSeconds === 0) return 0;
+  return Math.round(((waitingRoom.totalSeconds - waitingRoom.secondsLeft) / waitingRoom.totalSeconds) * 100);
+});
+
 async function generateBusinessKit() {
   if (!canGenerate.value) {
     return;
@@ -162,7 +176,7 @@ async function generateBusinessKit() {
 
   try {
     await wait(650);
-    const kit = await createBusinessKit({...form});
+    const kit = await createBusinessKit({...form}, startWaitingRoom);
     const htmlText = buildBusinessKitHtml(kit);
     const nextFileName = businessKitFileName(kit);
     const nextReportUrl = setReportHtml(htmlText);
@@ -181,12 +195,42 @@ async function generateBusinessKit() {
     errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
     stopLoadingSequence();
+    stopWaitingRoom();
     showIndeterminate.value = false;
   }
 }
 
 function wait(duration: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, duration));
+}
+
+function startWaitingRoom(info: RetryInfo) {
+  const secs = Math.ceil(info.retryAfterSeconds);
+  waitingRoom.active = true;
+  waitingRoom.secondsLeft = secs;
+  waitingRoom.totalSeconds = secs;
+  waitingRoom.attempt = info.attempt;
+  waitingRoom.totalAttempts = info.totalAttempts;
+
+  stopLoadingSequence(); // freeze the fake progress bar while waiting
+
+  if (waitingRoomTimer !== null) window.clearInterval(waitingRoomTimer);
+  waitingRoomTimer = window.setInterval(() => {
+    if (waitingRoom.secondsLeft > 1) {
+      waitingRoom.secondsLeft -= 1;
+    } else {
+      stopWaitingRoom();
+    }
+  }, 1000);
+}
+
+function stopWaitingRoom() {
+  waitingRoom.active = false;
+  if (waitingRoomTimer !== null) {
+    window.clearInterval(waitingRoomTimer);
+    waitingRoomTimer = null;
+  }
+  if (status.value === 'loading') startLoadingSequence(); // resume from where it stopped
 }
 
 function startLoadingSequence() {
@@ -277,162 +321,42 @@ function openReportUrl(url: string): boolean {
   }
 }
 
-async function downloadPdf() {
-  if (!reportHtml.value && !reportUrl.value) {
-    return;
-  }
+function downloadPdf() {
+  if (!reportHtml.value) return;
 
   pdfDownloading.value = true;
   errorMessage.value = "";
-  let iframe: HTMLIFrameElement | null = null;
 
   try {
-    let htmlText = reportHtml.value;
+    // Inject a print-trigger script so the browser's native Save as PDF dialog
+    // opens automatically. Native print preserves all CSS: gradients, backgrounds,
+    // custom fonts — everything html2canvas cannot handle.
+    const autoprint = [
+      "<script>",
+      "window.addEventListener('load',function(){",
+      "  (document.fonts?document.fonts.ready:Promise.resolve()).then(function(){",
+      "    setTimeout(function(){window.print();},500);",
+      "  });",
+      "});",
+      "<\/script>",
+    ].join("");
 
-    if (!htmlText && reportUrl.value) {
-      const response = await fetch(reportUrl.value);
+    const html = injectBase(reportHtml.value).replace("</body>", autoprint + "</body>");
+    const blob = new Blob([html], {type: "text/html"});
+    const url = URL.createObjectURL(blob);
 
-      if (!response.ok) {
-        throw new Error("Could not fetch the generated report for PDF conversion.");
-      }
-
-      htmlText = await response.text();
+    const tab = window.open(url, "_blank");
+    if (!tab) {
+      errorMessage.value = "Could not open the print dialog. Allow popups for this site and try again.";
     }
 
-    iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.left = "0";
-    iframe.style.top = "0";
-    iframe.style.width = "1120px";
-    iframe.style.height = "1400px";
-    iframe.style.border = "0";
-    iframe.style.opacity = "0";
-    iframe.style.pointerEvents = "none";
-    iframe.style.zIndex = "-1";
-    document.body.appendChild(iframe);
-    iframe.srcdoc = prepareReportHtmlForPdf(htmlText ?? "");
-
-    await new Promise((resolve, reject) => {
-      iframe!.onload = () => resolve(null);
-      iframe!.onerror = () => reject(new Error("Could not load report HTML into iframe."));
-    });
-
-    try {
-      await iframe.contentDocument?.fonts?.ready;
-    } catch { }
-
-    const documentForExport = iframe.contentDocument;
-    const element = documentForExport?.querySelector<HTMLElement>(".page") ?? documentForExport?.body;
-
-    if (!element) {
-      throw new Error("Report content is not available for PDF export.");
-    }
-
-    const pdfOptions = {
-      margin: [0.25, 0.25, 0.25, 0.25],
-      filename: (fileName.value || "business-growth-kit.html").replace(/\.html$/i, ".pdf"),
-      image: {type: "jpeg", quality: 0.98},
-      html2canvas: {
-        scale: Math.min(2, window.devicePixelRatio || 2),
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        windowWidth: 1120,
-        scrollX: 0,
-        scrollY: 0,
-      },
-      jsPDF: {unit: "in", format: "a4", orientation: "portrait"},
-      pagebreak: {
-        mode: ["css", "legacy"],
-        avoid: [".cover", ".workspace", ".panel", ".score-card", ".action-card", "tr"],
-      },
-    } as Record<string, unknown>;
-
-    await html2pdf()
-      .set(pdfOptions)
-      .from(element)
-      .save();
+    // Revoke after 2 min — the tab holds the content in memory independently.
+    window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
-    if (iframe?.parentNode) {
-      iframe.parentNode.removeChild(iframe);
-    }
-
     pdfDownloading.value = false;
   }
-}
-
-function prepareReportHtmlForPdf(html: string): string {
-  const parser = new DOMParser();
-  const documentForExport = parser.parseFromString(injectBase(html), "text/html");
-
-  documentForExport.querySelector(".report-toolbar")?.remove();
-  documentForExport.querySelectorAll("script").forEach((script) => script.remove());
-
-  const exportStyle = documentForExport.createElement("style");
-  exportStyle.textContent = `
-    html,
-    body {
-      width: 1120px;
-      min-width: 1120px;
-      margin: 0;
-      background: #ffffff !important;
-    }
-
-    * {
-      print-color-adjust: exact;
-      -webkit-print-color-adjust: exact;
-    }
-
-    .report-toolbar {
-      display: none !important;
-    }
-
-    .page {
-      width: 1080px !important;
-      max-width: none !important;
-      margin: 0 auto !important;
-      border: 1px solid var(--line) !important;
-      box-shadow: none !important;
-      overflow: visible !important;
-    }
-
-    .cover {
-      background: linear-gradient(135deg, #12343b, #0f766e 58%, #b7791f) !important;
-    }
-
-    section,
-    .panel,
-    .score-card,
-    .workspace,
-    .action-card,
-    tr {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-
-    section.action-workspace {
-      break-inside: auto;
-      page-break-inside: auto;
-    }
-
-    table {
-      break-inside: auto;
-      page-break-inside: auto;
-    }
-
-    thead {
-      display: table-header-group;
-    }
-
-    tr {
-      break-after: auto;
-      page-break-after: auto;
-    }
-  `;
-  documentForExport.head.appendChild(exportStyle);
-
-  return `<!doctype html>\n${documentForExport.documentElement.outerHTML}`;
 }
 
 function useTone(tone: string) {
@@ -488,6 +412,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   revokeReportUrl();
   stopLoadingSequence();
+  stopWaitingRoom();
   showIndeterminate.value = false;
 });
 </script>
@@ -518,19 +443,39 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <ol class="generation-steps" aria-label="Generation progress">
-          <li
-            v-for="(step, index) in generationSteps"
-            :key="step.title"
-            :class="{active: index === loadingStepIndex, done: index < loadingStepIndex}"
-          >
-            <span>{{ String(index + 1).padStart(2, "0") }}</span>
-            <div>
-              <strong>{{ step.title }}</strong>
-              <small>{{ step.detail }}</small>
+        <div class="generation-steps-col">
+          <ol class="generation-steps" aria-label="Generation progress">
+            <li
+              v-for="(step, index) in generationSteps"
+              :key="step.title"
+              :class="{active: index === loadingStepIndex, done: index < loadingStepIndex}"
+            >
+              <span>{{ String(index + 1).padStart(2, "0") }}</span>
+              <div>
+                <strong>{{ step.title }}</strong>
+                <small>{{ step.detail }}</small>
+              </div>
+            </li>
+          </ol>
+
+          <div v-if="waitingRoom.active" class="waiting-room" role="status" aria-live="polite">
+            <div class="waiting-room-header">
+              <Clock :size="15" aria-hidden="true" />
+              <span>Rate limit — retrying automatically</span>
+              <span class="waiting-room-attempt">{{ waitingRoom.attempt }}/{{ waitingRoom.totalAttempts }}</span>
             </div>
-          </li>
-        </ol>
+            <div class="waiting-room-countdown">
+              <span class="countdown-number">{{ waitingRoom.secondsLeft }}</span>
+              <span class="countdown-unit">sec</span>
+            </div>
+            <div class="waiting-room-track" aria-hidden="true">
+              <div class="waiting-room-fill" :style="{width: waitingCountdownPercent + '%'}"></div>
+            </div>
+            <p class="waiting-room-note">
+              The free API tier is temporarily busy. No action needed — the report will continue as soon as a model slot opens.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 

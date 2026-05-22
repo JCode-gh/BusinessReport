@@ -1,7 +1,7 @@
 import { jsonrepair } from "jsonrepair";
 
 const OPEN_ROUTER_API_KEY = import.meta.env.VITE_OPEN_ROUTER_API_KEY as string | undefined;
-const OPEN_ROUTER_MODEL = (import.meta.env.VITE_OPEN_ROUTER_MODEL as string | undefined) || "google/gemini-flash-1.5";
+const OPEN_ROUTER_MODEL = (import.meta.env.VITE_OPEN_ROUTER_MODEL as string | undefined) || "openrouter/free";
 const OPEN_ROUTER_MAX_TOKENS = Number(import.meta.env.VITE_OPEN_ROUTER_MAX_COMPLETION_TOKENS) || null;
 const OPEN_ROUTER_HTTP_REFERER = import.meta.env.VITE_OPEN_ROUTER_HTTP_REFERER as string | undefined;
 const OPEN_ROUTER_X_TITLE = (import.meta.env.VITE_OPEN_ROUTER_X_TITLE as string | undefined) || "Entrepreneur Growth Kit";
@@ -59,6 +59,12 @@ type BusinessMetric = {
   why: string;
 };
 
+type CompetitorItem = {
+  competitor: string;
+  weakness: string;
+  ourAdvantage: string;
+};
+
 export type BusinessKitPlan = {
   language: BusinessKitLanguage;
   title: string;
@@ -71,6 +77,7 @@ export type BusinessKitPlan = {
   quickWins: string[];
   strategySections: StrategySection[];
   scorecard: BusinessScore[];
+  competitorAnalysis: CompetitorItem[];
   actionPlan: ActionItem[];
   templates: BusinessTemplate[];
   contentIdeas: ContentIdea[];
@@ -109,6 +116,10 @@ type ReportLabels = {
   idealCustomerProfile: string;
   fastestQuickWins: string;
   growthScorecard: string;
+  competitorAnalysis: string;
+  competitor: string;
+  competitorWeakness: string;
+  competitorAdvantage: string;
   strategicMoves: string;
   actionPlan: string;
   salesTemplates: string;
@@ -140,6 +151,10 @@ type ReportLabels = {
   notStarted: string;
   notes: string;
   notesPlaceholder: string;
+  copyToClipboard: string;
+  copied: string;
+  readingTime: string;
+  jumpToSection: string;
 };
 
 const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
@@ -188,6 +203,14 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     notStarted: "Not started",
     notes: "Notes",
     notesPlaceholder: "Add decisions, blockers, links, or proof from this step.",
+    copyToClipboard: "Copy",
+    copied: "Copied!",
+    readingTime: "min read",
+    jumpToSection: "Jump to",
+    competitorAnalysis: "Competitor Analysis",
+    competitor: "Competitor",
+    competitorWeakness: "Weakness",
+    competitorAdvantage: "Our Advantage",
   },
   nl: {
     htmlLang: "nl",
@@ -234,6 +257,14 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     notStarted: "Niet gestart",
     notes: "Notities",
     notesPlaceholder: "Voeg beslissingen, blokkades, links of bewijs van deze stap toe.",
+    copyToClipboard: "Kopiëren",
+    copied: "Gekopieerd!",
+    readingTime: "min lezen",
+    jumpToSection: "Ga naar",
+    competitorAnalysis: "Concurrentieanalyse",
+    competitor: "Concurrent",
+    competitorWeakness: "Zwakke punt",
+    competitorAdvantage: "Ons voordeel",
   },
   fr: {
     htmlLang: "fr",
@@ -280,6 +311,14 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     notStarted: "Non commencé",
     notes: "Notes",
     notesPlaceholder: "Ajoutez décisions, blocages, liens ou preuves liés à cette étape.",
+    copyToClipboard: "Copier",
+    copied: "Copié !",
+    readingTime: "min de lecture",
+    jumpToSection: "Aller à",
+    competitorAnalysis: "Analyse concurrentielle",
+    competitor: "Concurrent",
+    competitorWeakness: "Point faible",
+    competitorAdvantage: "Notre avantage",
   },
   de: {
     htmlLang: "de",
@@ -326,15 +365,41 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     notStarted: "Nicht gestartet",
     notes: "Notizen",
     notesPlaceholder: "Ergänze Entscheidungen, Blocker, Links oder Nachweise zu diesem Schritt.",
+    copyToClipboard: "Kopieren",
+    copied: "Kopiert!",
+    readingTime: "Min. Lesezeit",
+    jumpToSection: "Gehe zu",
+    competitorAnalysis: "Wettbewerbsanalyse",
+    competitor: "Wettbewerber",
+    competitorWeakness: "Schwachpunkt",
+    competitorAdvantage: "Unser Vorteil",
   },
 };
 
-export async function createBusinessKit(request: BusinessKitRequest): Promise<BusinessKitPlan> {
+export class RateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
+export type RetryInfo = {
+  attempt: number;
+  totalAttempts: number;
+  retryAfterSeconds: number;
+};
+
+export async function createBusinessKit(
+  request: BusinessKitRequest,
+  onRetry?: (info: RetryInfo) => void,
+): Promise<BusinessKitPlan> {
   if (OPEN_ROUTER_API_KEY) {
     try {
-      return await fetchBusinessKitFromApi(request);
-    } catch {
-      // fall through to local generator
+      return await fetchBusinessKitFromApi(request, onRetry);
+    } catch (error) {
+      // Rate limits and other API failures all fall through to local generator.
+      // RateLimitError is no longer re-thrown — the user always gets a report.
+      console.warn("[BusinessKit] API failed, using local generator:", error instanceof Error ? error.message : error);
     }
   }
   return buildLocalBusinessKit(request);
@@ -355,6 +420,7 @@ function buildLocalBusinessKit(request: BusinessKitRequest): BusinessKitPlan {
     quickWins: quickWinsFor(context),
     strategySections: strategySectionsFor(context),
     scorecard: scorecardFor(context),
+    competitorAnalysis: [],
     actionPlan: actionPlanFor(context),
     templates: templatesFor(context),
     contentIdeas: contentIdeasFor(context),
@@ -365,14 +431,17 @@ function buildLocalBusinessKit(request: BusinessKitRequest): BusinessKitPlan {
   };
 }
 
-async function fetchBusinessKitFromApi(request: BusinessKitRequest): Promise<BusinessKitPlan> {
+async function fetchBusinessKitFromApi(
+  request: BusinessKitRequest,
+  onRetry?: (info: RetryInfo) => void,
+): Promise<BusinessKitPlan> {
   const userMessage = formatRequestForApi(request);
   const modes = ["json", "compact"] as const;
   let lastError: Error | null = null;
 
   for (const mode of modes) {
     try {
-      const text = await callOpenRouter(userMessage, mode);
+      const text = await callOpenRouter(userMessage, mode, onRetry);
       const plan = parseApiPlan(text, request);
       if (plan) return plan;
     } catch (error) {
@@ -392,12 +461,14 @@ function formatRequestForApi(request: BusinessKitRequest): string {
   };
   const languageInstructions: Record<BusinessKitLanguage, string> = {
     en: "Write every user-facing field in fluent English. Keep JSON property names in English.",
-    nl: "Schrijf elke zichtbare rapportzin in vloeiend, natuurlijk Nederlands. Vertaal ook ingevoerde Engelse formuleringen naar Nederlands in titels, paragrafen, tabellen, templates, metrics en actiepunten. Laat alleen merknamen, productnamen, acroniemen en eigennamen onvertaald. Houd JSON-propertynamen in het Engels.",
-    fr: "Rédigez chaque champ visible en français courant. Traduisez les formulations fournies en anglais lorsqu'elles apparaissent dans les titres, paragraphes, tableaux, modèles, indicateurs ou plans d'action. Conservez uniquement les noms de marque, noms de produits, acronymes et noms propres en anglais. Gardez les noms de propriétés JSON en anglais.",
-    de: "Schreiben Sie jedes sichtbare Feld auf fließendem Deutsch. Übersetzen Sie vom Nutzer auf Englisch eingegebene Formulierungen, wenn sie in Titeln, Absätzen, Tabellen, Vorlagen, Kennzahlen oder Aktionsplänen erscheinen. Behalten Sie nur Markennamen, Produktnamen, Akronyme und Eigennamen auf Englisch bei. JSON-Property-Namen bleiben auf Englisch.",
+    nl: "Schrijf elke zichtbare rapportzin in vloeiend, natuurlijk Nederlands. Vertaal ook ingevoerde Engelse formuleringen naar Nederlands in titels, paragrafen, tabellen, templates, metrics en actiepunten. Laat merknamen, productnamen, acroniemen en eigennamen onvertaald. BELANGRIJK: vertaal geen gangbare Engelse vakjargontermen die professionals in het Nederlands gewoon in het Engels gebruiken. Laat de volgende termen altijd in het Engels staan: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM. Houd JSON-propertynamen in het Engels.",
+    fr: "Rédigez chaque champ visible en français courant. Traduisez les formulations fournies en anglais lorsqu'elles apparaissent dans les titres, paragraphes, tableaux, modèles, indicateurs ou plans d'action. Conservez les noms de marque, noms de produits, acronymes et noms propres en anglais. IMPORTANT: ne traduisez pas les termes professionnels anglais couramment utilisés tels quels en français: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM. Gardez les noms de propriétés JSON en anglais.",
+    de: "Schreiben Sie jedes sichtbare Feld auf fließendem Deutsch. Übersetzen Sie vom Nutzer auf Englisch eingegebene Formulierungen, wenn sie in Titeln, Absätzen, Tabellen, Vorlagen, Kennzahlen oder Aktionsplänen erscheinen. Behalten Sie Markennamen, Produktnamen, Akronyme und Eigennamen auf Englisch. WICHTIG: Übersetzen Sie keine englischen Fachbegriffe, die im Deutschen professionell auf Englisch verwendet werden: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM. JSON-Property-Namen bleiben auf Englisch.",
   };
 
-  return `BUSINESS BRIEF
+  return `CRITICAL LANGUAGE REQUIREMENT: This entire response MUST be written in ${languageNames[request.language]}. Every single word of every JSON string value must be in ${languageNames[request.language]}. This is non-negotiable. Failing to write in the correct language is the most common and most serious error.
+
+BUSINESS BRIEF
 ==============
 Report language: ${languageNames[request.language]}
 Language instruction: ${languageInstructions[request.language]}
@@ -413,7 +484,13 @@ Current / target price point: ${request.pricePoint ?? "Not provided"}
 Region / market: ${request.region ?? "Not provided"}
 Report tone: ${request.tone ?? "Clear, direct, premium, practical"}
 
-Build a full entrepreneur growth kit for this business. Every section must be specific to the brief above — never use placeholder text or generic advice that could apply to any business.`;
+COMPETITIVE CONTEXT
+===================
+Based on businessType "${request.businessType ?? "Not provided"}" and region "${request.region ?? "Not provided"}", identify 2–3 specific competitors or alternatives the target customer (${request.audience ?? "Not provided"}) is most likely comparing right now. Name real companies, platforms, or approaches (e.g. "Fiverr freelancers", "Wix website builders", "local marketing agencies") — not vague categories. For each: name the competitor, identify one specific weakness from the buyer's perspective, and state a concrete advantage the business above has over them. Include this as the "competitorAnalysis" field in the JSON.
+
+Build a full entrepreneur growth kit for this business. Every section must be specific to the brief above — never use placeholder text or generic advice that could apply to any business.
+
+FINAL REMINDER: ALL string values in your JSON response must be in ${languageNames[request.language]}. Check every single field before responding.`;
 }
 
 function apiSystemPrompt(mode: "json" | "compact"): string {
@@ -421,20 +498,44 @@ function apiSystemPrompt(mode: "json" | "compact"): string {
     ? "Return ONLY a raw JSON object. Start with { and end with }. No markdown fences, no commentary, no text outside the JSON."
     : "Return ONLY a raw JSON object starting with {. Keep individual string values concise to stay within the token limit, but keep all required keys.";
 
-  return `You are a senior growth strategist with 15 years of experience advising small businesses, boutique agencies, solo consultants, SaaS founders, ecommerce operators, and local service companies. You write in the style of a premium paid consultant report — sharp, specific, commercially grounded, and immediately actionable.
+  return `CRITICAL: You MUST write ALL content in the language specified in the user message. Every single word of every field must be in that language. This is non-negotiable. If the user specifies Dutch, write everything in Dutch. If French, write in French. If German, write in German.
+
+You are a senior growth strategist with 15 years of experience advising small businesses, boutique agencies, solo consultants, SaaS founders, ecommerce operators, and local service companies. You write in the style of a premium paid consultant report — sharp, specific, commercially grounded, and immediately actionable.
 
 ${jsonInstruction}
+
+FORBIDDEN (never do any of these):
+- Generic advice that could apply to any business
+- Vague actions without a concrete next step
+- Scores above 70 without explicit evidence from the brief
+- Empty, skeleton, or short templates
+- Content in the wrong language — this is the most common failure; check every field
+- Placeholders like "[insert your offer]" or "[your audience]" — only [Name] and [Company] are allowed
 
 QUALITY RULES (never break these):
 - Every recommendation must name a specific action, not a category. Bad: "improve your marketing". Good: "Rewrite your LinkedIn headline to lead with the buyer's painful outcome, not your job title."
 - Every diagnosis must explain WHY the problem exists, not just that it exists.
-- Scores must reflect reality. A business with no outbound system should score 30–45 on lead generation, not 65.
-- Templates must be fully written out — real subject lines, real body copy, ready to send with only [Name] and [Company] filled in.
+- Scores must be brutally honest. A business with no mentioned outbound system MUST score below 45 on Lead Generation. Never give scores above 70 unless the brief explicitly proves it.
+- Templates must include a complete subject line AND full body copy of minimum 5 sentences. No placeholders except [Name] and [Company].
 - Content ideas must include a specific angle and a punchy first line (hook) someone could post today.
 - Metrics must include a realistic numeric target tied to the business's price point and stage.
-- Action plan items must state a concrete deliverable, not a vague activity. Bad: "Work on positioning". Good: "Write a one-sentence value proposition using the formula: We help [audience] achieve [outcome] without [obstacle]."
+- Action plan items must start with an action verb (Write, Build, Launch, Send, Create, Record, Set up) and state a concrete deliverable. Bad: "Work on positioning". Good: "Write a one-sentence value proposition using the formula: We help [audience] achieve [outcome] without [obstacle]."
 - If a field is missing from the brief, make a clearly-labeled assumption and work with it — never output a generic placeholder.
 - Tone must match the brief's requested style throughout.
+
+EXAMPLES OF GOOD VS BAD OUTPUT (follow the GOOD examples exactly):
+
+executiveSummary:
+BAD: "This business has potential for growth. The key is to improve marketing and sales. Focus on the right customers and you will see results in 30 days."
+GOOD: "Northstar Studio's single biggest lever is repositioning from 'web design agency' to 'revenue-focused digital system for service businesses' — pricing is currently 40% below market for the value delivered. The blocker is weak outbound: referrals are the only active channel, creating feast-or-famine cycles. The shift needed in 30 days: launch systematic LinkedIn outreach targeting Benelux service businesses with 5–30 staff, combined with a proposal that anchors on ROI rather than deliverables."
+
+actionPlan (single item):
+BAD: { "day": "Day 1", "task": "Work on positioning", "outcome": "Better positioning" }
+GOOD: { "day": "Day 1", "task": "Write one positioning sentence using the formula: We help [specific audience] achieve [specific outcome] without [specific obstacle] — test it with 3 past clients today", "outcome": "A positioning statement ready for LinkedIn headline, email signature, and proposal opener immediately" }
+
+templates (single item):
+BAD: { "title": "Cold outreach", "channel": "Email", "body": "Hi [Name], I noticed your business could benefit from our services. Let me know if you want to chat." }
+GOOD: { "title": "Cold email — website ROI pitch", "channel": "Email", "body": "Subject: Your website is costing you qualified leads — here is the fix\\n\\nHi [Name],\\n\\nI looked at [Company]'s website and spotted three gaps that are likely costing you 2–3 qualified enquiries per month: no social proof above the fold, a contact form with no qualifying questions, and a homepage headline that describes what you do instead of what the buyer gets.\\n\\nI run Northstar Studio — we build fixed-scope website and automation systems for service businesses. Our clients typically move from referral-dependent pipelines to 5–8 inbound enquiries per month within 60 days.\\n\\nWould it make sense to do a 20-minute call this week? I can show you exactly what I'd change before we talk budget.\\n\\nBest,\\n[Name]" }
 
 SECTION-BY-SECTION INSTRUCTIONS:
 
@@ -448,15 +549,17 @@ idealCustomerProfile (3–4 sentences): Describe the single best-fit buyer profi
 
 biggestRisks (4–5 items): Name the specific commercial risks — positioning, pricing, channel dependency, operational, competitive. Each risk must explain the consequence if unaddressed, not just name the issue.
 
-quickWins (5–7 items): These are actions completable in 1–5 days that generate a visible result. Each must be specific enough to start immediately. Prioritize by impact-to-effort ratio.
+quickWins (5–7 items): These are actions completable in 1–5 days that generate a visible result. Sort by impact-to-effort score. Label each with [HIGH/MED/LOW effort] at the start. The first 3 must be completable today. Each must be specific enough to start immediately.
 
 strategySections (5 sections, each with a sharp title): Cover: Offer & Pricing, Acquisition, Conversion, Retention & Expansion, Operations & Leverage. Each diagnosis should be 2–3 sentences explaining the root cause. Each move (3–5 per section) must be a specific executable action, not a theme.
 
-scorecard (6 dimensions): Score: Offer Clarity, Pricing Power, Lead Generation, Conversion System, Customer Retention, Operational Leverage. Each score (0–100) needs a 1-sentence rationale explaining exactly why it earned that score and a concrete next move to improve it.
+scorecard (6 dimensions): Score: Offer Clarity, Pricing Power, Lead Generation, Conversion System, Customer Retention, Operational Leverage. Each score (0–100) needs a 1-sentence rationale explaining exactly why it earned that score and a concrete next move to improve it. Scores must be brutally honest. A business with no mentioned outbound system MUST score below 45 on Lead Generation. Never give scores above 70 unless the brief explicitly proves it.
 
-actionPlan (10–12 items): Structured as Day 1, Day 2, Day 3, Day 4–5, Week 2, Week 3, Week 4, then optionally Day 30 review. Each task must be a single concrete deliverable. Outcome must be the measurable result of completing that task.
+competitorAnalysis (2–3 items): Name real competitors or alternatives the target customer is comparing right now. For each: the actual competitor name, their specific weakness from the buyer's perspective, and a concrete advantage the business has over them.
 
-templates (4–5 items): Include: a cold outreach opener, a follow-up after no reply, a discovery call confirmation, a proposal follow-up, and optionally a referral ask. Each template must be fully written with real copy — subject line included for email templates.
+actionPlan (12 items, mandatory): Day 1, Day 2, Day 3, Day 4-5, Day 6-7, Week 2 (part 1), Week 2 (part 2), Week 3 (part 1), Week 3 (part 2), Week 4 (part 1), Week 4 (part 2), Day 30 Review. Each task must start with an action verb. Each task must be a single concrete deliverable. Outcome must be the measurable result of completing that task.
+
+templates (5–6 items): Must include ALL of: cold outreach opener, follow-up after no reply (3 days), discovery call confirmation, proposal follow-up after 3 days silence, LinkedIn connection request (300 chars max), and optionally a WhatsApp/SMS follow-up (short). Each template must have a complete subject line (for email) AND full body copy of minimum 5 sentences. No placeholders except [Name] and [Company].
 
 contentIdeas (6–8 items): Mix of LinkedIn posts, email subjects, and short-form video hooks. Each must target a specific buyer pain or objection. The hook must be a complete opening sentence someone could use today.
 
@@ -480,6 +583,7 @@ REQUIRED JSON SHAPE (all keys required):
   "quickWins": string[],
   "strategySections": [{ "title": string, "diagnosis": string, "moves": string[] }],
   "scorecard": [{ "label": string, "score": number, "rationale": string, "nextMove": string }],
+  "competitorAnalysis": [{ "competitor": string, "weakness": string, "ourAdvantage": string }],
   "actionPlan": [{ "day": string, "task": string, "outcome": string }],
   "templates": [{ "title": string, "channel": string, "body": string }],
   "contentIdeas": [{ "title": string, "angle": string, "hook": string }],
@@ -487,10 +591,16 @@ REQUIRED JSON SHAPE (all keys required):
   "upsellIdeas": string[],
   "assumptions": string[],
   "disclaimer": string
-}`;
 }
 
-async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Promise<string> {
+CRITICAL REMINDER: Every string value in this JSON must be written in the language specified in the user message. Check every field before responding.`;
+}
+
+async function callOpenRouter(
+  userMessage: string,
+  mode: "json" | "compact",
+  onRetry?: (info: RetryInfo) => void,
+): Promise<string> {
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${OPEN_ROUTER_API_KEY}`,
     "Content-Type": "application/json",
@@ -505,7 +615,7 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
       { role: "system", content: apiSystemPrompt(mode) },
       { role: "user", content: userMessage },
     ],
-    temperature: 0.45,
+    temperature: 0.6,
     ...(OPEN_ROUTER_MAX_TOKENS ? { max_tokens: OPEN_ROUTER_MAX_TOKENS } : {}),
   };
 
@@ -514,14 +624,23 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
     body.plugins = [{ id: "response-healing" }];
   }
 
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+
+    let response: Response;
+    try {
+      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
 
     if (response.status === 429) {
       const errorData = await response.json().catch(() => ({})) as {
@@ -530,11 +649,15 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
       const retryAfter = errorData.error?.metadata?.retry_after_seconds ?? 30;
 
       if (attempt < MAX_RETRIES - 1) {
-        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        // Cap at 5s: openrouter/free re-routes to a different model each request,
+        // so a short wait is enough — no need to hold the full upstream retry window.
+        const waitSeconds = Math.min(retryAfter, 5);
+        onRetry?.({ attempt: attempt + 1, totalAttempts: MAX_RETRIES, retryAfterSeconds: waitSeconds });
+        await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
         continue;
       }
 
-      throw new Error(`Rate limited. Try again in ${Math.ceil(retryAfter)} seconds.`);
+      throw new RateLimitError(`Rate limited. Try again in ${Math.ceil(retryAfter)} seconds.`);
     }
 
     if (!response.ok) {
@@ -542,7 +665,30 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
       throw new Error(`OpenRouter ${response.status}: ${errorText.slice(0, 200)}`);
     }
 
-    const data = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+    const data = await response.json().catch(() => ({})) as {
+      choices?: Array<{ message?: { content?: unknown } }>;
+      error?: { message?: string; code?: number; metadata?: { retry_after_seconds?: number } };
+    };
+
+    // OpenRouter returns HTTP 200 with an error body on upstream timeouts/504s.
+    if (data.error) {
+      const code = data.error.code ?? 0;
+      const msg = data.error.message ?? "Upstream error";
+      console.warn(`[BusinessKit] OpenRouter error in body (${code}):`, msg);
+
+      if (attempt < MAX_RETRIES - 1) {
+        const isRateLimit = code === 429;
+        const retryAfter = isRateLimit
+          ? Math.min(data.error.metadata?.retry_after_seconds ?? 5, 5)
+          : 3; // short wait for 504/aborted — a fresh request usually hits a different model
+        if (isRateLimit) onRetry?.({ attempt: attempt + 1, totalAttempts: MAX_RETRIES, retryAfterSeconds: retryAfter });
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+
+      throw new Error(`OpenRouter ${code}: ${msg}`);
+    }
+
     const content = data.choices?.[0]?.message?.content;
     return typeof content === "string" ? content.trim() : "";
   }
@@ -551,6 +697,11 @@ async function callOpenRouter(userMessage: string, mode: "json" | "compact"): Pr
 }
 
 function parseApiPlan(rawText: string, request: BusinessKitRequest): BusinessKitPlan | null {
+  if (!rawText.trim()) {
+    console.warn("[BusinessKit] Empty response from API");
+    return null;
+  }
+
   const candidates = extractJsonCandidates(rawText);
 
   for (const candidate of candidates) {
@@ -566,6 +717,7 @@ function parseApiPlan(rawText: string, request: BusinessKitRequest): BusinessKit
     }
   }
 
+  console.warn("[BusinessKit] Could not parse valid JSON from API response:", rawText.slice(0, 500));
   return null;
 }
 
@@ -592,8 +744,30 @@ function extractJsonCandidates(rawText: string): string[] {
   return Array.from(candidates);
 }
 
+function detectResponseLanguage(text: string): BusinessKitLanguage {
+  const sample = text.slice(0, 400).toLowerCase();
+  const nl = (sample.match(/\b(de|het|een|van|voor|met|op|ze|je|we|die|dat|zijn|heeft|naar)\b/g) ?? []).length;
+  const fr = (sample.match(/\b(le|la|les|de|du|un|une|pour|avec|est|par|qui|que|au|sur)\b/g) ?? []).length;
+  const de = (sample.match(/\b(der|die|das|ist|und|für|von|mit|auf|an|sie|bei|des|zur)\b/g) ?? []).length;
+  const en = (sample.match(/\b(the|and|for|with|your|this|that|have|from|will|are|is|our|you)\b/g) ?? []).length;
+  const max = Math.max(nl, fr, de, en);
+  if (max === 0) return "en";
+  if (nl === max) return "nl";
+  if (fr === max) return "fr";
+  if (de === max) return "de";
+  return "en";
+}
+
 function normalizeApiPlan(raw: Record<string, unknown>, request: BusinessKitRequest): BusinessKitPlan {
   const fallback = buildLocalBusinessKit(request);
+
+  if (request.language !== "en") {
+    const summaryRaw = typeof raw.executiveSummary === "string" ? raw.executiveSummary : "";
+    if (summaryRaw.length > 50 && detectResponseLanguage(summaryRaw) === "en") {
+      console.warn("[BusinessKit] API response appears to be in English instead of", request.language, "— using local fallback");
+      return fallback;
+    }
+  }
 
   return {
     language: request.language,
@@ -607,6 +781,7 @@ function normalizeApiPlan(raw: Record<string, unknown>, request: BusinessKitRequ
     quickWins: strArray(raw.quickWins, fallback.quickWins, 7),
     strategySections: normalizeStrategySections(raw.strategySections, fallback.strategySections),
     scorecard: normalizeScorecard(raw.scorecard, fallback.scorecard),
+    competitorAnalysis: normalizeCompetitorAnalysis(raw.competitorAnalysis),
     actionPlan: normalizeActionPlan(raw.actionPlan, fallback.actionPlan),
     templates: normalizeTemplates(raw.templates, fallback.templates),
     contentIdeas: normalizeContentIdeas(raw.contentIdeas, fallback.contentIdeas),
@@ -666,7 +841,7 @@ function normalizeActionPlan(value: unknown, fallback: BusinessKitPlan["actionPl
       outcome: strOr(v.outcome, ""),
     }))
     .filter((v) => v.day && v.task && v.outcome)
-    .slice(0, 12);
+    .slice(0, 14);
   return items.length >= 5 ? items : fallback;
 }
 
@@ -680,7 +855,7 @@ function normalizeTemplates(value: unknown, fallback: BusinessKitPlan["templates
       body: strOr(v.body, ""),
     }))
     .filter((v) => v.title && v.channel && v.body)
-    .slice(0, 5);
+    .slice(0, 6);
   return items.length >= 2 ? items : fallback;
 }
 
@@ -712,14 +887,50 @@ function normalizeMetrics(value: unknown, fallback: BusinessKitPlan["metrics"]):
   return items.length >= 3 ? items : fallback;
 }
 
+function normalizeCompetitorAnalysis(value: unknown): CompetitorItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      competitor: strOr(v.competitor, ""),
+      weakness: strOr(v.weakness, ""),
+      ourAdvantage: strOr(v.ourAdvantage, ""),
+    }))
+    .filter((v) => v.competitor && v.weakness && v.ourAdvantage)
+    .slice(0, 3);
+}
+
 function clampApiScore(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return 50;
   return Math.min(Math.max(Math.round(n), 0), 100);
 }
 
+function estimateReadingMinutes(plan: BusinessKitPlan): number {
+  const text = [
+    plan.executiveSummary,
+    plan.positioning,
+    plan.coreOfferRewrite,
+    plan.idealCustomerProfile,
+    plan.biggestRisks.join(" "),
+    plan.quickWins.join(" "),
+    plan.strategySections.map((s) => s.diagnosis + " " + s.moves.join(" ")).join(" "),
+    plan.scorecard.map((s) => s.rationale + " " + s.nextMove).join(" "),
+    plan.competitorAnalysis.map((c) => c.weakness + " " + c.ourAdvantage).join(" "),
+    plan.actionPlan.map((a) => a.task + " " + a.outcome).join(" "),
+    plan.templates.map((t) => t.body).join(" "),
+    plan.contentIdeas.map((c) => c.angle + " " + c.hook).join(" "),
+    plan.metrics.map((m) => m.why).join(" "),
+    plan.upsellIdeas.join(" "),
+    plan.assumptions.join(" "),
+  ].join(" ");
+  return Math.max(1, Math.ceil(text.split(/\s+/).filter(Boolean).length / 200));
+}
+
 export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
   const labels = reportLabels[plan.language];
+  const readingMinutes = estimateReadingMinutes(plan);
+  const hasCompetitors = plan.competitorAnalysis.length > 0;
   const generatedAt = new Intl.DateTimeFormat(localeFor(plan.language), {
     dateStyle: "medium",
     timeStyle: "short",
@@ -818,7 +1029,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .cover {
       padding: 60px 64px 52px;
       color: #fff;
-      background: linear-gradient(135deg, #0c2340 0%, #0f766e 55%, #6d28d9 100%);
+      background: linear-gradient(135deg, #0a1628 0%, #0d7a6e 45%, #4f1d96 100%);
     }
 
     .cover-eyebrow {
@@ -1119,59 +1330,99 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     /* Scorecard */
     .scorecard-list {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      overflow: hidden;
+      display: grid;
+      gap: 8px;
     }
 
     .scorecard-row {
       display: grid;
-      grid-template-columns: 190px 1fr 60px;
-      gap: 18px;
-      align-items: center;
-      padding: 16px 20px;
+      grid-template-columns: 56px 1fr;
+      gap: 0 14px;
+      align-items: start;
+      padding: 14px 16px 14px 0;
       background: #fff;
-      border-bottom: 1px solid var(--line);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
     }
 
-    .scorecard-row:last-child { border-bottom: none; }
-    .scorecard-row:nth-child(even) { background: var(--surface); }
+    .scorecard-row::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+    }
+    .sc-high .scorecard-row::before, .scorecard-row.sc-high::before { background: var(--accent); }
+    .sc-mid  .scorecard-row::before, .scorecard-row.sc-mid::before  { background: var(--gold); }
+    .sc-low  .scorecard-row::before, .scorecard-row.sc-low::before  { background: var(--coral); }
 
-    .scorecard-label { font-size: 0.9rem; font-weight: 700; margin: 0 0 2px; }
+    .scorecard-score-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-left: 16px;
+      padding-top: 2px;
+    }
 
-    .scorecard-next-move { font-size: 0.78rem; color: var(--muted); margin: 0; line-height: 1.4; }
+    .scorecard-score {
+      font-size: 1.6rem;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
 
-    .scorecard-bar-wrap {
-      height: 8px;
+    .scorecard-score-max {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-weight: 500;
+      margin-top: 1px;
+    }
+
+    .scorecard-body { padding-right: 4px; }
+
+    .scorecard-label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin: 0 0 5px;
+      color: var(--ink);
+    }
+
+    .scorecard-track {
+      height: 3px;
       border-radius: 999px;
       background: var(--line);
       overflow: hidden;
-      align-self: center;
+      margin-bottom: 8px;
     }
 
-    .scorecard-bar { height: 100%; border-radius: inherit; }
-    .sc-high { background: linear-gradient(90deg, var(--accent), var(--accent-dark)); }
-    .sc-mid  { background: linear-gradient(90deg, var(--gold), #f59e0b); }
-    .sc-low  { background: linear-gradient(90deg, var(--coral), #ef4444); }
+    .scorecard-fill { height: 100%; border-radius: inherit; }
+    .sc-high .scorecard-fill, .scorecard-row.sc-high .scorecard-fill { background: var(--accent); }
+    .sc-mid  .scorecard-fill, .scorecard-row.sc-mid  .scorecard-fill { background: var(--gold); }
+    .sc-low  .scorecard-fill, .scorecard-row.sc-low  .scorecard-fill { background: var(--coral); }
 
-    .scorecard-score {
-      font-size: 1.45rem;
-      font-weight: 800;
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    .sc-high { color: var(--accent-dark); }
-    .sc-mid  { color: var(--gold); }
-    .sc-low  { color: var(--coral); }
+    .sc-high .scorecard-score { color: var(--accent-dark); }
+    .sc-mid  .scorecard-score { color: var(--gold); }
+    .sc-low  .scorecard-score { color: var(--coral); }
 
     .scorecard-rationale {
-      grid-column: 1 / -1;
-      font-size: 0.81rem;
+      font-size: 0.8rem;
       color: var(--muted);
-      margin: 4px 0 0;
-      padding-top: 10px;
-      border-top: 1px dashed var(--line);
+      margin: 0 0 6px;
+      line-height: 1.5;
+    }
+
+    .scorecard-next-move {
+      font-size: 0.78rem;
+      color: var(--ink);
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .scorecard-next-move strong {
+      color: var(--accent-dark);
+      font-weight: 600;
     }
 
     /* Strategy */
@@ -1455,21 +1706,155 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       .cover, .content { padding: 36px 28px; }
       .workspace { margin: -24px 20px 0; padding: 18px; grid-template-columns: 1fr; }
       .bottom-grid, .content-grid { grid-template-columns: 1fr; }
-      .scorecard-row { grid-template-columns: 1fr 60px; }
-      .scorecard-rationale { grid-column: 1 / -1; }
+      .scorecard-row { grid-template-columns: 48px 1fr; }
     }
 
     @media (max-width: 560px) {
       .action-card { grid-template-columns: 1fr; }
     }
 
-    @media print {
-      body { background: #fff; }
-      .report-toolbar, .workspace-actions { display: none; }
-      .page { width: 100%; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
-      .workspace { margin: 0 0 24px; box-shadow: none; border-radius: 0; }
-      .report-section, .action-card, .strategy-card, .template-card { break-inside: avoid; }
+    /* Jump-to-section navigation */
+    .section-jump-nav {
+      position: sticky;
+      top: 59px;
+      z-index: 9;
+      overflow-x: auto;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
     }
+
+    .section-jump-nav::-webkit-scrollbar { display: none; }
+
+    .jump-nav-inner {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      white-space: nowrap;
+      min-height: 38px;
+    }
+
+    .jump-nav-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--subtle);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding-right: 10px;
+      flex-shrink: 0;
+    }
+
+    .section-jump-nav a {
+      display: inline-flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 9px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .section-jump-nav a:hover { color: var(--accent-dark); border-bottom-color: var(--accent); }
+
+    /* Template copy button */
+    .template-copy-btn {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--accent-dark);
+      font: 600 0.73rem/1 inherit;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .template-copy-btn.is-copied {
+      background: var(--mint);
+      border-color: var(--accent);
+    }
+
+    /* Competitor analysis table */
+    .competitor-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: 0.91rem;
+    }
+
+    .competitor-table th {
+      padding: 12px 16px;
+      background: var(--navy);
+      color: #fff;
+      font-size: 0.73rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      text-align: left;
+    }
+
+    .competitor-table td { padding: 13px 16px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.55; }
+    .competitor-table tr:nth-child(even) td { background: var(--surface); }
+    .competitor-name { font-weight: 700; color: var(--navy); }
+    .competitor-weakness { color: var(--coral); }
+    .competitor-advantage { color: var(--accent-dark); font-weight: 600; }
+
+    @media print {
+      *, *::before, *::after {
+        print-color-adjust: exact !important;
+        -webkit-print-color-adjust: exact !important;
+      }
+
+      .report-toolbar, .section-jump-nav, .workspace-actions, .template-copy-btn { display: none !important; }
+
+      body { background: #fff; }
+
+      .page {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+
+      /* Preserve cover gradient */
+      .cover {
+        background: linear-gradient(135deg, #0a1628 0%, #0d7a6e 45%, #4f1d96 100%) !important;
+        border-radius: 0 !important;
+      }
+
+      .workspace {
+        margin: 0 0 24px !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
+
+      /* Keep panel/section backgrounds */
+      .panel, .report-section, .score-card, .action-card, .strategy-card, .template-card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      /* Scorecard tier colors preserved via print-color-adjust above */
+      .scorecard-row.sc-high::before { background: var(--accent) !important; }
+      .scorecard-row.sc-mid::before  { background: var(--gold) !important; }
+      .scorecard-row.sc-low::before  { background: var(--coral) !important; }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 1.2cm 1.4cm 1.8cm;
+    }
+
+    @page :left  { @bottom-left  { content: counter(page); font-size: 9pt; color: #9ca3af; } }
+    @page :right { @bottom-right { content: counter(page); font-size: 9pt; color: #9ca3af; } }
   </style>
 </head>
 <body data-report-id="${escapeHtml(reportId)}">
@@ -1477,6 +1862,21 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     <button type="button" onclick="window.print()">${escapeHtml(labels.printPdf)}</button>
     <button type="button" class="secondary" onclick="downloadHtmlReport()">${escapeHtml(labels.downloadHtml)}</button>
   </div>
+  <nav class="section-jump-nav" aria-label="${escapeHtml(labels.jumpToSection)}">
+    <div class="jump-nav-inner">
+      <span class="jump-nav-label">${escapeHtml(labels.jumpToSection)}</span>
+      <a href="#sec-1" onclick="event.preventDefault();document.getElementById('sec-1')?.scrollIntoView({behavior:'smooth'})">1. ${escapeHtml(labels.executiveSummary)}</a>
+      <a href="#sec-2" onclick="event.preventDefault();document.getElementById('sec-2')?.scrollIntoView({behavior:'smooth'})">2. ${escapeHtml(labels.positioning)}</a>
+      <a href="#sec-3" onclick="event.preventDefault();document.getElementById('sec-3')?.scrollIntoView({behavior:'smooth'})">3. ${escapeHtml(labels.fastestQuickWins)}</a>
+      <a href="#sec-4" onclick="event.preventDefault();document.getElementById('sec-4')?.scrollIntoView({behavior:'smooth'})">4. ${escapeHtml(labels.growthScorecard)}</a>
+      ${hasCompetitors ? `<a href="#sec-5" onclick="event.preventDefault();document.getElementById('sec-5')?.scrollIntoView({behavior:'smooth'})">5. ${escapeHtml(labels.competitorAnalysis)}</a>` : ""}
+      <a href="#sec-${hasCompetitors ? 6 : 5}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 6 : 5}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 6 : 5}. ${escapeHtml(labels.strategicMoves)}</a>
+      <a href="#sec-${hasCompetitors ? 7 : 6}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 7 : 6}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 7 : 6}. ${escapeHtml(labels.actionPlan)}</a>
+      <a href="#sec-${hasCompetitors ? 8 : 7}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 8 : 7}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 8 : 7}. ${escapeHtml(labels.salesTemplates)}</a>
+      <a href="#sec-${hasCompetitors ? 9 : 8}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 9 : 8}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 9 : 8}. ${escapeHtml(labels.contentIdeas)}</a>
+      <a href="#sec-${hasCompetitors ? 10 : 9}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 10 : 9}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 10 : 9}. ${escapeHtml(labels.metricsToTrack)}</a>
+    </div>
+  </nav>
 
   <article class="page">
     <header class="cover">
@@ -1487,6 +1887,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         <span class="pill">${escapeHtml(labels.generated)} ${escapeHtml(generatedAt)}</span>
         <span class="pill">${escapeHtml(labels.strategyReport)}</span>
         <span class="pill">${escapeHtml(labels.actionPlanPill)}</span>
+        <span class="pill">${escapeHtml(String(readingMinutes))} ${escapeHtml(labels.readingTime)}</span>
       </div>
     </header>
 
@@ -1494,7 +1895,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     <main class="content">
 
-      <div class="report-section">
+      <div class="report-section" id="sec-1">
         <div class="section-header">
           <span class="section-num">1</span>
           <h2 class="section-title">${escapeHtml(labels.executiveSummary)}</h2>
@@ -1502,7 +1903,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         <p class="exec-lead">${escapeHtml(plan.executiveSummary)}</p>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-2">
         <div class="section-header">
           <span class="section-num">2</span>
           <h2 class="section-title">${escapeHtml(labels.positioning)} &amp; ${escapeHtml(labels.coreOfferRewrite)}</h2>
@@ -1514,7 +1915,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-3">
         <div class="section-header">
           <span class="section-num">3</span>
           <h2 class="section-title">${escapeHtml(labels.fastestQuickWins)}</h2>
@@ -1524,7 +1925,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </ol>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-4">
         <div class="section-header">
           <span class="section-num">4</span>
           <h2 class="section-title">${escapeHtml(labels.growthScorecard)}</h2>
@@ -1534,9 +1935,11 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section">
+      ${hasCompetitors ? competitorSection(plan, labels) : ""}
+
+      <div class="report-section" id="sec-${hasCompetitors ? 6 : 5}">
         <div class="section-header">
-          <span class="section-num">5</span>
+          <span class="section-num">${hasCompetitors ? 6 : 5}</span>
           <h2 class="section-title">${escapeHtml(labels.strategicMoves)}</h2>
         </div>
         <div class="strategy-list">
@@ -1544,10 +1947,10 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-${hasCompetitors ? 7 : 6}">
         <div class="action-header-row">
           <div class="section-header" style="margin-bottom:0;flex:1">
-            <span class="section-num">6</span>
+            <span class="section-num">${hasCompetitors ? 7 : 6}</span>
             <h2 class="section-title">${escapeHtml(labels.actionPlan)}</h2>
           </div>
           <span class="section-badge" data-action-summary>0/${escapeHtml(String(plan.actionPlan.length))} ${escapeHtml(labels.completed)}</span>
@@ -1557,19 +1960,19 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-${hasCompetitors ? 8 : 7}">
         <div class="section-header">
-          <span class="section-num">7</span>
+          <span class="section-num">${hasCompetitors ? 8 : 7}</span>
           <h2 class="section-title">${escapeHtml(labels.salesTemplates)}</h2>
         </div>
         <div class="template-list">
-          ${plan.templates.map(templateCard).join("")}
+          ${plan.templates.map((t) => templateCard(t, labels)).join("")}
         </div>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-${hasCompetitors ? 9 : 8}">
         <div class="section-header">
-          <span class="section-num">8</span>
+          <span class="section-num">${hasCompetitors ? 9 : 8}</span>
           <h2 class="section-title">${escapeHtml(labels.contentIdeas)}</h2>
         </div>
         <div class="content-grid">
@@ -1577,9 +1980,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section">
+      <div class="report-section" id="sec-${hasCompetitors ? 10 : 9}">
         <div class="section-header">
-          <span class="section-num">9</span>
+          <span class="section-num">${hasCompetitors ? 10 : 9}</span>
           <h2 class="section-title">${escapeHtml(labels.metricsToTrack)}</h2>
         </div>
         <table class="metrics-table">
@@ -2229,16 +2632,17 @@ function insightBlock(label: string, text: string, variant: "a" | "g" | "n"): st
 
 function scorecardRow(item: BusinessScore, labels: ReportLabels): string {
   const tier = item.score >= 70 ? "sc-high" : item.score >= 45 ? "sc-mid" : "sc-low";
-  return `<div class="scorecard-row">
-    <div class="scorecard-left">
+  return `<div class="scorecard-row ${tier}">
+    <div class="scorecard-score-col">
+      <span class="scorecard-score">${escapeHtml(String(item.score))}</span>
+      <span class="scorecard-score-max">/100</span>
+    </div>
+    <div class="scorecard-body">
       <p class="scorecard-label">${escapeHtml(item.label)}</p>
-      <p class="scorecard-next-move">${escapeHtml(labels.next)}: ${escapeHtml(item.nextMove)}</p>
+      <div class="scorecard-track"><div class="scorecard-fill" style="width:${escapeHtml(String(item.score))}%"></div></div>
+      <p class="scorecard-rationale">${escapeHtml(item.rationale)}</p>
+      <p class="scorecard-next-move"><strong>${escapeHtml(labels.next)}:</strong> ${escapeHtml(item.nextMove)}</p>
     </div>
-    <div class="scorecard-bar-wrap">
-      <div class="scorecard-bar ${tier}" style="width:${escapeHtml(String(item.score))}%"></div>
-    </div>
-    <span class="scorecard-score ${tier}">${escapeHtml(String(item.score))}</span>
-    <p class="scorecard-rationale">${escapeHtml(item.rationale)}</p>
   </div>`;
 }
 
@@ -2279,11 +2683,17 @@ function actionPlanCard(item: ActionItem, index: number, labels: ReportLabels): 
   </article>`;
 }
 
-function templateCard(item: BusinessTemplate): string {
+function templateCard(item: BusinessTemplate, labels: ReportLabels): string {
+  const bodyJson = scriptJson(item.body);
+  const copyLabel = scriptJson(labels.copyToClipboard);
+  const copiedLabel = scriptJson(labels.copied);
   return `<div class="template-card">
     <div class="template-header">
       <h3 class="template-title">${escapeHtml(item.title)}</h3>
-      <span class="template-channel">${escapeHtml(item.channel)}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="template-channel">${escapeHtml(item.channel)}</span>
+        <button type="button" class="template-copy-btn" onclick="(function(btn){var t=btn.closest('.template-card').querySelector('.template-body');navigator.clipboard.writeText(${bodyJson}).then(function(){btn.textContent=${copiedLabel};btn.classList.add('is-copied');setTimeout(function(){btn.textContent=${copyLabel};btn.classList.remove('is-copied')},2000)}).catch(function(){});})(this)">${escapeHtml(labels.copyToClipboard)}</button>
+      </div>
     </div>
     <div class="template-body">${escapeHtml(item.body)}</div>
   </div>`;
@@ -2294,6 +2704,31 @@ function contentCard(item: ContentIdea): string {
     <h3 class="content-title">${escapeHtml(item.title)}</h3>
     <p class="content-angle">${escapeHtml(item.angle)}</p>
     <p class="content-hook">${escapeHtml(item.hook)}</p>
+  </div>`;
+}
+
+function competitorSection(plan: BusinessKitPlan, labels: ReportLabels): string {
+  return `<div class="report-section" id="sec-5">
+    <div class="section-header">
+      <span class="section-num">5</span>
+      <h2 class="section-title">${escapeHtml(labels.competitorAnalysis)}</h2>
+    </div>
+    <table class="competitor-table">
+      <thead>
+        <tr>
+          <th>${escapeHtml(labels.competitor)}</th>
+          <th>${escapeHtml(labels.competitorWeakness)}</th>
+          <th>${escapeHtml(labels.competitorAdvantage)}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${plan.competitorAnalysis.map((item) => `<tr>
+          <td class="competitor-name">${escapeHtml(item.competitor)}</td>
+          <td class="competitor-weakness">${escapeHtml(item.weakness)}</td>
+          <td class="competitor-advantage">${escapeHtml(item.ourAdvantage)}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
   </div>`;
 }
 

@@ -919,13 +919,92 @@ input[type="text"]:focus {
   font-weight: 850;
 }
 
+.generation-steps-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .generation-steps {
+  flex: 1;
   display: grid;
   gap: 10px;
   align-content: center;
   margin: 0;
   padding: 22px;
   list-style: none;
+}
+
+.waiting-room {
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 185, 100, 0.45);
+  border-radius: 8px;
+  background: rgba(255, 140, 30, 0.12);
+  backdrop-filter: blur(18px);
+}
+
+.waiting-room-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(255, 210, 140, 0.95);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.waiting-room-attempt {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.waiting-room-countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 14px 0 12px;
+}
+
+.countdown-number {
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.6ch;
+  display: inline-block;
+}
+
+.countdown-unit {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.waiting-room-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.waiting-room-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+  transition: width 0.9s linear;
+}
+
+.waiting-room-note {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .generation-steps li {
