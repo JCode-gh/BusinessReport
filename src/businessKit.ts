@@ -1,10 +1,8 @@
 import { jsonrepair } from "jsonrepair";
 
-const OPEN_ROUTER_API_KEY = import.meta.env.VITE_OPEN_ROUTER_API_KEY as string | undefined;
-const OPEN_ROUTER_MODEL = (import.meta.env.VITE_OPEN_ROUTER_MODEL as string | undefined) || "openrouter/free";
-const OPEN_ROUTER_MAX_TOKENS = Number(import.meta.env.VITE_OPEN_ROUTER_MAX_COMPLETION_TOKENS) || null;
-const OPEN_ROUTER_HTTP_REFERER = import.meta.env.VITE_OPEN_ROUTER_HTTP_REFERER as string | undefined;
-const OPEN_ROUTER_X_TITLE = (import.meta.env.VITE_OPEN_ROUTER_X_TITLE as string | undefined) || "Entrepreneur Growth Kit";
+const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
+const ANTHROPIC_MODEL = (import.meta.env.VITE_ANTHROPIC_MODEL as string | undefined) || "claude-haiku-4-5-20251001";
+const ANTHROPIC_MAX_TOKENS = Number(import.meta.env.VITE_ANTHROPIC_MAX_TOKENS) || 8000;
 
 export type BusinessKitLanguage = "en" | "nl" | "fr" | "de";
 
@@ -389,18 +387,15 @@ export type RetryInfo = {
   retryAfterSeconds: number;
 };
 
+export const ESTIMATED_RESPONSE_CHARS = 12_000;
+
 export async function createBusinessKit(
   request: BusinessKitRequest,
   onRetry?: (info: RetryInfo) => void,
+  onProgress?: (chars: number) => void,
 ): Promise<BusinessKitPlan> {
-  if (OPEN_ROUTER_API_KEY) {
-    try {
-      return await fetchBusinessKitFromApi(request, onRetry);
-    } catch (error) {
-      // Rate limits and other API failures all fall through to local generator.
-      // RateLimitError is no longer re-thrown — the user always gets a report.
-      console.warn("[BusinessKit] API failed, using local generator:", error instanceof Error ? error.message : error);
-    }
+  if (ANTHROPIC_API_KEY) {
+    return await fetchBusinessKitFromApi(request, onRetry, onProgress);
   }
   return buildLocalBusinessKit(request);
 }
@@ -434,6 +429,7 @@ function buildLocalBusinessKit(request: BusinessKitRequest): BusinessKitPlan {
 async function fetchBusinessKitFromApi(
   request: BusinessKitRequest,
   onRetry?: (info: RetryInfo) => void,
+  onProgress?: (chars: number) => void,
 ): Promise<BusinessKitPlan> {
   const userMessage = formatRequestForApi(request);
   const modes = ["json", "compact"] as const;
@@ -441,7 +437,7 @@ async function fetchBusinessKitFromApi(
 
   for (const mode of modes) {
     try {
-      const text = await callOpenRouter(userMessage, mode, onRetry);
+      const text = await callAnthropicApi(userMessage, mode, onRetry, onProgress);
       const plan = parseApiPlan(text, request);
       if (plan) return plan;
     } catch (error) {
@@ -596,43 +592,39 @@ REQUIRED JSON SHAPE (all keys required):
 CRITICAL REMINDER: Every string value in this JSON must be written in the language specified in the user message. Check every field before responding.`;
 }
 
-async function callOpenRouter(
+async function callAnthropicApi(
   userMessage: string,
   mode: "json" | "compact",
   onRetry?: (info: RetryInfo) => void,
+  onProgress?: (chars: number) => void,
 ): Promise<string> {
-  const headers: Record<string, string> = {
-    "Authorization": `Bearer ${OPEN_ROUTER_API_KEY}`,
-    "Content-Type": "application/json",
-  };
+  const useStream = Boolean(onProgress);
 
-  if (OPEN_ROUTER_HTTP_REFERER) headers["HTTP-Referer"] = OPEN_ROUTER_HTTP_REFERER;
-  if (OPEN_ROUTER_X_TITLE) headers["X-Title"] = OPEN_ROUTER_X_TITLE;
+  const headers: Record<string, string> = {
+    "x-api-key": ANTHROPIC_API_KEY!,
+    "anthropic-version": "2023-06-01",
+    "Content-Type": "application/json",
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
 
   const body: Record<string, unknown> = {
-    model: OPEN_ROUTER_MODEL,
-    messages: [
-      { role: "system", content: apiSystemPrompt(mode) },
-      { role: "user", content: userMessage },
-    ],
+    model: ANTHROPIC_MODEL,
+    max_tokens: ANTHROPIC_MAX_TOKENS,
+    system: apiSystemPrompt(mode),
+    messages: [{ role: "user", content: userMessage }],
     temperature: 0.6,
-    ...(OPEN_ROUTER_MAX_TOKENS ? { max_tokens: OPEN_ROUTER_MAX_TOKENS } : {}),
+    ...(useStream ? { stream: true } : {}),
   };
-
-  if (mode === "json") {
-    body.response_format = { type: "json_object" };
-    body.plugins = [{ id: "response-healing" }];
-  }
 
   const MAX_RETRIES = 5;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 90_000);
 
     let response: Response;
     try {
-      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers,
         body: JSON.stringify(body),
@@ -643,15 +635,10 @@ async function callOpenRouter(
     }
 
     if (response.status === 429) {
-      const errorData = await response.json().catch(() => ({})) as {
-        error?: { metadata?: { retry_after_seconds?: number } };
-      };
-      const retryAfter = errorData.error?.metadata?.retry_after_seconds ?? 30;
+      const retryAfter = Number(response.headers.get("retry-after") ?? 30);
 
       if (attempt < MAX_RETRIES - 1) {
-        // Cap at 5s: openrouter/free re-routes to a different model each request,
-        // so a short wait is enough — no need to hold the full upstream retry window.
-        const waitSeconds = Math.min(retryAfter, 5);
+        const waitSeconds = Math.min(retryAfter, 60);
         onRetry?.({ attempt: attempt + 1, totalAttempts: MAX_RETRIES, retryAfterSeconds: waitSeconds });
         await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000));
         continue;
@@ -661,39 +648,92 @@ async function callOpenRouter(
     }
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      throw new Error(`OpenRouter ${response.status}: ${errorText.slice(0, 200)}`);
+      const errorData = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      const msg = errorData?.error?.message ?? `Anthropic HTTP ${response.status}`;
+      throw new Error(msg);
+    }
+
+    if (useStream && response.body) {
+      return await readSseStream(response.body, onProgress!);
     }
 
     const data = await response.json().catch(() => ({})) as {
-      choices?: Array<{ message?: { content?: unknown } }>;
-      error?: { message?: string; code?: number; metadata?: { retry_after_seconds?: number } };
+      type?: string;
+      content?: Array<{ type: string; text?: string }>;
+      error?: { type?: string; message?: string };
     };
 
-    // OpenRouter returns HTTP 200 with an error body on upstream timeouts/504s.
-    if (data.error) {
-      const code = data.error.code ?? 0;
-      const msg = data.error.message ?? "Upstream error";
-      console.warn(`[BusinessKit] OpenRouter error in body (${code}):`, msg);
+    if (data.type === "error") {
+      const msg = data.error?.message ?? "Anthropic API error";
+      console.warn("[BusinessKit] Anthropic error in body:", msg);
 
       if (attempt < MAX_RETRIES - 1) {
-        const isRateLimit = code === 429;
-        const retryAfter = isRateLimit
-          ? Math.min(data.error.metadata?.retry_after_seconds ?? 5, 5)
-          : 3; // short wait for 504/aborted — a fresh request usually hits a different model
-        if (isRateLimit) onRetry?.({ attempt: attempt + 1, totalAttempts: MAX_RETRIES, retryAfterSeconds: retryAfter });
-        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
         continue;
       }
 
-      throw new Error(`OpenRouter ${code}: ${msg}`);
+      throw new Error(msg);
     }
 
-    const content = data.choices?.[0]?.message?.content;
-    return typeof content === "string" ? content.trim() : "";
+    const block = data.content?.[0];
+    return block?.type === "text" ? (block.text?.trim() ?? "") : "";
   }
 
-  throw new Error("OpenRouter request failed after retries.");
+  throw new Error("Anthropic request failed after retries.");
+}
+
+async function readSseStream(
+  body: ReadableStream<Uint8Array>,
+  onProgress: (chars: number) => void,
+): Promise<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let accumulated = "";
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6).trim();
+        if (payload === "[DONE]") continue;
+
+        try {
+          const evt = JSON.parse(payload) as {
+            type?: string;
+            delta?: { type?: string; text?: string };
+            error?: { type?: string; message?: string };
+          };
+
+          if (evt.type === "error") {
+            throw new Error(evt.error?.message ?? "Anthropic stream error");
+          }
+
+          if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+            const text = evt.delta.text ?? "";
+            if (text) {
+              accumulated += text;
+              onProgress(accumulated.length);
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error && !e.message.startsWith("{")) throw e;
+          // malformed SSE chunk — skip
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  return accumulated;
 }
 
 function parseApiPlan(rawText: string, request: BusinessKitRequest): BusinessKitPlan | null {
@@ -954,17 +994,18 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       --subtle: #9ca3af;
       --paper: #ffffff;
       --line: #e5e7eb;
-      --surface: #f9fafb;
-      --accent: #0d9488;
-      --accent-mid: #0f766e;
-      --accent-dark: #115e59;
+      --surface: #f7f5ff;
+      --accent: #7c6bd6;
+      --accent-mid: #6f6acf;
+      --accent-dark: #4c3ab5;
       --gold: #d97706;
       --rose: #be185d;
-      --navy: #1e293b;
+      --navy: #100d28;
       --coral: #c2410c;
-      --mint: #ecfdf5;
+      --mint: #f3eeff;
       --amber: #fffbeb;
-      --sky: #f0f9ff;
+      --sky: #f5f0ff;
+      --lavender: #d6a4e3;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -972,7 +1013,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     body {
       margin: 0;
       color: var(--ink);
-      background: #eef2f2;
+      background: #f0eeff;
       font-family: -apple-system, "Inter", "Helvetica Neue", Arial, sans-serif;
       font-size: 15px;
       line-height: 1.6;
@@ -1029,7 +1070,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .cover {
       padding: 60px 64px 52px;
       color: #fff;
-      background: linear-gradient(135deg, #0a1628 0%, #0d7a6e 45%, #4f1d96 100%);
+      background: linear-gradient(135deg, #100d28 0%, #1a1635 50%, #6f6acf 100%);
     }
 
     .cover-eyebrow {
@@ -1171,7 +1212,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       padding: 20px;
       border-radius: 12px;
       color: #fff;
-      background: linear-gradient(140deg, var(--navy) 0%, #3b1d5e 100%);
+      background: linear-gradient(140deg, var(--navy) 0%, #6f6acf 100%);
       min-height: 0;
     }
 
@@ -1228,7 +1269,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       width: 26px;
       height: 26px;
       border-radius: 7px;
-      background: var(--ink);
+      background: var(--accent-mid);
       color: #fff;
       font-size: 0.72rem;
       font-weight: 800;
@@ -1495,7 +1536,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       break-inside: avoid;
     }
 
-    .action-card.is-complete { border-color: rgba(13,148,136,0.35); background: #f0fdf9; }
+    .action-card.is-complete { border-color: rgba(111,106,207,0.3); background: #f3eeff; }
     .action-card.is-current  { border-color: rgba(194,65,12,0.45); box-shadow: inset 4px 0 0 var(--coral); }
 
     .action-toggle {
@@ -1826,7 +1867,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
       /* Preserve cover gradient */
       .cover {
-        background: linear-gradient(135deg, #0a1628 0%, #0d7a6e 45%, #4f1d96 100%) !important;
+        background: linear-gradient(135deg, #100d28 0%, #1a1635 50%, #6f6acf 100%) !important;
         border-radius: 0 !important;
       }
 

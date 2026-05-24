@@ -18,7 +18,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-vue-next";
-import {buildBusinessKitHtml, businessKitFileName, createBusinessKit, type RetryInfo} from "./businessKit";
+import {buildBusinessKitHtml, businessKitFileName, createBusinessKit, ESTIMATED_RESPONSE_CHARS, type RetryInfo} from "./businessKit";
 
 type GenerateStatus = "idle" | "loading" | "success" | "error";
 type ReportLanguage = "en" | "nl" | "fr" | "de";
@@ -550,13 +550,11 @@ const errorMessage = ref("");
 const reportUrl = ref("");
 const fileName = ref("");
 const lastGeneratedAt = ref("");
-const showIndeterminate = ref(false);
 const pdfDownloading = ref(false);
 const reportHtml = ref("");
 const reportOpened = ref(false);
 const showResultScreen = ref(false);
-const loadingStepIndex = ref(0);
-const loadingStepTimer = ref<number | null>(null);
+const apiCharsReceived = ref(0);
 
 const waitingRoom = reactive({
   active: false,
@@ -613,12 +611,18 @@ const selectedLanguageLabel = computed(() => {
   return languageOptions.find((language) => language.value === form.language)?.label ?? "Nederlands";
 });
 
-const currentLoadingStep = computed(() => {
-  return generationSteps.value[Math.min(loadingStepIndex.value, generationSteps.value.length - 1)];
+const loadingProgress = computed(() => {
+  if (apiCharsReceived.value === 0) return 3;
+  return Math.min(Math.round((apiCharsReceived.value / ESTIMATED_RESPONSE_CHARS) * 100), 95);
 });
 
-const loadingProgress = computed(() => {
-  return Math.round(((loadingStepIndex.value + 1) / generationSteps.value.length) * 100);
+const loadingStepIndex = computed(() => {
+  const total = generationSteps.value.length;
+  return Math.min(Math.floor((loadingProgress.value / 100) * total), total - 1);
+});
+
+const currentLoadingStep = computed(() => {
+  return generationSteps.value[loadingStepIndex.value];
 });
 
 const waitingCountdownPercent = computed(() => {
@@ -663,14 +667,17 @@ async function generateBusinessKit() {
   errorMessage.value = "";
   reportOpened.value = false;
   showResultScreen.value = false;
-  showIndeterminate.value = true;
-  startLoadingSequence();
+  apiCharsReceived.value = 0;
   revokeReportUrl();
   saveDraft();
 
   try {
     await wait(650);
-    const kit = await createBusinessKit({...form}, startWaitingRoom);
+    const kit = await createBusinessKit(
+      {...form},
+      startWaitingRoom,
+      (chars) => { apiCharsReceived.value = chars; },
+    );
     const htmlText = buildBusinessKitHtml(kit);
     const nextFileName = businessKitFileName(kit);
     const nextReportUrl = setReportHtml(htmlText);
@@ -680,17 +687,15 @@ async function generateBusinessKit() {
       hour: "2-digit",
       minute: "2-digit",
     }).format(new Date());
+    apiCharsReceived.value = ESTIMATED_RESPONSE_CHARS;
     status.value = "success";
     reportOpened.value = openReportUrl(nextReportUrl);
-    loadingStepIndex.value = generationSteps.value.length - 1;
     showResultScreen.value = true;
   } catch (error) {
     status.value = "error";
     errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
-    stopLoadingSequence();
     stopWaitingRoom();
-    showIndeterminate.value = false;
   }
 }
 
@@ -705,8 +710,6 @@ function startWaitingRoom(info: RetryInfo) {
   waitingRoom.totalSeconds = secs;
   waitingRoom.attempt = info.attempt;
   waitingRoom.totalAttempts = info.totalAttempts;
-
-  stopLoadingSequence(); // freeze the fake progress bar while waiting
 
   if (waitingRoomTimer !== null) window.clearInterval(waitingRoomTimer);
   waitingRoomTimer = window.setInterval(() => {
@@ -723,25 +726,6 @@ function stopWaitingRoom() {
   if (waitingRoomTimer !== null) {
     window.clearInterval(waitingRoomTimer);
     waitingRoomTimer = null;
-  }
-  if (status.value === 'loading') startLoadingSequence(); // resume from where it stopped
-}
-
-function startLoadingSequence() {
-  stopLoadingSequence();
-  loadingStepIndex.value = 0;
-
-  loadingStepTimer.value = window.setInterval(() => {
-    if (loadingStepIndex.value < generationSteps.value.length - 1) {
-      loadingStepIndex.value += 1;
-    }
-  }, 2800);
-}
-
-function stopLoadingSequence() {
-  if (loadingStepTimer.value !== null) {
-    window.clearInterval(loadingStepTimer.value);
-    loadingStepTimer.value = null;
   }
 }
 
@@ -906,9 +890,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   revokeReportUrl();
-  stopLoadingSequence();
   stopWaitingRoom();
-  showIndeterminate.value = false;
 });
 </script>
 
@@ -917,9 +899,6 @@ onBeforeUnmount(() => {
     <div v-if="status === 'loading'" class="loading-overlay" role="status" aria-live="polite" :aria-label="ui.loadingAria">
       <div class="generation-screen">
         <div class="generation-status">
-          <div class="generation-mark" aria-hidden="true">
-            <Loader2 class="spin" :size="36" />
-          </div>
           <p class="eyebrow">{{ ui.generatingReport }} {{ selectedLanguageLabel }}</p>
           <h3>{{ currentLoadingStep.title }}</h3>
           <p>{{ currentLoadingStep.detail }}</p>
@@ -927,7 +906,7 @@ onBeforeUnmount(() => {
           <div class="progress-wrap" aria-hidden="true">
             <div
               class="progress-bar"
-              :class="{indeterminate: showIndeterminate}"
+              :class="{indeterminate: apiCharsReceived === 0}"
               :style="{width: `${loadingProgress}%`}"
             ></div>
           </div>
@@ -1023,26 +1002,28 @@ onBeforeUnmount(() => {
     </section>
 
     <header class="site-nav">
-      <a class="brand-lockup" href="#" :aria-label="ui.brandHomeAria">
-        <span class="brand-mark" aria-hidden="true">
-          <BriefcaseBusiness :size="24" />
-        </span>
-        <span>
-          <strong>GrowthKit Studio</strong>
-          <small>{{ ui.brandSubtitle }}</small>
-        </span>
-      </a>
+      <div class="nav-inner">
+        <a class="brand-lockup" href="#" :aria-label="ui.brandHomeAria">
+          <span class="brand-mark" aria-hidden="true">
+            <BriefcaseBusiness :size="24" />
+          </span>
+          <span>
+            <strong>GrowthKit Studio</strong>
+            <small>{{ ui.brandSubtitle }}</small>
+          </span>
+        </a>
 
-      <div class="nav-controls">
-        <label class="language-switcher">
-          <Languages :size="17" aria-hidden="true" />
-          <span class="sr-only">{{ ui.languageSwitcherLabel }}</span>
-          <select :value="form.language" :aria-label="ui.languageSwitcherLabel" @change="changeLanguage">
-            <option v-for="language in languageOptions" :key="language.value" :value="language.value">
-              {{ language.label }}
-            </option>
-          </select>
-        </label>
+        <div class="nav-controls">
+          <label class="language-switcher">
+            <Languages :size="17" aria-hidden="true" />
+            <span class="sr-only">{{ ui.languageSwitcherLabel }}</span>
+            <select :value="form.language" :aria-label="ui.languageSwitcherLabel" @change="changeLanguage">
+              <option v-for="language in languageOptions" :key="language.value" :value="language.value">
+                {{ language.label }}
+              </option>
+            </select>
+          </label>
+        </div>
       </div>
     </header>
 
