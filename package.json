@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
+    "firebase": "^12.13.0",
     "html2pdf.js": "^0.14.0",
     "jsonrepair": "^3.14.0",
     "lucide-vue-next": "^0.555.0",

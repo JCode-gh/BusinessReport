@@ -2,7 +2,9 @@
 
 A static, browser-only growth report builder. Users enter business context, choose a report language, and the Vue app generates a styled HTML report with PDF export and local progress tracking.
 
-The product does not require an Express API, Stripe, OpenRouter, serverless functions, or runtime secrets. It can run as a static Netlify site.
+The product does not require an Express API, Stripe, serverless functions, or runtime secrets. It can run as a static Netlify site.
+
+Optional: add a [Google Gemini API key](https://aistudio.google.com/apikey) in the app settings (stored in the browser) or via `VITE_GEMINI_API_KEY` in `.env` for local development. Without a key, the app falls back to a built-in demo report.
 
 ## Local Development
 
@@ -46,7 +48,7 @@ Netlify settings:
 - Build command: `npm run build`
 - Publish directory: `dist`
 
-No environment variables are required.
+No environment variables are required for deployment. For AI-generated reports locally, copy `.env.example` to `.env` and set `VITE_GEMINI_API_KEY`, or enter the key in the app settings UI.
 
 ## Generated Report
 

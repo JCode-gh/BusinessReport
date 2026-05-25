@@ -60,7 +60,7 @@ async function generateReportAsUser(browser: Browser, user: UserScenario) {
     await fillBrief(page, user);
 
     const apiRequestPromise = page.waitForRequest(
-      (request) => request.url().startsWith("https://openrouter.ai/api/v1/chat/completions"),
+      (request) => request.url().includes("generativelanguage.googleapis.com"),
       {timeout: 10_000},
     );
     const reportPopupPromise = page.waitForEvent("popup", {timeout: 90_000}).catch(() => null);

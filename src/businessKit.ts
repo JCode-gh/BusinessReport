@@ -1,8 +1,5 @@
 import { jsonrepair } from "jsonrepair";
-
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-const ANTHROPIC_MODEL = (import.meta.env.VITE_ANTHROPIC_MODEL as string | undefined) || "claude-haiku-4-5-20251001";
-const ANTHROPIC_MAX_TOKENS = Number(import.meta.env.VITE_ANTHROPIC_MAX_TOKENS) || 8000;
+import { POLLINATIONS_API_KEY, POLLINATIONS_MAX_TOKENS, POLLINATIONS_MODEL } from "./pollinationsConfig";
 
 export type BusinessKitLanguage = "en" | "nl" | "fr" | "de";
 
@@ -83,21 +80,6 @@ export type BusinessKitPlan = {
   upsellIdeas: string[];
   assumptions: string[];
   disclaimer: string;
-};
-
-type Context = {
-  language: BusinessKitLanguage;
-  businessName: string;
-  businessType: string;
-  offer: string;
-  audience: string;
-  problem: string;
-  goal: string;
-  channels: string;
-  pricePoint: string;
-  region: string;
-  tone: string;
-  primaryChannel: string;
 };
 
 type ReportLabels = {
@@ -394,36 +376,7 @@ export async function createBusinessKit(
   onRetry?: (info: RetryInfo) => void,
   onProgress?: (chars: number) => void,
 ): Promise<BusinessKitPlan> {
-  if (ANTHROPIC_API_KEY) {
-    return await fetchBusinessKitFromApi(request, onRetry, onProgress);
-  }
-  return buildLocalBusinessKit(request);
-}
-
-function buildLocalBusinessKit(request: BusinessKitRequest): BusinessKitPlan {
-  const context = normalizeRequest(request);
-
-  return {
-    language: context.language,
-    title: titleFor(context),
-    subtitle: subtitleFor(context),
-    executiveSummary: executiveSummaryFor(context),
-    positioning: positioningFor(context),
-    coreOfferRewrite: offerRewriteFor(context),
-    idealCustomerProfile: customerProfileFor(context),
-    biggestRisks: risksFor(context),
-    quickWins: quickWinsFor(context),
-    strategySections: strategySectionsFor(context),
-    scorecard: scorecardFor(context),
-    competitorAnalysis: [],
-    actionPlan: actionPlanFor(context),
-    templates: templatesFor(context),
-    contentIdeas: contentIdeasFor(context),
-    metrics: metricsFor(context),
-    upsellIdeas: upsellIdeasFor(context),
-    assumptions: assumptionsFor(context),
-    disclaimer: disclaimerFor(context.language),
-  };
+  return await fetchBusinessKitFromApi(request, onRetry, onProgress);
 }
 
 async function fetchBusinessKitFromApi(
@@ -437,7 +390,7 @@ async function fetchBusinessKitFromApi(
 
   for (const mode of modes) {
     try {
-      const text = await callAnthropicApi(userMessage, mode, onRetry, onProgress);
+      const text = await callPollinationsApi(userMessage, request.language, mode, onRetry, onProgress);
       const plan = parseApiPlan(text, request);
       if (plan) return plan;
     } catch (error) {
@@ -445,7 +398,14 @@ async function fetchBusinessKitFromApi(
     }
   }
 
-  throw lastError ?? new Error("OpenRouter did not return a valid plan.");
+  const incompleteMessages: Record<BusinessKitLanguage, string> = {
+    nl: "De AI gaf een onvolledig rapport terug. Probeer opnieuw te genereren.",
+    en: "The AI returned an incomplete report. Please try generating again.",
+    fr: "L'IA a renvoyé un rapport incomplet. Réessayez la génération.",
+    de: "Die KI lieferte einen unvollständigen Report. Bitte erneut generieren.",
+  };
+
+  throw lastError ?? new Error(incompleteMessages[request.language]);
 }
 
 function formatRequestForApi(request: BusinessKitRequest): string {
@@ -457,15 +417,34 @@ function formatRequestForApi(request: BusinessKitRequest): string {
   };
   const languageInstructions: Record<BusinessKitLanguage, string> = {
     en: "Write every user-facing field in fluent English. Keep JSON property names in English.",
-    nl: "Schrijf elke zichtbare rapportzin in vloeiend, natuurlijk Nederlands. Vertaal ook ingevoerde Engelse formuleringen naar Nederlands in titels, paragrafen, tabellen, templates, metrics en actiepunten. Laat merknamen, productnamen, acroniemen en eigennamen onvertaald. BELANGRIJK: vertaal geen gangbare Engelse vakjargontermen die professionals in het Nederlands gewoon in het Engels gebruiken. Laat de volgende termen altijd in het Engels staan: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM. Houd JSON-propertynamen in het Engels.",
-    fr: "Rédigez chaque champ visible en français courant. Traduisez les formulations fournies en anglais lorsqu'elles apparaissent dans les titres, paragraphes, tableaux, modèles, indicateurs ou plans d'action. Conservez les noms de marque, noms de produits, acronymes et noms propres en anglais. IMPORTANT: ne traduisez pas les termes professionnels anglais couramment utilisés tels quels en français: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM. Gardez les noms de propriétés JSON en anglais.",
-    de: "Schreiben Sie jedes sichtbare Feld auf fließendem Deutsch. Übersetzen Sie vom Nutzer auf Englisch eingegebene Formulierungen, wenn sie in Titeln, Absätzen, Tabellen, Vorlagen, Kennzahlen oder Aktionsplänen erscheinen. Behalten Sie Markennamen, Produktnamen, Akronyme und Eigennamen auf Englisch. WICHTIG: Übersetzen Sie keine englischen Fachbegriffe, die im Deutschen professionell auf Englisch verwendet werden: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM. JSON-Property-Namen bleiben auf Englisch.",
+    nl: "Schrijf elke zichtbare rapportzin volledig in vloeiend Nederlands. De brief kan Engels bevatten: neem de betekenis over, maar kopieer NOOIT Engelse zinnen letterlijk in je output. Geen mengtaal. Merknamen en eigennamen blijven onvertaald. Vakjargon mag Engels blijven: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM.",
+    fr: "Rédigez chaque champ visible entièrement en français. Le brief peut être en anglais: absorbez le sens, ne copiez jamais de phrases anglaises telles quelles. Pas de mélange de langues. Noms propres et marques inchangés. Jargon pro anglais accepté: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM.",
+    de: "Schreiben Sie jedes sichtbare Feld vollständig auf Deutsch. Das Briefing kann Englisch sein: Bedeutung übernehmen, aber niemals englische Sätze wörtlich kopieren. Kein Sprachmix. Markennamen unverändert. Fachjargon darf Englisch bleiben: cold email, cold outreach, follow-up, lead, leads, lead generation, pipeline, funnel, pitch, upsell, cross-sell, CRM, B2B, B2C, LinkedIn, sprint, template, niche, onboarding, retainer, SaaS, ROI, KPI, USP, landing page, call-to-action, inbox, DM.",
   };
 
-  return `CRITICAL LANGUAGE REQUIREMENT: This entire response MUST be written in ${languageNames[request.language]}. Every single word of every JSON string value must be in ${languageNames[request.language]}. This is non-negotiable. Failing to write in the correct language is the most common and most serious error.
+  const translationExamples: Partial<Record<BusinessKitLanguage, string>> = {
+    nl: `
+MENGTAAL — VERBODEN:
+FOUT: "Een heldere zin die Book more qualified sales calls and sell higher-ticket packages within 30 days koppelt aan Local service businesses with 5 to 30 employees that rely on referrals."
+GOED: "Een heldere zin die meer gekwalificeerde salesgesprekken en hogere pakketten binnen 30 dagen koppelt aan lokale dienstverleners met 5 tot 30 medewerkers die vooral op referrals vertrouwen."`,
+    fr: `
+MÉLANGE — INTERDIT: ne jamais insérer des fragments anglais du brief dans une phrase française.`,
+    de: `
+SPRACHMIX — VERBOTEN: niemals englische Brief-Fragmente wörtlich in deutsche Sätze einfügen.`,
+  };
 
-BUSINESS BRIEF
-==============
+  return `CRITICAL LANGUAGE REQUIREMENT: Every JSON string value must be 100% in ${languageNames[request.language]} — no mixed-language sentences.
+
+TRANSLATION RULE
+================
+The brief below is SOURCE DATA. It may be in English.
+- Absorb the facts; rewrite everything fully in ${languageNames[request.language]}.
+- NEVER paste brief phrases verbatim when they are not already in ${languageNames[request.language]}.
+- NEVER write: "[${languageNames[request.language]} words] + [copied English brief phrase] + [${languageNames[request.language]} words]".
+${translationExamples[request.language] ?? ""}
+
+BUSINESS BRIEF (translate fully — do not quote verbatim in the output language)
+================================================================================
 Report language: ${languageNames[request.language]}
 Language instruction: ${languageInstructions[request.language]}
 
@@ -486,17 +465,35 @@ Based on businessType "${request.businessType ?? "Not provided"}" and region "${
 
 Build a full entrepreneur growth kit for this business. Every section must be specific to the brief above — never use placeholder text or generic advice that could apply to any business.
 
-FINAL REMINDER: ALL string values in your JSON response must be in ${languageNames[request.language]}. Check every single field before responding.`;
+FINAL REMINDER: ALL string values must be 100% in ${languageNames[request.language]} with zero copied English brief fragments. Re-read every field before responding.`;
 }
 
-function apiSystemPrompt(mode: "json" | "compact"): string {
+function apiSystemPrompt(mode: "json" | "compact", language: BusinessKitLanguage): string {
   const jsonInstruction = mode === "json"
     ? "Return ONLY a raw JSON object. Start with { and end with }. No markdown fences, no commentary, no text outside the JSON."
     : "Return ONLY a raw JSON object starting with {. Keep individual string values concise to stay within the token limit, but keep all required keys.";
 
-  return `CRITICAL: You MUST write ALL content in the language specified in the user message. Every single word of every field must be in that language. This is non-negotiable. If the user specifies Dutch, write everything in Dutch. If French, write in French. If German, write in German.
+  const languageNames: Record<BusinessKitLanguage, string> = {
+    en: "English",
+    nl: "Dutch (Nederlands)",
+    fr: "French",
+    de: "German",
+  };
+
+  const mixedLanguageRule = language === "en"
+    ? ""
+    : `
+LANGUAGE (highest priority)
+- Output language: ${languageNames[language]} only.
+- The brief may be English; translate it fully. Never quote untranslated brief text inside a ${languageNames[language]} sentence.
+- Mixed-language output is an automatic failure (e.g. Dutch sentence structure with English brief phrases copied in).`;
+
+  return `CRITICAL: You MUST write ALL content in ${languageNames[language]}. Every field must be fully in that language — never mixed with untranslated brief text.
 
 You are a senior growth strategist with 15 years of experience advising small businesses, boutique agencies, solo consultants, SaaS founders, ecommerce operators, and local service companies. You write in the style of a premium paid consultant report — sharp, specific, commercially grounded, and immediately actionable.
+${mixedLanguageRule}
+
+NOTE: Examples below are in English for structure only. Your actual output must be in ${languageNames[language]}.
 
 ${jsonInstruction}
 
@@ -505,7 +502,7 @@ FORBIDDEN (never do any of these):
 - Vague actions without a concrete next step
 - Scores above 70 without explicit evidence from the brief
 - Empty, skeleton, or short templates
-- Content in the wrong language — this is the most common failure; check every field
+- Wrong language or mixed-language sentences (copying English brief phrases into ${languageNames[language]} text)
 - Placeholders like "[insert your offer]" or "[your audience]" — only [Name] and [Company] are allowed
 
 QUALITY RULES (never break these):
@@ -555,7 +552,7 @@ competitorAnalysis (2–3 items): Name real competitors or alternatives the targ
 
 actionPlan (12 items, mandatory): Day 1, Day 2, Day 3, Day 4-5, Day 6-7, Week 2 (part 1), Week 2 (part 2), Week 3 (part 1), Week 3 (part 2), Week 4 (part 1), Week 4 (part 2), Day 30 Review. Each task must start with an action verb. Each task must be a single concrete deliverable. Outcome must be the measurable result of completing that task.
 
-templates (5–6 items): Must include ALL of: cold outreach opener, follow-up after no reply (3 days), discovery call confirmation, proposal follow-up after 3 days silence, LinkedIn connection request (300 chars max), and optionally a WhatsApp/SMS follow-up (short). Each template must have a complete subject line (for email) AND full body copy of minimum 5 sentences. No placeholders except [Name] and [Company].
+templates (5–6 items): Must include ALL of: cold outreach opener, follow-up after no reply (3 days), discovery call confirmation, proposal follow-up after 3 days silence, LinkedIn connection request (300 chars max), and optionally a WhatsApp/SMS follow-up (short). Each template must be SEND-READY copy someone can paste today — not a description of what to write. Email templates need "Subject:" / "Onderwerp:" plus full body (minimum 5 sentences, multiple paragraphs). Only placeholders: [Naam]/[Name] and [Bedrijf]/[Company]. NEVER insert untranslated brief text. NEVER use label placeholders like "de ideale doelklant" or "het kernaanbod". Rewrite brief facts as natural sentences in the output language.
 
 contentIdeas (6–8 items): Mix of LinkedIn posts, email subjects, and short-form video hooks. Each must target a specific buyer pain or objection. The hook must be a complete opening sentence someone could use today.
 
@@ -589,32 +586,33 @@ REQUIRED JSON SHAPE (all keys required):
   "disclaimer": string
 }
 
-CRITICAL REMINDER: Every string value in this JSON must be written in the language specified in the user message. Check every field before responding.`;
+CRITICAL REMINDER: Every string value must be fully in ${languageNames[language]} with no verbatim English brief fragments. Check every field before responding.`;
 }
 
-async function callAnthropicApi(
+async function callPollinationsApi(
   userMessage: string,
+  language: BusinessKitLanguage,
   mode: "json" | "compact",
   onRetry?: (info: RetryInfo) => void,
   onProgress?: (chars: number) => void,
 ): Promise<string> {
   const useStream = Boolean(onProgress);
-
-  const headers: Record<string, string> = {
-    "x-api-key": ANTHROPIC_API_KEY!,
-    "anthropic-version": "2023-06-01",
-    "Content-Type": "application/json",
-    "anthropic-dangerous-direct-browser-access": "true",
-  };
+  const endpoint = new URL("https://gen.pollinations.ai/v1/chat/completions");
 
   const body: Record<string, unknown> = {
-    model: ANTHROPIC_MODEL,
-    max_tokens: ANTHROPIC_MAX_TOKENS,
-    system: apiSystemPrompt(mode),
-    messages: [{ role: "user", content: userMessage }],
+    model: POLLINATIONS_MODEL,
     temperature: 0.6,
-    ...(useStream ? { stream: true } : {}),
+    max_tokens: POLLINATIONS_MAX_TOKENS,
+    stream: useStream,
+    messages: [
+      { role: "system", content: apiSystemPrompt(mode, language) },
+      { role: "user", content: userMessage },
+    ],
   };
+
+  if (mode === "json") {
+    body.response_format = { type: "json_object" };
+  }
 
   const MAX_RETRIES = 5;
 
@@ -624,9 +622,12 @@ async function callAnthropicApi(
 
     let response: Response;
     try {
-      response = await fetch("https://api.anthropic.com/v1/messages", {
+      response = await fetch(endpoint.toString(), {
         method: "POST",
-        headers,
+        headers: {
+          "Content-Type": "application/json",
+          ...(POLLINATIONS_API_KEY ? { Authorization: `Bearer ${POLLINATIONS_API_KEY}` } : {}),
+        },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
@@ -648,24 +649,22 @@ async function callAnthropicApi(
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null) as { error?: { message?: string } } | null;
-      const msg = errorData?.error?.message ?? `Anthropic HTTP ${response.status}`;
+      const errorData = await response.json().catch(() => null) as {
+        error?: { message?: string };
+      } | null;
+      const msg = errorData?.error?.message ?? `Pollinations HTTP ${response.status}`;
       throw new Error(msg);
     }
 
     if (useStream && response.body) {
-      return await readSseStream(response.body, onProgress!);
+      return await readOpenAiSseStream(response.body, onProgress!);
     }
 
-    const data = await response.json().catch(() => ({})) as {
-      type?: string;
-      content?: Array<{ type: string; text?: string }>;
-      error?: { type?: string; message?: string };
-    };
+    const data = await response.json().catch(() => ({})) as OpenAiChatResponse;
 
-    if (data.type === "error") {
-      const msg = data.error?.message ?? "Anthropic API error";
-      console.warn("[BusinessKit] Anthropic error in body:", msg);
+    if (data.error?.message) {
+      const msg = data.error.message;
+      console.warn("[BusinessKit] Pollinations error in body:", msg);
 
       if (attempt < MAX_RETRIES - 1) {
         await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -675,14 +674,25 @@ async function callAnthropicApi(
       throw new Error(msg);
     }
 
-    const block = data.content?.[0];
-    return block?.type === "text" ? (block.text?.trim() ?? "") : "";
+    return extractOpenAiText(data);
   }
 
-  throw new Error("Anthropic request failed after retries.");
+  throw new Error("Pollinations request failed after retries.");
 }
 
-async function readSseStream(
+type OpenAiChatResponse = {
+  choices?: Array<{
+    message?: { content?: string };
+    delta?: { content?: string };
+  }>;
+  error?: { message?: string };
+};
+
+function extractOpenAiText(data: OpenAiChatResponse): string {
+  return data.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
+async function readOpenAiSseStream(
   body: ReadableStream<Uint8Array>,
   onProgress: (chars: number) => void,
 ): Promise<string> {
@@ -703,25 +713,19 @@ async function readSseStream(
       for (const line of lines) {
         if (!line.startsWith("data: ")) continue;
         const payload = line.slice(6).trim();
-        if (payload === "[DONE]") continue;
+        if (!payload || payload === "[DONE]") continue;
 
         try {
-          const evt = JSON.parse(payload) as {
-            type?: string;
-            delta?: { type?: string; text?: string };
-            error?: { type?: string; message?: string };
-          };
+          const evt = JSON.parse(payload) as OpenAiChatResponse;
 
-          if (evt.type === "error") {
-            throw new Error(evt.error?.message ?? "Anthropic stream error");
+          if (evt.error?.message) {
+            throw new Error(evt.error.message);
           }
 
-          if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
-            const text = evt.delta.text ?? "";
-            if (text) {
-              accumulated += text;
-              onProgress(accumulated.length);
-            }
+          const chunk = evt.choices?.[0]?.delta?.content ?? "";
+          if (chunk) {
+            accumulated += chunk;
+            onProgress(accumulated.length);
           }
         } catch (e) {
           if (e instanceof Error && !e.message.startsWith("{")) throw e;
@@ -784,147 +788,193 @@ function extractJsonCandidates(rawText: string): string[] {
   return Array.from(candidates);
 }
 
-function detectResponseLanguage(text: string): BusinessKitLanguage {
-  const sample = text.slice(0, 400).toLowerCase();
-  const nl = (sample.match(/\b(de|het|een|van|voor|met|op|ze|je|we|die|dat|zijn|heeft|naar)\b/g) ?? []).length;
-  const fr = (sample.match(/\b(le|la|les|de|du|un|une|pour|avec|est|par|qui|que|au|sur)\b/g) ?? []).length;
-  const de = (sample.match(/\b(der|die|das|ist|und|für|von|mit|auf|an|sie|bei|des|zur)\b/g) ?? []).length;
-  const en = (sample.match(/\b(the|and|for|with|your|this|that|have|from|will|are|is|our|you)\b/g) ?? []).length;
-  const max = Math.max(nl, fr, de, en);
-  if (max === 0) return "en";
-  if (nl === max) return "nl";
-  if (fr === max) return "fr";
-  if (de === max) return "de";
-  return "en";
+function hasMixedLanguage(text: string, reportLang: BusinessKitLanguage): boolean {
+  if (!text.trim() || reportLang === "en") return false;
+
+  const lower = text.toLowerCase();
+  const dutchHits = (lower.match(/\b(de|het|een|van|voor|met|zijn|naar|die|dat)\b/g) ?? []).length;
+  const englishHits = (lower.match(/\b(the|and|with|for|that|this|your|more|within|from|have|will)\b/g) ?? []).length;
+
+  if (reportLang === "nl" && dutchHits >= 2 && englishHits >= 4) return true;
+  return false;
 }
 
-function normalizeApiPlan(raw: Record<string, unknown>, request: BusinessKitRequest): BusinessKitPlan {
-  const fallback = buildLocalBusinessKit(request);
+function defaultPlanTitle(request: BusinessKitRequest): string {
+  const name = clean(request.businessName) || "Growth Kit";
+  switch (request.language) {
+    case "nl":
+      return `${name} groeikit`;
+    case "fr":
+      return `Kit de croissance ${name}`;
+    case "de":
+      return `${name} Wachstumskit`;
+    default:
+      return `${name} Growth Kit`;
+  }
+}
 
-  if (request.language !== "en") {
-    const summaryRaw = typeof raw.executiveSummary === "string" ? raw.executiveSummary : "";
-    if (summaryRaw.length > 50 && detectResponseLanguage(summaryRaw) === "en") {
-      console.warn("[BusinessKit] API response appears to be in English instead of", request.language, "— using local fallback");
-      return fallback;
-    }
+function defaultDisclaimer(language: BusinessKitLanguage): string {
+  switch (language) {
+    case "nl":
+      return "Dit rapport is een strategisch hulpmiddel, geen garantie op omzet, winst of financiering.";
+    case "fr":
+      return "Ce rapport est un outil stratégique, pas une garantie de chiffre d'affaires, de profit ou de financement.";
+    case "de":
+      return "Dieser Bericht ist ein strategisches Hilfsmittel, keine Garantie für Umsatz, Gewinn oder Finanzierung.";
+    default:
+      return "This report is a strategic tool, not a guarantee of revenue, profit, or funding.";
+  }
+}
+
+function isPlanComplete(plan: BusinessKitPlan): boolean {
+  return (
+    plan.executiveSummary.length >= 80 &&
+    plan.positioning.length >= 40 &&
+    plan.coreOfferRewrite.length >= 40 &&
+    plan.idealCustomerProfile.length >= 40 &&
+    plan.biggestRisks.length >= 3 &&
+    plan.quickWins.length >= 3 &&
+    plan.strategySections.length >= 3 &&
+    plan.scorecard.length >= 3 &&
+    plan.actionPlan.length >= 5 &&
+    plan.templates.length >= 2 &&
+    plan.contentIdeas.length >= 3 &&
+    plan.metrics.length >= 3
+  );
+}
+
+function normalizeApiPlan(
+  raw: Record<string, unknown>,
+  request: BusinessKitRequest,
+): BusinessKitPlan | null {
+  const plan: BusinessKitPlan = {
+    language: request.language,
+    title: strOr(raw.title, defaultPlanTitle(request)),
+    subtitle: strOr(raw.subtitle, ""),
+    executiveSummary: strOr(raw.executiveSummary, ""),
+    positioning: strOr(raw.positioning, ""),
+    coreOfferRewrite: strOr(raw.coreOfferRewrite, ""),
+    idealCustomerProfile: strOr(raw.idealCustomerProfile, ""),
+    biggestRisks: strArray(raw.biggestRisks, 8),
+    quickWins: strArray(raw.quickWins, 10),
+    strategySections: normalizeStrategySections(raw.strategySections),
+    scorecard: normalizeScorecard(raw.scorecard),
+    competitorAnalysis: normalizeCompetitorAnalysis(raw.competitorAnalysis),
+    actionPlan: normalizeActionPlan(raw.actionPlan),
+    templates: normalizeTemplates(raw.templates),
+    contentIdeas: normalizeContentIdeas(raw.contentIdeas),
+    metrics: normalizeMetrics(raw.metrics),
+    upsellIdeas: strArray(raw.upsellIdeas, 8),
+    assumptions: strArray(raw.assumptions, 8),
+    disclaimer: strOr(raw.disclaimer, defaultDisclaimer(request.language)),
+  };
+
+  if (!isPlanComplete(plan)) {
+    console.warn("[BusinessKit] AI response incomplete — will retry or fail");
+    return null;
   }
 
-  return {
-    language: request.language,
-    title: strOr(raw.title, fallback.title),
-    subtitle: strOr(raw.subtitle, fallback.subtitle),
-    executiveSummary: strOr(raw.executiveSummary, fallback.executiveSummary),
-    positioning: strOr(raw.positioning, fallback.positioning),
-    coreOfferRewrite: strOr(raw.coreOfferRewrite, fallback.coreOfferRewrite),
-    idealCustomerProfile: strOr(raw.idealCustomerProfile, fallback.idealCustomerProfile),
-    biggestRisks: strArray(raw.biggestRisks, fallback.biggestRisks, 5),
-    quickWins: strArray(raw.quickWins, fallback.quickWins, 7),
-    strategySections: normalizeStrategySections(raw.strategySections, fallback.strategySections),
-    scorecard: normalizeScorecard(raw.scorecard, fallback.scorecard),
-    competitorAnalysis: normalizeCompetitorAnalysis(raw.competitorAnalysis),
-    actionPlan: normalizeActionPlan(raw.actionPlan, fallback.actionPlan),
-    templates: normalizeTemplates(raw.templates, fallback.templates),
-    contentIdeas: normalizeContentIdeas(raw.contentIdeas, fallback.contentIdeas),
-    metrics: normalizeMetrics(raw.metrics, fallback.metrics),
-    upsellIdeas: strArray(raw.upsellIdeas, fallback.upsellIdeas, 5),
-    assumptions: strArray(raw.assumptions, fallback.assumptions, 5),
-    disclaimer: strOr(raw.disclaimer, fallback.disclaimer),
-  };
+  if (request.language !== "en" && hasMixedLanguage(plan.executiveSummary, request.language)) {
+    console.warn("[BusinessKit] Possible mixed language in AI output for", request.language);
+  }
+
+  return plan;
 }
 
-function strOr(value: unknown, fallback: string): string {
+function strOr(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function strArray(value: unknown, fallback: string[], max: number): string[] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value.map((v) => strOr(v, "")).filter(Boolean).slice(0, max);
-  return items.length > 0 ? items : fallback;
+function strArray(value: unknown, max: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => strOr(entry))
+    .filter(Boolean)
+    .slice(0, max);
 }
 
-function normalizeStrategySections(value: unknown, fallback: BusinessKitPlan["strategySections"]): BusinessKitPlan["strategySections"] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value
+function normalizeStrategySections(value: unknown): BusinessKitPlan["strategySections"] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      title: strOr(v.title, ""),
-      diagnosis: strOr(v.diagnosis, ""),
-      moves: strArray(v.moves, [], 5),
+      title: strOr(v.title),
+      diagnosis: strOr(v.diagnosis),
+      moves: strArray(v.moves, 8),
     }))
     .filter((v) => v.title && v.diagnosis && v.moves.length > 0)
     .slice(0, 6);
-  return items.length >= 3 ? items : fallback;
 }
 
-function normalizeScorecard(value: unknown, fallback: BusinessKitPlan["scorecard"]): BusinessKitPlan["scorecard"] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value
+function normalizeScorecard(value: unknown): BusinessKitPlan["scorecard"] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      label: strOr(v.label, ""),
+      label: strOr(v.label),
       score: clampApiScore(v.score),
-      rationale: strOr(v.rationale, ""),
-      nextMove: strOr(v.nextMove, ""),
+      rationale: strOr(v.rationale),
+      nextMove: strOr(v.nextMove),
     }))
     .filter((v) => v.label && v.rationale && v.nextMove)
-    .slice(0, 6);
-  return items.length >= 3 ? items : fallback;
+    .slice(0, 8);
 }
 
-function normalizeActionPlan(value: unknown, fallback: BusinessKitPlan["actionPlan"]): BusinessKitPlan["actionPlan"] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value
+function normalizeActionPlan(value: unknown): BusinessKitPlan["actionPlan"] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      day: strOr(v.day, ""),
-      task: strOr(v.task, ""),
-      outcome: strOr(v.outcome, ""),
+      day: strOr(v.day),
+      task: strOr(v.task),
+      outcome: strOr(v.outcome),
     }))
     .filter((v) => v.day && v.task && v.outcome)
     .slice(0, 14);
-  return items.length >= 5 ? items : fallback;
 }
 
-function normalizeTemplates(value: unknown, fallback: BusinessKitPlan["templates"]): BusinessKitPlan["templates"] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value
+function isUsableTemplate(body: string): boolean {
+  const trimmed = body.trim();
+  return trimmed.length >= 80;
+}
+
+function normalizeTemplates(value: unknown): BusinessKitPlan["templates"] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      title: strOr(v.title, ""),
-      channel: strOr(v.channel, ""),
-      body: strOr(v.body, ""),
+      title: strOr(v.title),
+      channel: strOr(v.channel),
+      body: strOr(v.body),
     }))
-    .filter((v) => v.title && v.channel && v.body)
-    .slice(0, 6);
-  return items.length >= 2 ? items : fallback;
+    .filter((v) => v.title && v.channel && v.body && isUsableTemplate(v.body))
+    .slice(0, 8);
 }
 
-function normalizeContentIdeas(value: unknown, fallback: BusinessKitPlan["contentIdeas"]): BusinessKitPlan["contentIdeas"] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value
+function normalizeContentIdeas(value: unknown): BusinessKitPlan["contentIdeas"] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      title: strOr(v.title, ""),
-      angle: strOr(v.angle, ""),
-      hook: strOr(v.hook, ""),
+      title: strOr(v.title),
+      angle: strOr(v.angle),
+      hook: strOr(v.hook),
     }))
     .filter((v) => v.title && v.angle && v.hook)
-    .slice(0, 8);
-  return items.length >= 3 ? items : fallback;
+    .slice(0, 10);
 }
 
-function normalizeMetrics(value: unknown, fallback: BusinessKitPlan["metrics"]): BusinessKitPlan["metrics"] {
-  if (!Array.isArray(value)) return fallback;
-  const items = value
+function normalizeMetrics(value: unknown): BusinessKitPlan["metrics"] {
+  if (!Array.isArray(value)) return [];
+  return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      metric: strOr(v.metric, ""),
-      target: strOr(v.target, ""),
-      why: strOr(v.why, ""),
+      metric: strOr(v.metric),
+      target: strOr(v.target),
+      why: strOr(v.why),
     }))
     .filter((v) => v.metric && v.target && v.why)
-    .slice(0, 8);
-  return items.length >= 3 ? items : fallback;
+    .slice(0, 10);
 }
 
 function normalizeCompetitorAnalysis(value: unknown): CompetitorItem[] {
@@ -932,12 +982,12 @@ function normalizeCompetitorAnalysis(value: unknown): CompetitorItem[] {
   return value
     .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
     .map((v) => ({
-      competitor: strOr(v.competitor, ""),
-      weakness: strOr(v.weakness, ""),
-      ourAdvantage: strOr(v.ourAdvantage, ""),
+      competitor: strOr(v.competitor),
+      weakness: strOr(v.weakness),
+      ourAdvantage: strOr(v.ourAdvantage),
     }))
     .filter((v) => v.competitor && v.weakness && v.ourAdvantage)
-    .slice(0, 3);
+    .slice(0, 5);
 }
 
 function clampApiScore(value: unknown): number {
@@ -1015,7 +1065,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       color: var(--ink);
       background: #f0eeff;
       font-family: -apple-system, "Inter", "Helvetica Neue", Arial, sans-serif;
-      font-size: 15px;
+      font-size: 16px;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
     }
@@ -1023,42 +1073,10 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     h1, h2, h3, h4, p { margin-top: 0; }
 
     /* Toolbar */
-    .report-toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--line);
-      background: rgba(255,255,255,0.96);
-      backdrop-filter: blur(8px);
-      box-shadow: 0 1px 0 var(--line), 0 4px 16px rgba(0,0,0,0.06);
-    }
-
-    .report-toolbar button {
-      height: 38px;
-      border: 1px solid var(--accent-dark);
-      border-radius: 8px;
-      padding: 0 16px;
-      color: #fff;
-      background: var(--accent-dark);
-      font: 600 0.85rem/1 inherit;
-      cursor: pointer;
-      letter-spacing: 0.01em;
-    }
-
-    .report-toolbar button.secondary {
-      color: var(--accent-dark);
-      background: #fff;
-    }
-
     /* Page */
     .page {
-      width: min(1060px, calc(100% - 32px));
-      margin: 28px auto 64px;
+      width: min(1320px, calc(100% - 32px));
+      margin: 0 auto 64px;
       background: var(--paper);
       border: 1px solid var(--line);
       border-radius: 16px;
@@ -1278,7 +1296,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     .section-title {
       margin: 0;
-      font-size: 1.4rem;
+      font-size: 1.55rem;
       font-weight: 800;
       letter-spacing: -0.01em;
     }
@@ -1299,7 +1317,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     /* Executive summary */
     .exec-lead {
-      font-size: 1.08rem;
+      font-size: 1.18rem;
       line-height: 1.75;
       color: #1f2937;
       max-width: 820px;
@@ -1337,7 +1355,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .lg { color: #92400e; }
     .ln { color: #334155; }
 
-    .insight-text { margin: 0; font-size: 0.96rem; line-height: 1.65; }
+    .insight-text { margin: 0; font-size: 1.05rem; line-height: 1.65; }
 
     /* Quick wins */
     .win-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
@@ -1367,7 +1385,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       flex-shrink: 0;
     }
 
-    .win-text { font-size: 0.93rem; line-height: 1.55; padding-top: 4px; }
+    .win-text { font-size: 1.02rem; line-height: 1.55; padding-top: 4px; }
 
     /* Scorecard */
     .scorecard-list {
@@ -1424,7 +1442,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .scorecard-body { padding-right: 4px; }
 
     .scorecard-label {
-      font-size: 0.88rem;
+      font-size: 1rem;
       font-weight: 700;
       margin: 0 0 5px;
       color: var(--ink);
@@ -1448,17 +1466,17 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .sc-low  .scorecard-score { color: var(--coral); }
 
     .scorecard-rationale {
-      font-size: 0.8rem;
+      font-size: 0.93rem;
       color: var(--muted);
       margin: 0 0 6px;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .scorecard-next-move {
-      font-size: 0.78rem;
+      font-size: 0.91rem;
       color: var(--ink);
       margin: 0;
-      line-height: 1.45;
+      line-height: 1.5;
     }
 
     .scorecard-next-move strong {
@@ -1489,12 +1507,12 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       flex-shrink: 0;
     }
 
-    .strategy-title { font-size: 0.95rem; font-weight: 700; margin: 0; }
+    .strategy-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
 
     .strategy-body { padding: 18px 22px; }
 
     .strategy-diagnosis {
-      font-size: 0.91rem;
+      font-size: 1rem;
       color: var(--muted);
       margin: 0 0 14px;
       line-height: 1.6;
@@ -1508,7 +1526,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       display: grid;
       grid-template-columns: 16px 1fr;
       gap: 10px;
-      font-size: 0.9rem;
+      font-size: 1rem;
       line-height: 1.5;
     }
 
@@ -1602,8 +1620,8 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     .action-card.is-complete .action-state { background: var(--mint); color: var(--accent-dark); }
 
-    .action-task { font-size: 0.94rem; font-weight: 600; margin: 0 0 4px; }
-    .action-outcome { font-size: 0.85rem; color: var(--muted); margin: 0 0 10px; }
+    .action-task { font-size: 1.02rem; font-weight: 600; margin: 0 0 4px; }
+    .action-outcome { font-size: 0.95rem; color: var(--muted); margin: 0 0 10px; }
 
     .notes-field { display: grid; gap: 5px; }
 
@@ -1642,7 +1660,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       border-bottom: 1px solid var(--line);
     }
 
-    .template-title { font-size: 0.92rem; font-weight: 700; margin: 0; }
+    .template-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
 
     .template-channel {
       font-size: 0.7rem;
@@ -1655,10 +1673,10 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       border-radius: 6px;
     }
 
-    .template-body { padding: 20px; font-size: 0.9rem; line-height: 1.72; white-space: pre-wrap; color: #374151; }
+    .template-body { padding: 20px; font-size: 1rem; line-height: 1.75; white-space: pre-wrap; color: #374151; }
 
     /* Content ideas */
-    .content-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .content-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 
     .content-card {
       border: 1px solid var(--line);
@@ -1669,11 +1687,11 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       gap: 10px;
     }
 
-    .content-title { font-size: 0.95rem; font-weight: 700; margin: 0; }
-    .content-angle { font-size: 0.85rem; color: var(--muted); margin: 0; line-height: 1.5; }
+    .content-title { font-size: 1.08rem; font-weight: 700; margin: 0; }
+    .content-angle { font-size: 0.97rem; color: var(--muted); margin: 0; line-height: 1.55; }
 
     .content-hook {
-      font-size: 0.9rem;
+      font-size: 1rem;
       font-style: italic;
       margin: 0;
       padding: 10px 14px;
@@ -1690,27 +1708,27 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       border: 1px solid var(--line);
       border-radius: 12px;
       overflow: hidden;
-      font-size: 0.91rem;
+      font-size: 1rem;
     }
 
     .metrics-table th {
-      padding: 12px 16px;
+      padding: 13px 18px;
       background: var(--navy);
       color: #fff;
-      font-size: 0.73rem;
+      font-size: 0.8rem;
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       text-align: left;
     }
 
-    .metrics-table td { padding: 13px 16px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.55; }
+    .metrics-table td { padding: 15px 18px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.65; }
     .metrics-table tr:nth-child(even) td { background: var(--surface); }
     .metric-name { font-weight: 600; }
     .metric-target { font-weight: 700; color: var(--accent-dark); }
 
     /* Bottom grid */
-    .bottom-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .bottom-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 
     .tagged-panel { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 
@@ -1750,14 +1768,69 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       .scorecard-row { grid-template-columns: 48px 1fr; }
     }
 
-    @media (max-width: 560px) {
-      .action-card { grid-template-columns: 1fr; }
+    @media (max-width: 600px) {
+      body { background: #fff; }
+
+      .page {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+
+      .cover { padding: 28px 20px 32px; }
+      .cover h1 { font-size: clamp(1.6rem, 7vw, 2.6rem); }
+      .cover-subtitle { font-size: 0.95rem; margin-bottom: 20px; }
+
+      .workspace {
+        margin: -20px 12px 0;
+        padding: 16px;
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+
+      .workspace-stats { grid-template-columns: repeat(3, 1fr); }
+
+      .content { padding: 28px 16px 40px; }
+
+      .report-section { padding-bottom: 36px; margin-bottom: 36px; }
+
+      .section-header { flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+      .section-badge { margin-left: 0; }
+      .section-title { font-size: 1.25rem; }
+
+      .action-header-row { flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+
+      .action-card { grid-template-columns: 1fr; gap: 10px; }
+      .action-toggle { width: 28px; height: 28px; }
+
+      .metrics-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .metrics-table { min-width: 480px; }
+      .metrics-table th, .metrics-table td { padding: 11px 12px; }
+
+      .template-header { flex-wrap: wrap; gap: 8px; }
+
+      .strategy-header { flex-wrap: wrap; gap: 8px; }
+
+      .scorecard-row { grid-template-columns: 44px 1fr; }
+
+      .section-jump-nav { top: 0; }
+
+      .report-footer { margin-top: 32px; }
+    }
+
+    @media (max-width: 380px) {
+      .cover { padding: 20px 14px 24px; }
+      .content { padding: 20px 14px 32px; }
+      .workspace { margin: -16px 8px 0; padding: 12px; }
+      .workspace-stats { grid-template-columns: 1fr 1fr; }
     }
 
     /* Jump-to-section navigation */
     .section-jump-nav {
       position: sticky;
-      top: 59px;
+      top: 0px;
       z-index: 9;
       overflow-x: auto;
       background: rgba(255,255,255,0.97);
@@ -1826,21 +1899,21 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       border: 1px solid var(--line);
       border-radius: 12px;
       overflow: hidden;
-      font-size: 0.91rem;
+      font-size: 1rem;
     }
 
     .competitor-table th {
-      padding: 12px 16px;
+      padding: 13px 18px;
       background: var(--navy);
       color: #fff;
-      font-size: 0.73rem;
+      font-size: 0.8rem;
       font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
       text-align: left;
     }
 
-    .competitor-table td { padding: 13px 16px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.55; }
+    .competitor-table td { padding: 15px 18px; border-top: 1px solid var(--line); vertical-align: top; line-height: 1.65; }
     .competitor-table tr:nth-child(even) td { background: var(--surface); }
     .competitor-name { font-weight: 700; color: var(--navy); }
     .competitor-weakness { color: var(--coral); }
@@ -1852,7 +1925,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         -webkit-print-color-adjust: exact !important;
       }
 
-      .report-toolbar, .section-jump-nav, .workspace-actions, .template-copy-btn { display: none !important; }
+      .section-jump-nav, .workspace, .template-copy-btn { display: none !important; }
 
       body { background: #fff; }
 
@@ -1865,23 +1938,42 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         box-shadow: none !important;
       }
 
-      /* Preserve cover gradient */
+      /* Cover fills first page, content starts fresh on page 2 */
       .cover {
+        break-after: page;
+        page-break-after: always;
         background: linear-gradient(135deg, #100d28 0%, #1a1635 50%, #6f6acf 100%) !important;
         border-radius: 0 !important;
       }
 
-      .workspace {
-        margin: 0 0 24px !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
+      /* Each section starts on a new page — prevents header orphaning */
+      .report-section {
+        break-before: page;
+        page-break-before: always;
       }
 
-      /* Keep panel/section backgrounds */
-      .panel, .report-section, .score-card, .action-card, .strategy-card, .template-card {
+      /* Section header must stay glued to the first content element below it */
+      .section-header, .action-header-row {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      /* Individual content units: never split across pages */
+      .insight-block,
+      .win-item,
+      .scorecard-row,
+      .strategy-card,
+      .action-card,
+      .template-card,
+      .content-card,
+      .tagged-panel,
+      .metrics-table tr {
         break-inside: avoid;
         page-break-inside: avoid;
       }
+
+      /* Prevent lonely single lines at page edges */
+      p { orphans: 3; widows: 3; }
 
       /* Scorecard tier colors preserved via print-color-adjust above */
       .scorecard-row.sc-high::before { background: var(--accent) !important; }
@@ -1899,23 +1991,20 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
   </style>
 </head>
 <body data-report-id="${escapeHtml(reportId)}">
-  <div class="report-toolbar">
-    <button type="button" onclick="window.print()">${escapeHtml(labels.printPdf)}</button>
-    <button type="button" class="secondary" onclick="downloadHtmlReport()">${escapeHtml(labels.downloadHtml)}</button>
-  </div>
+  <script>function scrollToAnchor(id){var el=document.getElementById(id);if(!el)return;var nav=document.querySelector('.section-jump-nav');var offset=(nav?nav.getBoundingClientRect().height:0)+20;window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY-offset,behavior:'smooth'});}<\/script>
   <nav class="section-jump-nav" aria-label="${escapeHtml(labels.jumpToSection)}">
     <div class="jump-nav-inner">
       <span class="jump-nav-label">${escapeHtml(labels.jumpToSection)}</span>
-      <a href="#sec-1" onclick="event.preventDefault();document.getElementById('sec-1')?.scrollIntoView({behavior:'smooth'})">1. ${escapeHtml(labels.executiveSummary)}</a>
-      <a href="#sec-2" onclick="event.preventDefault();document.getElementById('sec-2')?.scrollIntoView({behavior:'smooth'})">2. ${escapeHtml(labels.positioning)}</a>
-      <a href="#sec-3" onclick="event.preventDefault();document.getElementById('sec-3')?.scrollIntoView({behavior:'smooth'})">3. ${escapeHtml(labels.fastestQuickWins)}</a>
-      <a href="#sec-4" onclick="event.preventDefault();document.getElementById('sec-4')?.scrollIntoView({behavior:'smooth'})">4. ${escapeHtml(labels.growthScorecard)}</a>
-      ${hasCompetitors ? `<a href="#sec-5" onclick="event.preventDefault();document.getElementById('sec-5')?.scrollIntoView({behavior:'smooth'})">5. ${escapeHtml(labels.competitorAnalysis)}</a>` : ""}
-      <a href="#sec-${hasCompetitors ? 6 : 5}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 6 : 5}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 6 : 5}. ${escapeHtml(labels.strategicMoves)}</a>
-      <a href="#sec-${hasCompetitors ? 7 : 6}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 7 : 6}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 7 : 6}. ${escapeHtml(labels.actionPlan)}</a>
-      <a href="#sec-${hasCompetitors ? 8 : 7}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 8 : 7}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 8 : 7}. ${escapeHtml(labels.salesTemplates)}</a>
-      <a href="#sec-${hasCompetitors ? 9 : 8}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 9 : 8}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 9 : 8}. ${escapeHtml(labels.contentIdeas)}</a>
-      <a href="#sec-${hasCompetitors ? 10 : 9}" onclick="event.preventDefault();document.getElementById('sec-${hasCompetitors ? 10 : 9}')?.scrollIntoView({behavior:'smooth'})">${hasCompetitors ? 10 : 9}. ${escapeHtml(labels.metricsToTrack)}</a>
+      <a href="#sec-1" onclick="event.preventDefault();scrollToAnchor('sec-1')">1. ${escapeHtml(labels.executiveSummary)}</a>
+      <a href="#sec-2" onclick="event.preventDefault();scrollToAnchor('sec-2')">2. ${escapeHtml(labels.positioning)}</a>
+      <a href="#sec-3" onclick="event.preventDefault();scrollToAnchor('sec-3')">3. ${escapeHtml(labels.fastestQuickWins)}</a>
+      <a href="#sec-4" onclick="event.preventDefault();scrollToAnchor('sec-4')">4. ${escapeHtml(labels.growthScorecard)}</a>
+      ${hasCompetitors ? `<a href="#sec-5" onclick="event.preventDefault();scrollToAnchor('sec-5')">5. ${escapeHtml(labels.competitorAnalysis)}</a>` : ""}
+      <a href="#sec-${hasCompetitors ? 6 : 5}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 6 : 5}')">${hasCompetitors ? 6 : 5}. ${escapeHtml(labels.strategicMoves)}</a>
+      <a href="#sec-${hasCompetitors ? 7 : 6}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 7 : 6}')">${hasCompetitors ? 7 : 6}. ${escapeHtml(labels.actionPlan)}</a>
+      <a href="#sec-${hasCompetitors ? 8 : 7}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 8 : 7}')">${hasCompetitors ? 8 : 7}. ${escapeHtml(labels.salesTemplates)}</a>
+      <a href="#sec-${hasCompetitors ? 9 : 8}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 9 : 8}')">${hasCompetitors ? 9 : 8}. ${escapeHtml(labels.contentIdeas)}</a>
+      <a href="#sec-${hasCompetitors ? 10 : 9}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 10 : 9}')">${hasCompetitors ? 10 : 9}. ${escapeHtml(labels.metricsToTrack)}</a>
     </div>
   </nav>
 
@@ -2026,18 +2115,20 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
           <span class="section-num">${hasCompetitors ? 10 : 9}</span>
           <h2 class="section-title">${escapeHtml(labels.metricsToTrack)}</h2>
         </div>
-        <table class="metrics-table">
-          <thead>
-            <tr>
-              <th>${escapeHtml(labels.metric)}</th>
-              <th>${escapeHtml(labels.target)}</th>
-              <th>${escapeHtml(labels.whyItMatters)}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${plan.metrics.map((item) => `<tr><td class="metric-name">${escapeHtml(item.metric)}</td><td class="metric-target">${escapeHtml(item.target)}</td><td>${escapeHtml(item.why)}</td></tr>`).join("")}
-          </tbody>
-        </table>
+        <div class="metrics-table-wrap">
+          <table class="metrics-table">
+            <thead>
+              <tr>
+                <th>${escapeHtml(labels.metric)}</th>
+                <th>${escapeHtml(labels.target)}</th>
+                <th>${escapeHtml(labels.whyItMatters)}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${plan.metrics.map((item) => `<tr><td class="metric-name">${escapeHtml(item.metric)}</td><td class="metric-target">${escapeHtml(item.target)}</td><td>${escapeHtml(item.why)}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div class="report-section">
@@ -2052,587 +2143,10 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     </main>
   </article>
 
-  <script>
-    function downloadHtmlReport() {
-      if (typeof window.syncReportProgressAttributes === "function") {
-        window.syncReportProgressAttributes();
-      }
-      var html = "<!doctype html>\\n" + document.documentElement.outerHTML;
-      var blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement("a");
-      link.href = url;
-      link.download = ${scriptJson(businessKitFileName(plan))};
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    }
-  </script>
   ${interactiveReportScript(reportId, labels)}
 </body>
 </html>`;
 }
-
-export function businessKitFileName(plan: BusinessKitPlan): string {
-  return `${slugify(plan.title)}.html`;
-}
-
-function normalizeRequest(request: BusinessKitRequest): Context {
-  const businessName = clean(request.businessName) || fallback(request.language, "businessName");
-  const businessType = clean(request.businessType) || fallback(request.language, "businessType");
-  const offer = clean(request.offer) || fallback(request.language, "offer");
-  const audience = clean(request.audience) || fallback(request.language, "audience");
-  const problem = clean(request.problem) || fallback(request.language, "problem");
-  const goal = clean(request.goal) || fallback(request.language, "goal");
-  const channels = clean(request.channels) || fallback(request.language, "channels");
-
-  return {
-    language: request.language,
-    businessName,
-    businessType,
-    offer,
-    audience,
-    problem,
-    goal,
-    channels,
-    pricePoint: clean(request.pricePoint) || fallback(request.language, "pricePoint"),
-    region: clean(request.region) || fallback(request.language, "region"),
-    tone: clean(request.tone) || fallback(request.language, "tone"),
-    primaryChannel: splitChannels(channels)[0] ?? fallback(request.language, "primaryChannel"),
-  };
-}
-
-function titleFor(context: Context): string {
-  switch (context.language) {
-    case "nl":
-      return `${context.businessName} groeikit`;
-    case "fr":
-      return `Kit de croissance ${context.businessName}`;
-    case "de":
-      return `${context.businessName} Wachstumskit`;
-    default:
-      return `${context.businessName} Growth Kit`;
-  }
-}
-
-function subtitleFor(context: Context): string {
-  switch (context.language) {
-    case "nl":
-      return `Een praktisch groeiplan voor ${context.businessType}, gericht op ${context.goal}.`;
-    case "fr":
-      return `Un plan de croissance pratique pour ${context.businessType}, centré sur ${context.goal}.`;
-    case "de":
-      return `Ein praktischer Wachstumsplan für ${context.businessType}, ausgerichtet auf ${context.goal}.`;
-    default:
-      return `A practical growth plan for ${context.businessType}, focused on ${context.goal}.`;
-  }
-}
-
-function executiveSummaryFor(context: Context): string {
-  switch (context.language) {
-    case "nl":
-      return `${context.businessName} heeft genoeg input om snel tractie te bouwen: een duidelijke markt, een concreet aanbod en een zichtbaar groeidoel. De prioriteit is om ${context.offer} scherper te verpakken voor ${context.audience}, het probleem "${context.problem}" expliciet te benoemen en via ${context.primaryChannel} meer bewijsgedreven gesprekken te starten.`;
-    case "fr":
-      return `${context.businessName} dispose des éléments essentiels pour créer de la traction: un marché lisible, une offre concrète et un objectif clair. La priorité est de reformuler ${context.offer} pour ${context.audience}, de nommer le problème "${context.problem}" et de générer plus de conversations qualifiées via ${context.primaryChannel}.`;
-    case "de":
-      return `${context.businessName} hat die wichtigsten Bausteine für schnelle Traktion: einen klaren Markt, ein konkretes Angebot und ein messbares Ziel. Priorität ist, ${context.offer} für ${context.audience} schärfer zu verpacken, das Problem "${context.problem}" direkt zu benennen und über ${context.primaryChannel} mehr qualifizierte Gespräche auszulösen.`;
-    default:
-      return `${context.businessName} has enough signal to build traction quickly: a clear market, a concrete offer, and a visible growth goal. The priority is to package ${context.offer} more sharply for ${context.audience}, name the problem "${context.problem}" directly, and create more proof-led conversations through ${context.primaryChannel}.`;
-  }
-}
-
-function positioningFor(context: Context): string {
-  switch (context.language) {
-    case "nl":
-      return `Positioneer ${context.businessName} als de praktische groeipartner voor ${context.audience}. De boodschap moet niet beginnen bij diensten, maar bij het gewenste resultaat: ${context.goal}.`;
-    case "fr":
-      return `Positionnez ${context.businessName} comme le partenaire de croissance pratique pour ${context.audience}. Le message doit commencer par le résultat recherché, pas par la liste des services: ${context.goal}.`;
-    case "de":
-      return `Positioniere ${context.businessName} als praktischen Wachstumspartner für ${context.audience}. Die Botschaft sollte nicht mit Leistungen starten, sondern mit dem gewünschten Ergebnis: ${context.goal}.`;
-    default:
-      return `Position ${context.businessName} as the practical growth partner for ${context.audience}. Lead with the outcome, not the service list: ${context.goal}.`;
-  }
-}
-
-function offerRewriteFor(context: Context): string {
-  switch (context.language) {
-    case "nl":
-      return `Voor ${context.audience} die worstelen met ${context.problem}, levert ${context.businessName} ${context.offer} zodat ze ${context.goal} zonder onduidelijke scope of losse opvolging.`;
-    case "fr":
-      return `Pour ${context.audience} confrontés à ${context.problem}, ${context.businessName} propose ${context.offer} afin de les aider à ${context.goal} sans périmètre flou ni suivi improvisé.`;
-    case "de":
-      return `Für ${context.audience}, die mit ${context.problem} kämpfen, liefert ${context.businessName} ${context.offer}, damit sie ${context.goal}, ohne unklare Leistungspakete oder zufällige Nachverfolgung.`;
-    default:
-      return `For ${context.audience} struggling with ${context.problem}, ${context.businessName} delivers ${context.offer} so they can ${context.goal} without unclear scope or inconsistent follow-up.`;
-  }
-}
-
-function customerProfileFor(context: Context): string {
-  switch (context.language) {
-    case "nl":
-      return `De beste klant zit in ${context.region}, herkent het probleem snel, heeft budget rond ${context.pricePoint}, en wil een duidelijke volgende stap in plaats van losse inspiratie.`;
-    case "fr":
-      return `Le meilleur client se trouve dans ${context.region}, reconnaît rapidement le problème, dispose d'un budget autour de ${context.pricePoint}, et veut une prochaine étape claire plutôt que de l'inspiration générale.`;
-    case "de":
-      return `Der beste Kunde sitzt in ${context.region}, erkennt das Problem schnell, hat Budget rund um ${context.pricePoint}, und will einen klaren nächsten Schritt statt allgemeiner Inspiration.`;
-    default:
-      return `The best-fit customer is in ${context.region}, recognizes the problem quickly, has budget around ${context.pricePoint}, and wants a clear next step instead of general inspiration.`;
-  }
-}
-
-function risksFor(context: Context): string[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        `Te veel nadruk op wat ${context.businessName} doet, te weinig op het meetbare resultaat voor ${context.audience}.`,
-        `Geen scherpe kwalificatie kan tijd trekken naar leads die niet passen bij ${context.pricePoint}.`,
-        `Als ${context.primaryChannel} geen vast ritme krijgt, blijft groei afhankelijk van toevallige kansen.`,
-        "Zonder bewijs, cases of voorbeelden klinkt het aanbod sneller duur dan logisch.",
-      ];
-    case "fr":
-      return [
-        `Trop d'accent sur ce que fait ${context.businessName}, pas assez sur le résultat mesurable pour ${context.audience}.`,
-        `Sans qualification claire, trop de temps part vers des prospects qui ne correspondent pas à ${context.pricePoint}.`,
-        `Si ${context.primaryChannel} n'a pas de rythme fixe, la croissance reste dépendante des opportunités aléatoires.`,
-        "Sans preuves, cas ou exemples, l'offre peut sembler chère avant de sembler logique.",
-      ];
-    case "de":
-      return [
-        `Zu viel Fokus auf das, was ${context.businessName} tut, und zu wenig auf das messbare Ergebnis für ${context.audience}.`,
-        `Ohne klare Qualifizierung geht zu viel Zeit an Leads, die nicht zu ${context.pricePoint} passen.`,
-        `Wenn ${context.primaryChannel} keinen festen Rhythmus bekommt, bleibt Wachstum abhängig von Zufall.`,
-        "Ohne Beweise, Beispiele oder Fälle wirkt das Angebot schneller teuer als logisch.",
-      ];
-    default:
-      return [
-        `Too much emphasis on what ${context.businessName} does, and not enough on the measurable result for ${context.audience}.`,
-        `Weak qualification can pull time toward leads that are not a fit for ${context.pricePoint}.`,
-        `If ${context.primaryChannel} does not get a repeatable cadence, growth stays dependent on random opportunities.`,
-        "Without proof, examples, or case evidence, the offer can feel expensive before it feels logical.",
-      ];
-  }
-}
-
-function quickWinsFor(context: Context): string[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        `Herschrijf de eerste zin van de website rond ${context.goal}.`,
-        `Maak een korte checklist waarmee ${context.audience} kan zien of ${context.problem} hen omzet kost.`,
-        `Voeg drie bewijsblokken toe: voor/na, klantquote en meetbare uitkomst.`,
-        `Maak een kwalificatievraag rond budget, timing en eigenaarschap voordat een call wordt geboekt.`,
-        `Publiceer deze week twee posts op ${context.primaryChannel} met concrete voorbeelden uit het aanbod.`,
-      ];
-    case "fr":
-      return [
-        `Réécrivez la première phrase du site autour de ${context.goal}.`,
-        `Créez une courte checklist permettant à ${context.audience} de voir si ${context.problem} leur coûte des opportunités.`,
-        "Ajoutez trois blocs de preuve: avant/après, citation client et résultat mesurable.",
-        "Ajoutez une question de qualification sur le budget, le timing et le décideur avant chaque appel.",
-        `Publiez cette semaine deux contenus sur ${context.primaryChannel} avec des exemples concrets de l'offre.`,
-      ];
-    case "de":
-      return [
-        `Schreibe den ersten Satz der Website rund um ${context.goal} neu.`,
-        `Erstelle eine kurze Checkliste, mit der ${context.audience} erkennt, ob ${context.problem} Umsatz kostet.`,
-        "Füge drei Beweisblöcke hinzu: Vorher/Nachher, Kundenzitat und messbares Ergebnis.",
-        "Nutze vor jedem Gespräch eine Qualifizierungsfrage zu Budget, Timing und Verantwortung.",
-        `Veröffentliche diese Woche zwei Beiträge auf ${context.primaryChannel} mit konkreten Beispielen aus dem Angebot.`,
-      ];
-    default:
-      return [
-        `Rewrite the first website sentence around ${context.goal}.`,
-        `Create a short checklist that helps ${context.audience} see whether ${context.problem} is costing them opportunities.`,
-        "Add three proof blocks: before/after, customer quote, and measurable outcome.",
-        "Add one qualification question about budget, timing, and ownership before a call is booked.",
-        `Publish two posts this week on ${context.primaryChannel} with concrete examples from the offer.`,
-      ];
-  }
-}
-
-function strategySectionsFor(context: Context): StrategySection[] {
-  const shared = strategyText(context);
-
-  return [
-    {
-      title: shared.offerTitle,
-      diagnosis: shared.offerDiagnosis,
-      moves: shared.offerMoves,
-    },
-    {
-      title: shared.pipelineTitle,
-      diagnosis: shared.pipelineDiagnosis,
-      moves: shared.pipelineMoves,
-    },
-    {
-      title: shared.conversionTitle,
-      diagnosis: shared.conversionDiagnosis,
-      moves: shared.conversionMoves,
-    },
-    {
-      title: shared.deliveryTitle,
-      diagnosis: shared.deliveryDiagnosis,
-      moves: shared.deliveryMoves,
-    },
-  ];
-}
-
-function scorecardFor(context: Context): BusinessScore[] {
-  const completeness = [
-    context.businessType,
-    context.offer,
-    context.audience,
-    context.problem,
-    context.goal,
-    context.channels,
-    context.pricePoint,
-  ].filter((value) => value.length > 22).length;
-  const base = clamp(52 + completeness * 5, 56, 88);
-  const labels = scoreLabels(context.language);
-
-  return labels.map((item, index) => ({
-    label: item.label,
-    score: clamp(base + item.offset - index * 2, 42, 94),
-    rationale: item.rationale(context),
-    nextMove: item.nextMove(context),
-  }));
-}
-
-function actionPlanFor(context: Context): ActionItem[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        {day: "Dag 1-2", task: "Schrijf de kernbelofte opnieuw", outcome: `Een heldere zin die ${context.goal} koppelt aan ${context.audience}.`},
-        {day: "Dag 3-4", task: "Maak een kwalificatiechecklist", outcome: `Een scorelijst die snel bepaalt of een lead past bij ${context.pricePoint}.`},
-        {day: "Dag 5-7", task: "Verzamel bewijs", outcome: "Drie bewijsblokken die in website, voorstel en follow-up kunnen worden gebruikt."},
-        {day: "Dag 8-10", task: `Publiceer twee ${context.primaryChannel}-posts`, outcome: "Posts die het probleem, de kost en de betere aanpak uitleggen."},
-        {day: "Dag 11-14", task: "Bouw een korte intakeflow", outcome: "Een formulier of vragenlijst die context verzamelt voor een betere salescall."},
-        {day: "Dag 15-18", task: "Herwerk het voorstel", outcome: "Een voorstel met resultaat, scope, bewijs, timing en duidelijke volgende stap."},
-        {day: "Dag 19-23", task: "Start follow-up cadans", outcome: "Drie opvolgmomenten voor open leads en oude gesprekken."},
-        {day: "Dag 24-27", task: "Meet conversiepunten", outcome: "Een overzicht van verkeer, gesprekken, voorstellen en gewonnen deals."},
-        {day: "Dag 28-30", task: "Kies het volgende experiment", outcome: "Een groeicyclus op basis van de beste signalen uit de maand."},
-      ];
-    case "fr":
-      return [
-        {day: "Jour 1-2", task: "Réécrire la promesse centrale", outcome: `Une phrase claire qui relie ${context.goal} à ${context.audience}.`},
-        {day: "Jour 3-4", task: "Créer une checklist de qualification", outcome: `Une grille rapide pour savoir si un prospect correspond à ${context.pricePoint}.`},
-        {day: "Jour 5-7", task: "Rassembler les preuves", outcome: "Trois blocs de preuve utilisables sur le site, dans les propositions et en relance."},
-        {day: "Jour 8-10", task: `Publier deux contenus sur ${context.primaryChannel}`, outcome: "Des contenus qui expliquent le problème, son coût et la meilleure approche."},
-        {day: "Jour 11-14", task: "Construire un court parcours d'intake", outcome: "Un formulaire ou questionnaire qui prépare des appels plus utiles."},
-        {day: "Jour 15-18", task: "Revoir la proposition commerciale", outcome: "Une proposition avec résultat, périmètre, preuve, timing et prochaine étape."},
-        {day: "Jour 19-23", task: "Lancer une cadence de relance", outcome: "Trois relances pour les prospects ouverts et les anciennes conversations."},
-        {day: "Jour 24-27", task: "Mesurer les points de conversion", outcome: "Une vue claire du trafic, des appels, des propositions et des ventes gagnées."},
-        {day: "Jour 28-30", task: "Choisir la prochaine expérience", outcome: "Un cycle de croissance basé sur les meilleurs signaux du mois."},
-      ];
-    case "de":
-      return [
-        {day: "Tag 1-2", task: "Kernversprechen neu schreiben", outcome: `Ein klarer Satz, der ${context.goal} mit ${context.audience} verbindet.`},
-        {day: "Tag 3-4", task: "Qualifizierungscheckliste erstellen", outcome: `Eine schnelle Bewertung, ob ein Lead zu ${context.pricePoint} passt.`},
-        {day: "Tag 5-7", task: "Beweise sammeln", outcome: "Drei Beweisblöcke für Website, Angebot und Follow-up."},
-        {day: "Tag 8-10", task: `Zwei Beiträge auf ${context.primaryChannel} veröffentlichen`, outcome: "Beiträge, die Problem, Kosten und bessere Lösung erklären."},
-        {day: "Tag 11-14", task: "Kurzen Intake-Prozess bauen", outcome: "Ein Formular oder Fragebogen für bessere Verkaufsgespräche."},
-        {day: "Tag 15-18", task: "Angebot überarbeiten", outcome: "Ein Angebot mit Ergebnis, Umfang, Beweis, Timing und klarem nächsten Schritt."},
-        {day: "Tag 19-23", task: "Follow-up-Rhythmus starten", outcome: "Drei Nachfassmomente für offene Leads und alte Gespräche."},
-        {day: "Tag 24-27", task: "Konversionspunkte messen", outcome: "Eine Übersicht über Traffic, Gespräche, Angebote und gewonnene Deals."},
-        {day: "Tag 28-30", task: "Nächstes Experiment wählen", outcome: "Ein Wachstumszyklus basierend auf den besten Signalen des Monats."},
-      ];
-    default:
-      return [
-        {day: "Days 1-2", task: "Rewrite the core promise", outcome: `One clear sentence that connects ${context.goal} to ${context.audience}.`},
-        {day: "Days 3-4", task: "Create a qualification checklist", outcome: `A quick scoring list that shows whether a lead fits ${context.pricePoint}.`},
-        {day: "Days 5-7", task: "Collect proof", outcome: "Three proof blocks that can be used on the website, in proposals, and in follow-up."},
-        {day: "Days 8-10", task: `Publish two ${context.primaryChannel} posts`, outcome: "Posts that explain the problem, its cost, and the better approach."},
-        {day: "Days 11-14", task: "Build a short intake flow", outcome: "A form or question set that gathers context before sales calls."},
-        {day: "Days 15-18", task: "Rework the proposal", outcome: "A proposal with outcome, scope, proof, timing, and clear next step."},
-        {day: "Days 19-23", task: "Start a follow-up cadence", outcome: "Three follow-up moments for open leads and past conversations."},
-        {day: "Days 24-27", task: "Measure conversion points", outcome: "A view of traffic, conversations, proposals, and closed wins."},
-        {day: "Days 28-30", task: "Choose the next experiment", outcome: "A growth cycle based on the strongest signals from the month."},
-      ];
-  }
-}
-
-function templatesFor(context: Context): BusinessTemplate[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        {title: "Koude of warme opening", channel: context.primaryChannel, body: `Hallo [naam], ik zag dat veel ${context.audience} vastlopen op ${context.problem}. ${context.businessName} helpt met ${context.offer}, zodat ${context.goal}. Is dit iets dat nu prioriteit heeft?`},
-        {title: "Follow-up na gesprek", channel: "E-mail", body: `Dank voor het gesprek. De grootste kans lijkt nu: ${context.goal}. Ik zou starten met een compacte sprint rond ${context.offer}, met duidelijke scope en meetpunten. Zal ik de concrete aanpak sturen?`},
-        {title: "Voorstel afsluiter", channel: "Voorstel", body: `De volgende stap is eenvoudig: bevestig de scope, plan de kickoff en kies de eerste metric die we verbeteren. Zo blijft het traject gericht op resultaat in plaats van losse taken.`},
-      ];
-    case "fr":
-      return [
-        {title: "Ouverture froide ou tiède", channel: context.primaryChannel, body: `Bonjour [nom], je vois que beaucoup de ${context.audience} restent bloqués par ${context.problem}. ${context.businessName} aide avec ${context.offer}, afin de ${context.goal}. Est-ce une priorité en ce moment?`},
-        {title: "Relance après appel", channel: "E-mail", body: `Merci pour l'échange. La plus grande opportunité semble être: ${context.goal}. Je commencerais par un sprint compact autour de ${context.offer}, avec un périmètre clair et des indicateurs. Voulez-vous que j'envoie l'approche concrète?`},
-        {title: "Clôture de proposition", channel: "Proposition", body: "La prochaine étape est simple: valider le périmètre, planifier le lancement et choisir le premier indicateur à améliorer. Le projet reste ainsi orienté résultat."},
-      ];
-    case "de":
-      return [
-        {title: "Kalte oder warme Eröffnung", channel: context.primaryChannel, body: `Hallo [Name], ich sehe, dass viele ${context.audience} bei ${context.problem} feststecken. ${context.businessName} hilft mit ${context.offer}, damit sie ${context.goal}. Ist das gerade relevant?`},
-        {title: "Follow-up nach Gespräch", channel: "E-Mail", body: `Danke für das Gespräch. Die größte Chance scheint jetzt zu sein: ${context.goal}. Ich würde mit einem kompakten Sprint rund um ${context.offer} starten, mit klarem Umfang und Messpunkten. Soll ich den konkreten Ansatz schicken?`},
-        {title: "Angebotsabschluss", channel: "Angebot", body: "Der nächste Schritt ist einfach: Umfang bestätigen, Kickoff planen und die erste Kennzahl wählen. So bleibt das Projekt auf Ergebnisse statt Einzelaufgaben ausgerichtet."},
-      ];
-    default:
-      return [
-        {title: "Cold or warm opener", channel: context.primaryChannel, body: `Hi [name], I noticed many ${context.audience} get stuck with ${context.problem}. ${context.businessName} helps with ${context.offer} so they can ${context.goal}. Is this a current priority?`},
-        {title: "Post-call follow-up", channel: "Email", body: `Thanks for the conversation. The biggest opportunity seems to be: ${context.goal}. I would start with a focused sprint around ${context.offer}, with clear scope and measurable checkpoints. Should I send the concrete approach?`},
-        {title: "Proposal closer", channel: "Proposal", body: "The next step is simple: confirm the scope, schedule the kickoff, and choose the first metric we improve. That keeps the work tied to outcomes instead of loose tasks."},
-      ];
-  }
-}
-
-function contentIdeasFor(context: Context): ContentIdea[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        {title: "De verborgen kost", angle: `Laat zien wat ${context.problem} kost in gemiste kansen.`, hook: "Hoeveel omzet lekt er weg voor iemand zelfs contact opneemt?"},
-        {title: "Voor en na", angle: `Vergelijk de oude situatie met het resultaat van ${context.offer}.`, hook: "Dit is het verschil tussen een website en een verkoopmachine."},
-        {title: "Koopcriteria", angle: `Leg uit hoe ${context.audience} een goede oplossing kiest.`, hook: "Stel deze vijf vragen voordat je een partner kiest."},
-        {title: "Procespost", angle: "Toon de stappen van diagnose naar implementatie.", hook: "Een goed traject begint niet met design, maar met beslissingen."},
-        {title: "Bezwaarbreker", angle: `Neem twijfel rond ${context.pricePoint} serieus en koppel het aan resultaat.`, hook: "Duur is relatief; onduidelijke groei is duurder."},
-      ];
-    case "fr":
-      return [
-        {title: "Le coût caché", angle: `Montrez ce que ${context.problem} coûte en opportunités perdues.`, hook: "Combien de revenus disparaissent avant même le premier contact?"},
-        {title: "Avant / après", angle: `Comparez la situation actuelle avec le résultat de ${context.offer}.`, hook: "Voici la différence entre une présence et un moteur de vente."},
-        {title: "Critères d'achat", angle: `Expliquez comment ${context.audience} choisissent une bonne solution.`, hook: "Posez ces cinq questions avant de choisir un partenaire."},
-        {title: "Le processus", angle: "Montrez les étapes du diagnostic à la mise en oeuvre.", hook: "Un bon projet commence par des décisions, pas par des tâches."},
-        {title: "Lever l'objection prix", angle: `Reliez ${context.pricePoint} au résultat attendu.`, hook: "Cher est relatif; une croissance floue coûte plus cher."},
-      ];
-    case "de":
-      return [
-        {title: "Die versteckten Kosten", angle: `Zeige, was ${context.problem} an verpassten Chancen kostet.`, hook: "Wie viel Umsatz geht verloren, bevor jemand überhaupt Kontakt aufnimmt?"},
-        {title: "Vorher / Nachher", angle: `Vergleiche die aktuelle Situation mit dem Ergebnis von ${context.offer}.`, hook: "Das ist der Unterschied zwischen Präsenz und Verkaufsmaschine."},
-        {title: "Kaufkriterien", angle: `Erkläre, wie ${context.audience} eine gute Lösung wählen.`, hook: "Stelle diese fünf Fragen, bevor du einen Partner auswählst."},
-        {title: "Der Prozess", angle: "Zeige die Schritte von Diagnose zu Umsetzung.", hook: "Ein gutes Projekt beginnt mit Entscheidungen, nicht mit Aufgaben."},
-        {title: "Preis-Einwand lösen", angle: `Verbinde ${context.pricePoint} mit dem erwarteten Ergebnis.`, hook: "Teuer ist relativ; unklares Wachstum kostet mehr."},
-      ];
-    default:
-      return [
-        {title: "The hidden cost", angle: `Show what ${context.problem} costs in missed opportunities.`, hook: "How much revenue leaks away before someone even reaches out?"},
-        {title: "Before and after", angle: `Compare the current state with the result of ${context.offer}.`, hook: "This is the difference between a website and a sales asset."},
-        {title: "Buying criteria", angle: `Teach ${context.audience} how to choose the right solution.`, hook: "Ask these five questions before choosing a partner."},
-        {title: "Process post", angle: "Show the steps from diagnosis to implementation.", hook: "Good work starts with decisions, not tasks."},
-        {title: "Price objection breaker", angle: `Connect ${context.pricePoint} to the outcome.`, hook: "Expensive is relative; unclear growth is more expensive."},
-      ];
-  }
-}
-
-function metricsFor(context: Context): BusinessMetric[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        {metric: "Gekwalificeerde gesprekken", target: "Wekelijks +20%", why: `Bewijst dat ${context.primaryChannel} betere leads aantrekt.`},
-        {metric: "Voorstelratio", target: "60%+ van gesprekken", why: "Laat zien of kwalificatie en aanbod goed aansluiten."},
-        {metric: "Gemiddelde dealwaarde", target: context.pricePoint, why: "Bewaakt of positionering de juiste prijs ondersteunt."},
-        {metric: "Follow-up respons", target: "25%+ antwoord", why: "Meet of opvolging concreet genoeg is."},
-        {metric: "30-dagen omzetkans", target: "3 beste open kansen", why: "Houdt focus op de deals die nu beïnvloedbaar zijn."},
-      ];
-    case "fr":
-      return [
-        {metric: "Conversations qualifiées", target: "+20% par semaine", why: `Prouve que ${context.primaryChannel} attire de meilleurs prospects.`},
-        {metric: "Taux de proposition", target: "60%+ des appels", why: "Montre si la qualification et l'offre sont alignées."},
-        {metric: "Valeur moyenne des ventes", target: context.pricePoint, why: "Vérifie si le positionnement soutient le bon prix."},
-        {metric: "Réponse aux relances", target: "25%+ de réponses", why: "Mesure si le suivi est assez concret."},
-        {metric: "Opportunités à 30 jours", target: "3 meilleures opportunités", why: "Garde le focus sur les ventes influençables maintenant."},
-      ];
-    case "de":
-      return [
-        {metric: "Qualifizierte Gespräche", target: "Wöchentlich +20%", why: `Beweist, dass ${context.primaryChannel} bessere Leads bringt.`},
-        {metric: "Angebotsquote", target: "60%+ der Gespräche", why: "Zeigt, ob Qualifizierung und Angebot passen."},
-        {metric: "Durchschnittlicher Dealwert", target: context.pricePoint, why: "Prüft, ob die Positionierung den Preis trägt."},
-        {metric: "Follow-up-Antworten", target: "25%+ Antwortquote", why: "Misst, ob Nachfassen konkret genug ist."},
-        {metric: "30-Tage-Chancen", target: "3 beste offene Chancen", why: "Hält den Fokus auf Deals, die jetzt beeinflussbar sind."},
-      ];
-    default:
-      return [
-        {metric: "Qualified conversations", target: "Weekly +20%", why: `Proves whether ${context.primaryChannel} is attracting better-fit leads.`},
-        {metric: "Proposal rate", target: "60%+ of calls", why: "Shows whether qualification and offer fit are aligned."},
-        {metric: "Average deal value", target: context.pricePoint, why: "Checks whether positioning supports the intended price."},
-        {metric: "Follow-up response", target: "25%+ reply rate", why: "Measures whether follow-up is concrete enough."},
-        {metric: "30-day revenue pipeline", target: "Top 3 open opportunities", why: "Keeps focus on deals that can be influenced now."},
-      ];
-  }
-}
-
-function upsellIdeasFor(context: Context): string[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        `Maandelijkse optimalisatie rond ${context.goal}.`,
-        `Premium implementatiepakket met snellere doorlooptijd en extra meetmomenten.`,
-        `Retainer voor ${context.primaryChannel}, opvolging en conversieverbetering.`,
-      ];
-    case "fr":
-      return [
-        `Optimisation mensuelle autour de ${context.goal}.`,
-        "Pack premium avec délai plus court et points de mesure supplémentaires.",
-        `Retainer pour ${context.primaryChannel}, la relance et l'amélioration de conversion.`,
-      ];
-    case "de":
-      return [
-        `Monatliche Optimierung rund um ${context.goal}.`,
-        "Premium-Umsetzungspaket mit schnellerer Laufzeit und zusätzlichen Messpunkten.",
-        `Retainer für ${context.primaryChannel}, Follow-up und Conversion-Verbesserung.`,
-      ];
-    default:
-      return [
-        `Monthly optimization around ${context.goal}.`,
-        "Premium implementation package with faster turnaround and extra measurement checkpoints.",
-        `Retainer for ${context.primaryChannel}, follow-up, and conversion improvement.`,
-      ];
-  }
-}
-
-function assumptionsFor(context: Context): string[] {
-  switch (context.language) {
-    case "nl":
-      return [
-        `Het aanbod "${context.offer}" is leverbaar met de huidige capaciteit.`,
-        `${context.audience} hebben genoeg urgentie rond ${context.problem}.`,
-        `${context.primaryChannel} blijft een realistisch acquisitiekanaal voor de komende 30 dagen.`,
-      ];
-    case "fr":
-      return [
-        `L'offre "${context.offer}" peut être livrée avec la capacité actuelle.`,
-        `${context.audience} ressentent une urgence suffisante autour de ${context.problem}.`,
-        `${context.primaryChannel} reste un canal d'acquisition réaliste pour les 30 prochains jours.`,
-      ];
-    case "de":
-      return [
-        `Das Angebot "${context.offer}" ist mit aktueller Kapazität lieferbar.`,
-        `${context.audience} haben genug Dringlichkeit rund um ${context.problem}.`,
-        `${context.primaryChannel} bleibt für die nächsten 30 Tage ein realistischer Akquisekanal.`,
-      ];
-    default:
-      return [
-        `The offer "${context.offer}" can be delivered with current capacity.`,
-        `${context.audience} have enough urgency around ${context.problem}.`,
-        `${context.primaryChannel} remains a realistic acquisition channel for the next 30 days.`,
-      ];
-  }
-}
-
-function disclaimerFor(language: BusinessKitLanguage): string {
-  switch (language) {
-    case "nl":
-      return "Dit rapport is een strategisch hulpmiddel, geen garantie op omzet, winst, financiering, juridische naleving of financieel resultaat.";
-    case "fr":
-      return "Ce rapport est un outil stratégique, pas une garantie de chiffre d'affaires, profit, financement, conformité juridique ou résultat financier.";
-    case "de":
-      return "Dieser Bericht ist ein strategisches Hilfsmittel, keine Garantie für Umsatz, Gewinn, Finanzierung, rechtliche Konformität oder finanzielles Ergebnis.";
-    default:
-      return "This report is a strategic planning aid, not a guarantee of revenue, profit, funding, legal compliance, or financial outcome.";
-  }
-}
-
-function strategyText(context: Context) {
-  switch (context.language) {
-    case "nl":
-      return {
-        offerTitle: "Aanbod en positionering",
-        offerDiagnosis: `Het aanbod is bruikbaar, maar moet sterker verbonden worden met ${context.goal}.`,
-        offerMoves: [`Maak ${context.problem} de ingang van de boodschap.`, "Gebruik een pakketnaam die resultaat en doelgroep combineert.", `Zet ${context.pricePoint} naast bewijs en duidelijke scope.`],
-        pipelineTitle: "Leadgeneratie",
-        pipelineDiagnosis: `${context.primaryChannel} moet een vast ritme krijgen, anders blijft groei reactief.`,
-        pipelineMoves: ["Plan twee wekelijkse publicatiemomenten.", "Maak een lijst met 30 beste prospects of partners.", "Gebruik een concrete diagnose in elk outreachbericht."],
-        conversionTitle: "Conversie en opvolging",
-        conversionDiagnosis: "De salesflow moet sneller duidelijk maken wie klaar is om te kopen.",
-        conversionMoves: ["Voeg kwalificatievragen toe voor budget, timing en prioriteit.", "Gebruik een follow-upsequence van drie momenten.", "Stuur bewijs voor de call, niet pas erna."],
-        deliveryTitle: "Retentie en uitbreiding",
-        deliveryDiagnosis: "Elke levering moet nieuwe omzetkansen zichtbaar maken.",
-        deliveryMoves: ["Plan een resultaatreview na oplevering.", "Leg extra problemen vast tijdens het project.", "Bied een volgende optimalisatiecyclus aan met concrete metric."],
-      };
-    case "fr":
-      return {
-        offerTitle: "Offre et positionnement",
-        offerDiagnosis: `L'offre est exploitable, mais doit être reliée plus fortement à ${context.goal}.`,
-        offerMoves: [`Faites de ${context.problem} l'entrée du message.`, "Utilisez un nom d'offre qui combine résultat et cible.", `Placez ${context.pricePoint} à côté de preuves et d'un périmètre clair.`],
-        pipelineTitle: "Génération de prospects",
-        pipelineDiagnosis: `${context.primaryChannel} a besoin d'un rythme fixe, sinon la croissance reste réactive.`,
-        pipelineMoves: ["Planifiez deux publications par semaine.", "Créez une liste de 30 meilleurs prospects ou partenaires.", "Utilisez un diagnostic concret dans chaque message."],
-        conversionTitle: "Conversion et relance",
-        conversionDiagnosis: "Le processus commercial doit montrer plus vite qui est prêt à acheter.",
-        conversionMoves: ["Ajoutez des questions sur budget, timing et priorité.", "Utilisez une séquence de trois relances.", "Envoyez des preuves avant l'appel, pas seulement après."],
-        deliveryTitle: "Rétention et expansion",
-        deliveryDiagnosis: "Chaque livraison doit rendre visibles de nouvelles opportunités de revenu.",
-        deliveryMoves: ["Planifiez une revue de résultats après livraison.", "Notez les problèmes supplémentaires pendant le projet.", "Proposez un nouveau cycle d'optimisation lié à un indicateur."],
-      };
-    case "de":
-      return {
-        offerTitle: "Angebot und Positionierung",
-        offerDiagnosis: `Das Angebot ist nutzbar, muss aber stärker mit ${context.goal} verbunden werden.`,
-        offerMoves: [`Mache ${context.problem} zum Einstieg der Botschaft.`, "Nutze einen Paketnamen, der Ergebnis und Zielgruppe verbindet.", `Stelle ${context.pricePoint} neben Beweise und klaren Umfang.`],
-        pipelineTitle: "Leadgenerierung",
-        pipelineDiagnosis: `${context.primaryChannel} braucht einen festen Rhythmus, sonst bleibt Wachstum reaktiv.`,
-        pipelineMoves: ["Plane zwei Veröffentlichungen pro Woche.", "Erstelle eine Liste der 30 besten Prospects oder Partner.", "Nutze in jeder Nachricht eine konkrete Diagnose."],
-        conversionTitle: "Conversion und Follow-up",
-        conversionDiagnosis: "Der Verkaufsprozess muss schneller zeigen, wer kaufbereit ist.",
-        conversionMoves: ["Füge Fragen zu Budget, Timing und Priorität hinzu.", "Nutze eine Sequenz aus drei Follow-ups.", "Sende Beweise vor dem Gespräch, nicht erst danach."],
-        deliveryTitle: "Retention und Ausbau",
-        deliveryDiagnosis: "Jede Lieferung sollte neue Umsatzchancen sichtbar machen.",
-        deliveryMoves: ["Plane nach Lieferung einen Ergebnisreview.", "Halte zusätzliche Probleme während des Projekts fest.", "Biete einen weiteren Optimierungszyklus mit konkreter Kennzahl an."],
-      };
-    default:
-      return {
-        offerTitle: "Offer and positioning",
-        offerDiagnosis: `The offer is usable, but it needs to connect more directly to ${context.goal}.`,
-        offerMoves: [`Make ${context.problem} the entry point of the message.`, "Use a package name that combines outcome and target customer.", `Place ${context.pricePoint} beside proof and clear scope.`],
-        pipelineTitle: "Lead generation",
-        pipelineDiagnosis: `${context.primaryChannel} needs a repeatable cadence, otherwise growth stays reactive.`,
-        pipelineMoves: ["Schedule two weekly publishing moments.", "Build a list of the 30 best prospects or partners.", "Use a concrete diagnosis in every outreach message."],
-        conversionTitle: "Conversion and follow-up",
-        conversionDiagnosis: "The sales flow should make it clearer, faster, who is ready to buy.",
-        conversionMoves: ["Add qualification questions for budget, timing, and priority.", "Use a three-touch follow-up sequence.", "Send proof before the call, not only afterward."],
-        deliveryTitle: "Retention and expansion",
-        deliveryDiagnosis: "Every delivery should reveal the next revenue opportunity.",
-        deliveryMoves: ["Schedule a result review after delivery.", "Capture extra problems during the project.", "Offer the next optimization cycle around one concrete metric."],
-      };
-  }
-}
-
-function scoreLabels(language: BusinessKitLanguage): Array<{
-  label: string;
-  offset: number;
-  rationale: (context: Context) => string;
-  nextMove: (context: Context) => string;
-}> {
-  switch (language) {
-    case "nl":
-      return [
-        {label: "Aanbodhelderheid", offset: 4, rationale: (context) => `${context.offer} heeft een duidelijke basis, maar moet scherper rond resultaat.`, nextMove: (context) => `Koppel elke zin aan ${context.goal}.`},
-        {label: "Doelgroepfocus", offset: 2, rationale: (context) => `${context.audience} is specifiek genoeg om betere copy te schrijven.`, nextMove: () => "Maak drie kooptriggers expliciet."},
-        {label: "Kanaalfit", offset: -2, rationale: (context) => `${context.primaryChannel} kan werken als er een vast publicatie- en opvolgritme is.`, nextMove: () => "Plan vaste wekelijkse acties."},
-        {label: "Conversiepad", offset: -5, rationale: () => "Er is meer bewijs en kwalificatie nodig voor hogere conversie.", nextMove: () => "Voeg bewijs toe voor de call."},
-        {label: "Uitvoering", offset: 0, rationale: () => "De komende 30 dagen moeten minder inspiratie en meer cadans krijgen.", nextMove: () => "Werk met de actieplanning hieronder."},
-      ];
-    case "fr":
-      return [
-        {label: "Clarté de l'offre", offset: 4, rationale: (context) => `${context.offer} a une base claire, mais doit être plus liée au résultat.`, nextMove: (context) => `Relier chaque phrase à ${context.goal}.`},
-        {label: "Focus client", offset: 2, rationale: (context) => `${context.audience} est assez précis pour écrire une meilleure copie.`, nextMove: () => "Rendre explicites trois déclencheurs d'achat."},
-        {label: "Canal", offset: -2, rationale: (context) => `${context.primaryChannel} peut fonctionner avec un rythme de publication et de relance.`, nextMove: () => "Planifier des actions hebdomadaires fixes."},
-        {label: "Conversion", offset: -5, rationale: () => "Plus de preuve et de qualification sont nécessaires.", nextMove: () => "Envoyer la preuve avant l'appel."},
-        {label: "Exécution", offset: 0, rationale: () => "Les 30 prochains jours doivent privilégier la cadence.", nextMove: () => "Suivre le plan d'action ci-dessous."},
-      ];
-    case "de":
-      return [
-        {label: "Angebotsklarheit", offset: 4, rationale: (context) => `${context.offer} hat eine klare Basis, muss aber stärker ans Ergebnis.`, nextMove: (context) => `Jeden Satz mit ${context.goal} verbinden.`},
-        {label: "Zielgruppenfokus", offset: 2, rationale: (context) => `${context.audience} ist spezifisch genug für bessere Texte.`, nextMove: () => "Drei Kaufauslöser explizit machen."},
-        {label: "Kanal-Fit", offset: -2, rationale: (context) => `${context.primaryChannel} kann mit festem Veröffentlichungs- und Follow-up-Rhythmus funktionieren.`, nextMove: () => "Wöchentliche Aktionen planen."},
-        {label: "Conversion-Pfad", offset: -5, rationale: () => "Für höhere Conversion braucht es mehr Beweis und Qualifizierung.", nextMove: () => "Beweise vor dem Gespräch senden."},
-        {label: "Umsetzung", offset: 0, rationale: () => "Die nächsten 30 Tage brauchen weniger Inspiration und mehr Rhythmus.", nextMove: () => "Mit dem Aktionsplan unten arbeiten."},
-      ];
-    default:
-      return [
-        {label: "Offer clarity", offset: 4, rationale: (context) => `${context.offer} has a clear base, but should be tied more tightly to the outcome.`, nextMove: (context) => `Connect every sentence to ${context.goal}.`},
-        {label: "Audience focus", offset: 2, rationale: (context) => `${context.audience} is specific enough to write stronger copy.`, nextMove: () => "Make three buying triggers explicit."},
-        {label: "Channel fit", offset: -2, rationale: (context) => `${context.primaryChannel} can work if it gets a publishing and follow-up cadence.`, nextMove: () => "Schedule fixed weekly actions."},
-        {label: "Conversion path", offset: -5, rationale: () => "More proof and qualification are needed to lift conversion.", nextMove: () => "Send proof before the call."},
-        {label: "Execution", offset: 0, rationale: () => "The next 30 days need less inspiration and more cadence.", nextMove: () => "Work through the action plan below."},
-      ];
-  }
-}
-
 
 function workspacePanel(plan: BusinessKitPlan, labels: ReportLabels): string {
   return `<section class="workspace" data-report-workspace aria-labelledby="workspace-title">
@@ -2983,63 +2497,8 @@ function interactiveReportScript(reportId: string, labels: ReportLabels): string
   </script>`;
 }
 
-function fallback(language: BusinessKitLanguage, key: keyof Omit<Context, "language">): string {
-  const fallbacks: Record<BusinessKitLanguage, Record<keyof Omit<Context, "language">, string>> = {
-    en: {
-      businessName: "Your Business",
-      businessType: "service business",
-      offer: "a focused growth sprint",
-      audience: "busy business owners",
-      problem: "unclear positioning and inconsistent lead flow",
-      goal: "book more qualified sales conversations",
-      channels: "LinkedIn, referrals, email",
-      pricePoint: "the current target price",
-      region: "your current market",
-      tone: "practical and direct",
-      primaryChannel: "LinkedIn",
-    },
-    nl: {
-      businessName: "Jouw bedrijf",
-      businessType: "dienstverlenend bedrijf",
-      offer: "een gerichte groeisprint",
-      audience: "drukke ondernemers",
-      problem: "onduidelijke positionering en wisselende leadflow",
-      goal: "meer gekwalificeerde verkoopgesprekken boeken",
-      channels: "LinkedIn, referrals, e-mail",
-      pricePoint: "de huidige richtprijs",
-      region: "je huidige markt",
-      tone: "praktisch en direct",
-      primaryChannel: "LinkedIn",
-    },
-    fr: {
-      businessName: "Votre entreprise",
-      businessType: "entreprise de services",
-      offer: "un sprint de croissance ciblé",
-      audience: "dirigeants occupés",
-      problem: "positionnement flou et flux de prospects irrégulier",
-      goal: "obtenir plus de conversations commerciales qualifiées",
-      channels: "LinkedIn, recommandations, e-mail",
-      pricePoint: "le prix cible actuel",
-      region: "votre marché actuel",
-      tone: "pratique et direct",
-      primaryChannel: "LinkedIn",
-    },
-    de: {
-      businessName: "Dein Unternehmen",
-      businessType: "Dienstleistungsunternehmen",
-      offer: "ein fokussierter Wachstumssprint",
-      audience: "beschäftigte Unternehmer",
-      problem: "unklare Positionierung und unregelmäßiger Leadflow",
-      goal: "mehr qualifizierte Verkaufsgespräche buchen",
-      channels: "LinkedIn, Empfehlungen, E-Mail",
-      pricePoint: "der aktuelle Zielpreis",
-      region: "dein aktueller Markt",
-      tone: "praktisch und direkt",
-      primaryChannel: "LinkedIn",
-    },
-  };
-
-  return fallbacks[language][key];
+export function businessKitFileName(plan: BusinessKitPlan): string {
+  return `${slugify(plan.title)}.html`;
 }
 
 function splitChannels(value: string): string[] {

@@ -1,24 +1,39 @@
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted, reactive, ref} from "vue";
+import {computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch} from "vue";
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
-  BarChart3,
   BriefcaseBusiness,
   CheckCircle2,
   Clock,
-  ExternalLink,
   FileText,
   Languages,
-  Loader2,
+  Link2,
+  LogIn,
+  LogOut,
   MessageSquareText,
-  Send,
+  Printer,
+  Save,
   ShieldCheck,
   Sparkles,
-  Target,
+  Trash2,
   TrendingUp,
+  X,
 } from "lucide-vue-next";
-import {buildBusinessKitHtml, businessKitFileName, createBusinessKit, ESTIMATED_RESPONSE_CHARS, type RetryInfo} from "./businessKit";
+import {
+  buildBusinessKitHtml,
+  businessKitFileName,
+  createBusinessKit,
+  ESTIMATED_RESPONSE_CHARS,
+  type BusinessKitPlan,
+  type RetryInfo,
+} from "./businessKit";
+import AuthModal from "./AuthModal.vue";
+import ConfirmModal from "./ConfirmModal.vue";
+import { useAuth } from "./useAuth";
+import { saveReport, loadReport, listReports, patchReport, deleteReport, signOut, type ReportSummary } from "./firebase";
+import { patchHtmlForEditing } from "./patchHtmlForEditing";
 
 type GenerateStatus = "idle" | "loading" | "success" | "error";
 type ReportLanguage = "en" | "nl" | "fr" | "de";
@@ -33,6 +48,7 @@ const languageOptions: Array<{ value: ReportLanguage; label: string }> = [
   {value: "fr", label: "Français"},
   {value: "de", label: "Deutsch"},
 ];
+
 
 const homepageCopy = {
   nl: {
@@ -49,11 +65,17 @@ const homepageCopy = {
     resultEyebrow: "Rapport voltooid",
     resultTitle: "Je Growth Kit is klaar.",
     resultDescription: "Het rapport is in je browser gegenereerd, gelokaliseerd voor {language}, en voorbereid als stijlvol HTML-rapport met PDF-export.",
-    openReport: "Rapport openen",
+    openReport: "Naar rapport ↓",
+    printReport: "Afdrukken / PDF",
     downloadPdf: "PDF downloaden",
     preparingPdf: "PDF voorbereiden...",
     downloadingPdf: "PDF downloaden...",
-    backToBrief: "Terug naar brief",
+    backToBrief: "Terug naar start",
+    errorEyebrow: "Generatie mislukt",
+    errorTitle: "Het rapport kon niet worden afgerond.",
+    errorRetry: "Brief opnieuw invullen",
+    errorDismiss: "Terug naar start",
+    popupBlockedNote: "Je browser blokkeerde het nieuwe tabblad. Open het rapport hieronder handmatig.",
     generatedReportDetails: "Details van gegenereerd rapport",
     ready: "Klaar",
     language: "Taal",
@@ -131,6 +153,24 @@ const homepageCopy = {
     readyLine: "Klaar om {time}. Als het tabblad niet verscheen, open je het rapport hier opnieuw.",
     popupError: "Kon het rapport niet in een nieuw tabblad openen. Je browser blokkeert mogelijk pop-ups.",
     printError: "Kon het printvenster niet openen. Sta pop-ups toe voor deze site en probeer opnieuw.",
+    signIn: "Aanmelden",
+    signOut: "Afmelden",
+    signInToSave: "Aanmelden om dit rapport op te slaan en terug te openen",
+    copy: "Kopiëren",
+    copyLink: "Link kopiëren",
+    savingLabel: "Opslaan…",
+    saveToAccount: "Opslaan op account",
+    savedLabel: "Opgeslagen!",
+    saveChanges: "Wijzigingen opslaan",
+    reportViewerTitle: "Rapportviewer",
+    reportFallbackTitle: "Rapport",
+    savedReportsTitle: "Jouw opgeslagen rapporten",
+    savedReportsLoading: "Laden…",
+    savedReportsEmpty: "Nog geen opgeslagen rapporten.",
+    savedReportOpen: "Openen",
+    cancel: "Annuleren",
+    deleteReport: "Verwijderen",
+    deleteReportConfirm: "Weet je zeker dat je dit rapport permanent wil verwijderen? Dit kan niet ongedaan worden gemaakt.",
     generationSteps: [
       {
         title: "De businessbrief lezen",
@@ -172,11 +212,17 @@ const homepageCopy = {
     resultEyebrow: "Report complete",
     resultTitle: "Your Growth Kit is ready.",
     resultDescription: "The report has been generated in your browser, localised for {language}, and prepared as a styled HTML report with PDF export.",
-    openReport: "Open report",
+    openReport: "Go to report ↓",
+    printReport: "Print / PDF",
     downloadPdf: "Download PDF",
     preparingPdf: "Preparing PDF...",
     downloadingPdf: "Downloading PDF...",
-    backToBrief: "Back to brief",
+    backToBrief: "Back to home",
+    errorEyebrow: "Generation failed",
+    errorTitle: "The report could not be completed.",
+    errorRetry: "Edit brief again",
+    errorDismiss: "Back to home",
+    popupBlockedNote: "Your browser blocked the new tab. Open the report manually below.",
     generatedReportDetails: "Generated report details",
     ready: "Ready",
     language: "Language",
@@ -254,6 +300,24 @@ const homepageCopy = {
     readyLine: "Ready at {time}. If the tab did not appear, open the report again here.",
     popupError: "Could not open the report in a new tab. Your browser may be blocking popups.",
     printError: "Could not open the print dialog. Allow popups for this site and try again.",
+    signIn: "Sign in",
+    signOut: "Sign out",
+    signInToSave: "Sign in to save & re-access this report",
+    copy: "Copy",
+    copyLink: "Copy link",
+    savingLabel: "Saving…",
+    saveToAccount: "Save to account",
+    savedLabel: "Saved!",
+    saveChanges: "Save changes",
+    reportViewerTitle: "Report viewer",
+    reportFallbackTitle: "Report",
+    savedReportsTitle: "Your saved reports",
+    savedReportsLoading: "Loading…",
+    savedReportsEmpty: "No saved reports yet.",
+    savedReportOpen: "Open",
+    cancel: "Cancel",
+    deleteReport: "Delete",
+    deleteReportConfirm: "Are you sure you want to permanently delete this report? This cannot be undone.",
     generationSteps: [
       {
         title: "Reading the business brief",
@@ -295,11 +359,17 @@ const homepageCopy = {
     resultEyebrow: "Rapport terminé",
     resultTitle: "Votre Growth Kit est prêt.",
     resultDescription: "Le rapport a été généré dans votre navigateur, localisé en {language}, et préparé comme rapport HTML stylé avec export PDF.",
-    openReport: "Ouvrir le rapport",
+    openReport: "Voir le rapport ↓",
+    printReport: "Imprimer / PDF",
     downloadPdf: "Télécharger le PDF",
     preparingPdf: "Préparation du PDF...",
     downloadingPdf: "Téléchargement du PDF...",
-    backToBrief: "Retour au brief",
+    backToBrief: "Retour à l'accueil",
+    errorEyebrow: "Échec de génération",
+    errorTitle: "Le rapport n'a pas pu être finalisé.",
+    errorRetry: "Modifier le brief",
+    errorDismiss: "Retour à l'accueil",
+    popupBlockedNote: "Votre navigateur a bloqué le nouvel onglet. Ouvrez le rapport manuellement ci-dessous.",
     generatedReportDetails: "Détails du rapport généré",
     ready: "Prêt",
     language: "Langue",
@@ -377,6 +447,24 @@ const homepageCopy = {
     readyLine: "Prêt à {time}. Si l'onglet n'est pas apparu, ouvrez à nouveau le rapport ici.",
     popupError: "Impossible d'ouvrir le rapport dans un nouvel onglet. Votre navigateur bloque peut-être les pop-ups.",
     printError: "Impossible d'ouvrir la boîte de dialogue d'impression. Autorisez les pop-ups pour ce site et réessayez.",
+    signIn: "Se connecter",
+    signOut: "Se déconnecter",
+    signInToSave: "Se connecter pour sauvegarder et réaccéder à ce rapport",
+    copy: "Copier",
+    copyLink: "Copier le lien",
+    savingLabel: "Enregistrement…",
+    saveToAccount: "Sauvegarder sur le compte",
+    savedLabel: "Enregistré !",
+    saveChanges: "Enregistrer les modifications",
+    reportViewerTitle: "Visionneuse de rapport",
+    reportFallbackTitle: "Rapport",
+    savedReportsTitle: "Vos rapports sauvegardés",
+    savedReportsLoading: "Chargement…",
+    savedReportsEmpty: "Aucun rapport sauvegardé pour l'instant.",
+    savedReportOpen: "Ouvrir",
+    cancel: "Annuler",
+    deleteReport: "Supprimer",
+    deleteReportConfirm: "Êtes-vous sûr de vouloir supprimer définitivement ce rapport ? Cette action est irréversible.",
     generationSteps: [
       {
         title: "Lecture du brief business",
@@ -418,11 +506,17 @@ const homepageCopy = {
     resultEyebrow: "Report fertig",
     resultTitle: "Dein Growth Kit ist bereit.",
     resultDescription: "Der Report wurde in deinem Browser generiert, für {language} lokalisiert und als gestalteter HTML-Report mit PDF-Export vorbereitet.",
-    openReport: "Report öffnen",
+    openReport: "Zum Report ↓",
+    printReport: "Drucken / PDF",
     downloadPdf: "PDF herunterladen",
     preparingPdf: "PDF wird vorbereitet...",
     downloadingPdf: "PDF wird heruntergeladen...",
-    backToBrief: "Zurück zum Briefing",
+    backToBrief: "Zurück zur Startseite",
+    errorEyebrow: "Generierung fehlgeschlagen",
+    errorTitle: "Der Report konnte nicht fertiggestellt werden.",
+    errorRetry: "Briefing erneut ausfüllen",
+    errorDismiss: "Zurück zur Startseite",
+    popupBlockedNote: "Dein Browser hat den neuen Tab blockiert. Öffne den Report unten manuell.",
     generatedReportDetails: "Details zum generierten Report",
     ready: "Bereit",
     language: "Sprache",
@@ -500,6 +594,24 @@ const homepageCopy = {
     readyLine: "Bereit um {time}. Falls der Tab nicht erschienen ist, öffne den Report hier erneut.",
     popupError: "Der Report konnte nicht in einem neuen Tab geöffnet werden. Dein Browser blockiert möglicherweise Pop-ups.",
     printError: "Der Druckdialog konnte nicht geöffnet werden. Erlaube Pop-ups für diese Seite und versuche es erneut.",
+    signIn: "Anmelden",
+    signOut: "Abmelden",
+    signInToSave: "Anmelden, um diesen Report zu speichern und erneut abzurufen",
+    copy: "Kopieren",
+    copyLink: "Link kopieren",
+    savingLabel: "Speichern…",
+    saveToAccount: "Auf Konto speichern",
+    savedLabel: "Gespeichert!",
+    saveChanges: "Änderungen speichern",
+    reportViewerTitle: "Report-Viewer",
+    reportFallbackTitle: "Report",
+    savedReportsTitle: "Deine gespeicherten Reports",
+    savedReportsLoading: "Laden…",
+    savedReportsEmpty: "Noch keine gespeicherten Reports.",
+    savedReportOpen: "Öffnen",
+    cancel: "Abbrechen",
+    deleteReport: "Löschen",
+    deleteReportConfirm: "Bist du sicher, dass du diesen Report dauerhaft löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
     generationSteps: [
       {
         title: "Business-Briefing lesen",
@@ -547,14 +659,213 @@ const form = reactive({
 
 const status = ref<GenerateStatus>("idle");
 const errorMessage = ref("");
-const reportUrl = ref("");
 const fileName = ref("");
 const lastGeneratedAt = ref("");
 const pdfDownloading = ref(false);
 const reportHtml = ref("");
-const reportOpened = ref(false);
 const showResultScreen = ref(false);
 const apiCharsReceived = ref(0);
+
+// True from first render if a ?report= param is present — prevents homepage flash
+const reportLoading = ref(Boolean(getReportParam()));
+
+// Auth
+const { user } = useAuth();
+const showAuthModal = ref(false);
+const showConfirmDelete = ref(false);
+const pendingDeleteId = ref<string | null>(null);
+
+// Saved report state
+const savedReportId = ref<string | null>(null);
+const currentPlan = ref<BusinessKitPlan | null>(null);
+const currentHtml = ref("");
+const saveState = ref<"idle" | "saving" | "saved">("idle");
+const pendingSave = ref(false);
+const inlineReportHtml = ref("");
+const iframeRef = ref<HTMLIFrameElement | null>(null);
+
+// User's saved reports list
+const savedReports = ref<ReportSummary[]>([]);
+const savedReportsLoading = ref(false);
+
+function getReportParam(): string | null {
+  return new URLSearchParams(window.location.search).get("report");
+}
+function setReportParam(id: string) {
+  history.replaceState({}, "", `?report=${id}`);
+}
+function clearReportParam() {
+  history.replaceState({}, "", window.location.pathname);
+}
+function permanentLink(id: string): string {
+  return `${window.location.origin}${window.location.pathname}?report=${id}`;
+}
+
+async function doSaveReport() {
+  if (!user.value || !currentPlan.value || !currentHtml.value) return;
+  saveState.value = "saving";
+  try {
+    const id = await saveReport(currentPlan.value, user.value.uid);
+    savedReportId.value = id;
+    saveState.value = "saved";
+    setTimeout(() => { saveState.value = "idle"; }, 2500);
+    // Refresh list so the new report appears
+    if (user.value) listReports(user.value.uid).then(r => { savedReports.value = r; }).catch(() => {});
+  } catch (e) {
+    console.error("[App] Failed to save report", e);
+    saveState.value = "idle";
+  }
+  pendingSave.value = false;
+}
+
+function saveToAccount() {
+  if (user.value) {
+    doSaveReport();
+  } else {
+    pendingSave.value = true;
+    showAuthModal.value = true;
+  }
+}
+
+// Auto-save when user logs in after clicking "Save to account"
+// Also refresh the saved reports list whenever auth state changes
+watch(user, async (newUser) => {
+  if (newUser && pendingSave.value) {
+    doSaveReport();
+  }
+  if (newUser) {
+    savedReportsLoading.value = true;
+    try {
+      savedReports.value = await listReports(newUser.uid);
+    } catch {
+      savedReports.value = [];
+    } finally {
+      savedReportsLoading.value = false;
+    }
+  } else {
+    savedReports.value = [];
+  }
+}, { immediate: true });
+
+async function openSavedReport(id: string) {
+  try {
+    const stored = await loadReport(id);
+    if (!stored) return;
+    const html = stored.editedHtml ?? buildBusinessKitHtml(stored.plan);
+    savedReportId.value = id;
+    currentPlan.value = stored.plan;
+    currentHtml.value = html;
+    inlineReportHtml.value = patchHtmlForEditing(html);
+    setReportHtml(html);
+    fileName.value = businessKitFileName(stored.plan);
+    setReportParam(id);
+  } catch (e) {
+    console.error("[App] Failed to open saved report", e);
+  }
+}
+
+function askDeleteReport(id: string) {
+  pendingDeleteId.value = id;
+  showConfirmDelete.value = true;
+}
+
+async function confirmDeleteReport() {
+  const id = pendingDeleteId.value;
+  if (!id) return;
+  pendingDeleteId.value = null;
+  try {
+    await deleteReport(id);
+    savedReports.value = savedReports.value.filter((r) => r.id !== id);
+    // If the deleted report is currently open, close it
+    if (savedReportId.value === id) {
+      savedReportId.value = null;
+      inlineReportHtml.value = "";
+      reportHtml.value = "";
+      currentPlan.value = null;
+      status.value = "idle";
+      clearReportParam();
+    }
+  } catch (e) {
+    console.error("[App] Failed to delete report", e);
+  }
+}
+
+function printReport() {
+  iframeRef.value?.contentWindow?.postMessage({ type: "PRINT" }, "*");
+}
+
+async function saveEdits() {
+  if (!iframeRef.value?.contentWindow || !savedReportId.value) return;
+  saveState.value = "saving";
+  iframeRef.value.contentWindow.postMessage({ type: "REQUEST_CONTENT" }, "*");
+}
+
+function copyPermalink() {
+  if (!savedReportId.value) return;
+  navigator.clipboard.writeText(permanentLink(savedReportId.value)).catch(() => {});
+}
+
+const WIZARD_TOTAL = 8;
+const wizardOpen = ref(false);
+const currentStep = ref(0);
+const wizardForward = ref(true);
+
+
+const wizardProgress = computed(() => Math.round(((currentStep.value + 1) / WIZARD_TOTAL) * 100));
+
+function openWizard() {
+  currentStep.value = 0;
+  wizardForward.value = true;
+  wizardOpen.value = true;
+}
+
+function closeWizard() {
+  wizardOpen.value = false;
+}
+
+function goNext() {
+  if (currentStep.value < WIZARD_TOTAL - 1) {
+    wizardForward.value = true;
+    currentStep.value++;
+  }
+}
+
+function goPrev() {
+  if (currentStep.value > 0) {
+    wizardForward.value = false;
+    currentStep.value--;
+  }
+}
+
+function onInputKey(e: KeyboardEvent) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (currentStep.value === WIZARD_TOTAL - 1) generateAndClose();
+    else goNext();
+  }
+  if (e.key === "Escape") closeWizard();
+}
+
+function onTextareaKey(e: KeyboardEvent) {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    if (currentStep.value === WIZARD_TOTAL - 1) generateAndClose();
+    else goNext();
+  }
+  if (e.key === "Escape") closeWizard();
+}
+
+function generateAndClose() {
+  closeWizard();
+  generateBusinessKit();
+}
+
+watch(currentStep, () => {
+  nextTick(() => {
+    const el = document.querySelector<HTMLElement>(".wizard-step input, .wizard-step textarea, .wizard-step select");
+    el?.focus();
+  });
+});
 
 const waitingRoom = reactive({
   active: false,
@@ -583,30 +894,6 @@ const hasBusinessContext = computed(() => {
 
 const canGenerate = computed(() => hasBusinessContext.value && status.value !== "loading");
 
-const actionLabel = computed(() => {
-  if (status.value === "loading") {
-    return ui.value.actionGenerating;
-  }
-
-  return ui.value.actionGenerate;
-});
-
-const statusLabel = computed(() => {
-  if (status.value === "loading") {
-    return ui.value.statusLoading;
-  }
-
-  if (status.value === "success") {
-    return reportOpened.value ? ui.value.statusSuccessOpened : ui.value.statusSuccessReady;
-  }
-
-  if (status.value === "error") {
-    return ui.value.statusError;
-  }
-
-  return ui.value.statusIdle;
-});
-
 const selectedLanguageLabel = computed(() => {
   return languageOptions.find((language) => language.value === form.language)?.label ?? "Nederlands";
 });
@@ -632,10 +919,6 @@ const waitingCountdownPercent = computed(() => {
 
 const resultDescription = computed(() => {
   return ui.value.resultDescription.replace("{language}", selectedLanguageLabel.value);
-});
-
-const readyLine = computed(() => {
-  return ui.value.readyLine.replace("{time}", lastGeneratedAt.value);
 });
 
 function changeLanguage(event: Event) {
@@ -665,7 +948,7 @@ async function generateBusinessKit() {
   window.scrollTo({top: 0, left: 0, behavior: "auto"});
   status.value = "loading";
   errorMessage.value = "";
-  reportOpened.value = false;
+
   showResultScreen.value = false;
   apiCharsReceived.value = 0;
   revokeReportUrl();
@@ -680,7 +963,7 @@ async function generateBusinessKit() {
     );
     const htmlText = buildBusinessKitHtml(kit);
     const nextFileName = businessKitFileName(kit);
-    const nextReportUrl = setReportHtml(htmlText);
+    setReportHtml(htmlText);
 
     fileName.value = nextFileName;
     lastGeneratedAt.value = new Intl.DateTimeFormat(undefined, {
@@ -689,10 +972,19 @@ async function generateBusinessKit() {
     }).format(new Date());
     apiCharsReceived.value = ESTIMATED_RESPONSE_CHARS;
     status.value = "success";
-    reportOpened.value = openReportUrl(nextReportUrl);
+    // Always store plan + html for deferred or immediate saving
+    currentPlan.value = kit;
+    currentHtml.value = htmlText;
+    // Always show the inline viewer
+    inlineReportHtml.value = patchHtmlForEditing(htmlText);
+    // Auto-save if already logged in
+    if (user.value) {
+      doSaveReport();
+    }
     showResultScreen.value = true;
   } catch (error) {
     status.value = "error";
+    showResultScreen.value = false;
     errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
     stopWaitingRoom();
@@ -729,75 +1021,18 @@ function stopWaitingRoom() {
   }
 }
 
-function setReportHtml(html: string): string {
+function setReportHtml(html: string) {
   reportHtml.value = html;
-
-  if (reportUrl.value) {
-    try {
-      URL.revokeObjectURL(reportUrl.value);
-    } catch { }
-  }
-
-  const blob = new Blob([injectBase(html)], {type: "text/html"});
-  reportUrl.value = URL.createObjectURL(blob);
-  return reportUrl.value;
-}
-
-function injectBase(html: string): string {
-  try {
-    const base = `${window.location.origin}/`;
-    return html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}<base href="${base}">`);
-  } catch {
-    return html;
-  }
 }
 
 function openReportUser() {
-  if (!reportUrl.value && reportHtml.value) {
-    setReportHtml(reportHtml.value);
-  }
-
-  if (!reportUrl.value) {
-    return;
-  }
-
-  const opened = openReportUrl(reportUrl.value);
-  reportOpened.value = opened;
-
-  if (!opened) {
-    errorMessage.value = ui.value.popupError;
-  }
+  if (savedReportId.value) setReportParam(savedReportId.value);
+  showResultScreen.value = false;
+  nextTick(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  });
 }
 
-function openReportUrl(url: string): boolean {
-  try {
-    const tab = window.open(url, "_blank");
-
-    if (tab) {
-      try {
-        tab.opener = null;
-        tab.focus();
-      } catch { }
-
-      return true;
-    }
-  } catch { }
-
-  try {
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.target = "_blank";
-    anchor.rel = "noopener noreferrer";
-    anchor.style.position = "fixed";
-    anchor.style.left = "-9999px";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 function downloadPdf() {
   if (!reportHtml.value) return;
@@ -871,21 +1106,87 @@ function normalizeLanguage(value: unknown): ReportLanguage {
   return "nl";
 }
 
-function revokeReportUrl() {
-  if (reportUrl.value) {
-    try {
-      URL.revokeObjectURL(reportUrl.value);
-    } catch { }
+function goHome() {
+  showResultScreen.value = false;
+  inlineReportHtml.value = "";
+  reportHtml.value = "";
+  clearReportParam();
+}
 
-    reportUrl.value = "";
+function dismissError() {
+  status.value = "idle";
+  errorMessage.value = "";
+}
+
+function retryAfterError() {
+  dismissError();
+  openWizard();
+}
+
+function handleBriefEntry() {
+  const onBriefPath = window.location.pathname.replace(/\/+$/, "").endsWith("/brief");
+
+  if (window.location.hash === "#brief" || onBriefPath) {
+    openWizard();
+    history.replaceState(null, "", "/");
   }
+}
 
+function revokeReportUrl() {
   reportHtml.value = "";
 }
 
-onMounted(() => {
+onMounted(async () => {
   restoreDraft();
   setDocumentLanguage(form.language);
+  handleBriefEntry();
+
+  // Load saved report from URL param
+  const reportParam = getReportParam();
+  if (reportParam) {
+    try {
+      const stored = await loadReport(reportParam);
+      if (stored) {
+        const html = stored.editedHtml ?? buildBusinessKitHtml(stored.plan);
+        savedReportId.value = reportParam;
+        currentPlan.value = stored.plan;
+        currentHtml.value = html;
+        inlineReportHtml.value = patchHtmlForEditing(html);
+        setReportHtml(html);
+        fileName.value = businessKitFileName(stored.plan);
+      } else {
+        clearReportParam();
+      }
+    } catch (e) {
+      console.error("[App] Failed to load report", e);
+      clearReportParam();
+    } finally {
+      reportLoading.value = false;
+    }
+  }
+
+  // Handle iframe postMessage
+  window.addEventListener("message", async (e) => {
+    if (!e.data || typeof e.data !== "object") return;
+
+    // Iframe requests save to account (button inside report)
+    if (e.data.type === "SAVE_REQUEST") {
+      saveToAccount();
+    }
+
+    // Iframe sends back full HTML after saveEdits() triggers REQUEST_CONTENT
+    if (e.data.type === "REPORT_CONTENT" && savedReportId.value) {
+      try {
+        await patchReport(savedReportId.value, e.data.html as string);
+        saveState.value = "saved";
+        iframeRef.value?.contentWindow?.postMessage({ type: "SAVE_CONFIRMED" }, "*");
+        setTimeout(() => { saveState.value = "idle"; }, 2500);
+      } catch (err) {
+        console.error("[App] Failed to patch report", err);
+        saveState.value = "idle";
+      }
+    }
+  });
 });
 
 onBeforeUnmount(() => {
@@ -896,6 +1197,157 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="product-shell" :lang="form.language">
+    <!-- Typeform-style wizard overlay -->
+    <Teleport to="body">
+      <div v-if="wizardOpen" class="wizard-overlay" role="dialog" aria-modal="true">
+        <div class="wizard-header">
+          <button class="wizard-close" type="button" @click="closeWizard" aria-label="Sluiten">
+            <X :size="20" />
+          </button>
+          <div class="wizard-progress-track" aria-hidden="true">
+            <div class="wizard-progress-fill" :style="{width: wizardProgress + '%'}"></div>
+          </div>
+          <span class="wizard-counter" aria-live="polite">{{ String(currentStep + 1).padStart(2, '0') }} / {{ String(WIZARD_TOTAL).padStart(2, '0') }}</span>
+        </div>
+
+        <div class="wizard-body">
+          <Transition :name="wizardForward ? 'wz-fwd' : 'wz-bwd'" mode="out-in">
+            <div class="wizard-step" :key="currentStep">
+
+              <!-- Step 0: Naam + Markt -->
+              <template v-if="currentStep === 0">
+                <p class="wz-eyebrow">{{ ui.briefEyebrow }}</p>
+                <h2 class="wz-question">{{ ui.businessName }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field">
+                    <span class="wz-label">{{ ui.businessName }}</span>
+                    <input v-model="form.businessName" type="text" :placeholder="ui.businessNamePlaceholder" @keydown="onInputKey" autofocus />
+                  </label>
+                  <label class="wz-field">
+                    <span class="wz-label">{{ ui.market }}</span>
+                    <input v-model="form.region" type="text" :placeholder="ui.marketPlaceholder" @keydown="onInputKey" />
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 1: Type bedrijf -->
+              <template v-else-if="currentStep === 1">
+                <p class="wz-eyebrow">02 — {{ ui.businessType }}</p>
+                <h2 class="wz-question">{{ ui.businessType }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field wz-field--full">
+                    <textarea v-model="form.businessType" rows="4" :placeholder="ui.businessTypePlaceholder" @keydown="onTextareaKey"></textarea>
+                    <span class="wz-hint">⌘ + Enter ↵</span>
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 2: Huidig aanbod -->
+              <template v-else-if="currentStep === 2">
+                <p class="wz-eyebrow">03 — {{ ui.currentOffer }}</p>
+                <h2 class="wz-question">{{ ui.currentOffer }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field wz-field--full">
+                    <textarea v-model="form.offer" rows="4" :placeholder="ui.currentOfferPlaceholder" @keydown="onTextareaKey"></textarea>
+                    <span class="wz-hint">⌘ + Enter ↵</span>
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 3: Doelklant -->
+              <template v-else-if="currentStep === 3">
+                <p class="wz-eyebrow">04 — {{ ui.targetCustomer }}</p>
+                <h2 class="wz-question">{{ ui.targetCustomer }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field wz-field--full">
+                    <textarea v-model="form.audience" rows="4" :placeholder="ui.targetCustomerPlaceholder" @keydown="onTextareaKey"></textarea>
+                    <span class="wz-hint">⌘ + Enter ↵</span>
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 4: Probleem -->
+              <template v-else-if="currentStep === 4">
+                <p class="wz-eyebrow">05 — {{ ui.mainProblem }}</p>
+                <h2 class="wz-question">{{ ui.mainProblem }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field wz-field--full">
+                    <textarea v-model="form.problem" rows="4" :placeholder="ui.mainProblemPlaceholder" @keydown="onTextareaKey"></textarea>
+                    <span class="wz-hint">⌘ + Enter ↵</span>
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 5: Doel -->
+              <template v-else-if="currentStep === 5">
+                <p class="wz-eyebrow">06 — {{ ui.goal }}</p>
+                <h2 class="wz-question">{{ ui.goal }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field wz-field--full">
+                    <textarea v-model="form.goal" rows="4" :placeholder="ui.goalPlaceholder" @keydown="onTextareaKey"></textarea>
+                    <span class="wz-hint">⌘ + Enter ↵</span>
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 6: Kanalen + Prijsniveau -->
+              <template v-else-if="currentStep === 6">
+                <p class="wz-eyebrow">07 — {{ ui.channels }}</p>
+                <h2 class="wz-question">{{ ui.channels }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field wz-field--full">
+                    <span class="wz-label">{{ ui.channels }}</span>
+                    <textarea v-model="form.channels" rows="3" :placeholder="ui.channelsPlaceholder" @keydown="onTextareaKey"></textarea>
+                  </label>
+                  <label class="wz-field">
+                    <span class="wz-label">{{ ui.pricePoint }}</span>
+                    <input v-model="form.pricePoint" type="text" :placeholder="ui.pricePointPlaceholder" @keydown="onInputKey" />
+                  </label>
+                </div>
+              </template>
+
+              <!-- Step 7: Taal + Toon + Generate -->
+              <template v-else-if="currentStep === 7">
+                <p class="wz-eyebrow">08 — {{ ui.reportLanguage }}</p>
+                <h2 class="wz-question">{{ ui.reportLanguage }} &amp; {{ ui.reportTone }}</h2>
+                <div class="wz-fields">
+                  <label class="wz-field">
+                    <span class="wz-label">{{ ui.reportLanguage }}</span>
+                    <select :value="form.language" @change="changeLanguage">
+                      <option v-for="lang in languageOptions" :key="lang.value" :value="lang.value">{{ lang.label }}</option>
+                    </select>
+                  </label>
+                  <label class="wz-field">
+                    <span class="wz-label">{{ ui.reportTone }}</span>
+                    <input v-model="form.tone" type="text" :placeholder="ui.reportTonePlaceholder" @keydown="onInputKey" />
+                  </label>
+                  <div class="wz-presets" :aria-label="ui.tonePresetsAria">
+                    <button v-for="preset in tonePresets" :key="preset" type="button" class="preset-button" @click="useTone(preset)">
+                      {{ preset }}
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+            </div>
+          </Transition>
+        </div>
+
+        <div class="wizard-footer">
+          <button v-if="currentStep > 0" class="wizard-back" type="button" @click="goPrev">← {{ ui.backToBrief.split(' ')[0] }}</button>
+          <div class="wizard-footer-right">
+            <button v-if="currentStep < WIZARD_TOTAL - 1" class="wizard-next" type="button" @click="goNext">
+              OK <ArrowRight :size="16" />
+            </button>
+            <button v-else class="wizard-generate" type="button" @click="generateAndClose" :disabled="!canGenerate">
+              <Sparkles :size="18" />
+              {{ ui.actionGenerate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <div v-if="status === 'loading'" class="loading-overlay" role="status" aria-live="polite" :aria-label="ui.loadingAria">
       <div class="generation-screen">
         <div class="generation-status">
@@ -951,16 +1403,34 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <section v-if="status === 'error'" class="error-screen" aria-labelledby="error-title">
+      <div class="error-panel">
+        <AlertCircle :size="40" aria-hidden="true" />
+        <p class="eyebrow">{{ ui.errorEyebrow }}</p>
+        <h2 id="error-title">{{ ui.errorTitle }}</h2>
+        <p class="error-text">{{ errorMessage }}</p>
+        <div class="result-actions">
+          <button class="result-primary" type="button" @click="retryAfterError">
+            <Sparkles :size="19" />
+            {{ ui.errorRetry }}
+          </button>
+          <button class="result-secondary" type="button" @click="dismissError(); goHome()">
+            {{ ui.errorDismiss }}
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section v-if="showResultScreen && status === 'success'" class="result-screen" aria-labelledby="result-title">
       <div class="result-hero">
         <div class="result-copy">
           <p class="eyebrow">{{ ui.resultEyebrow }}</p>
           <h2 id="result-title">{{ ui.resultTitle }}</h2>
           <p>{{ resultDescription }}</p>
+          <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
 
           <div class="result-actions">
             <button class="result-primary" type="button" @click="openReportUser" :disabled="!reportHtml">
-              <ExternalLink :size="19" />
               {{ ui.openReport }}
             </button>
             <button class="result-secondary" type="button" @click="downloadPdf" :disabled="!reportHtml || pdfDownloading">
@@ -968,8 +1438,23 @@ onBeforeUnmount(() => {
               <span v-if="pdfDownloading">{{ ui.preparingPdf }}</span>
               <span v-else>{{ ui.downloadPdf }}</span>
             </button>
-            <button class="result-secondary" type="button" @click="showResultScreen = false">
+            <button class="result-secondary" type="button" @click="goHome">
               {{ ui.backToBrief }}
+            </button>
+          </div>
+
+          <!-- Save / permalink panel -->
+          <div v-if="savedReportId" class="report-save-panel">
+            <div class="report-save-link">
+              <Link2 :size="15" />
+              <span class="report-save-url" :title="permanentLink(savedReportId)">{{ permanentLink(savedReportId) }}</span>
+              <button class="report-save-copy" type="button" @click="copyPermalink" :title="ui.copyLink">{{ ui.copy }}</button>
+            </div>
+          </div>
+          <div v-else-if="!user" class="report-save-panel report-save-panel--cta">
+            <button class="report-signin-cta" type="button" @click="showAuthModal = true">
+              <LogIn :size="15" />
+              {{ ui.signInToSave }}
             </button>
           </div>
         </div>
@@ -982,15 +1467,11 @@ onBeforeUnmount(() => {
             </span>
             <span>{{ lastGeneratedAt }}</span>
           </div>
-          <h3>{{ fileName }}</h3>
+          <h3>{{ currentPlan?.title ?? fileName }}</h3>
           <div class="result-list">
             <div>
               <span>{{ ui.language }}</span>
               <strong>{{ selectedLanguageLabel }}</strong>
-            </div>
-            <div>
-              <span>{{ ui.output }}</span>
-              <strong>{{ ui.outputFormat }}</strong>
             </div>
             <div>
               <span>{{ ui.includes }}</span>
@@ -1001,7 +1482,62 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
-    <header class="site-nav">
+    <!-- Inline editable report viewer -->
+    <section v-if="inlineReportHtml" class="inline-report-section">
+      <div class="inline-report-bar">
+        <button class="inline-back-btn" type="button" @click="goHome">
+          <ArrowLeft :size="15" />
+          <span class="btn-label">{{ ui.backToBrief }}</span>
+        </button>
+        <span class="inline-report-bar-label">
+          {{ currentPlan?.title ?? ui.reportFallbackTitle }}
+        </span>
+        <div class="inline-report-bar-actions">
+          <!-- Download as PDF -->
+          <button class="inline-pdf-btn" type="button" @click="printReport">
+            <Printer :size="15" />
+            <span class="btn-label">{{ ui.downloadPdf }}</span>
+          </button>
+
+          <!-- Not logged in and not saved: prompt sign-in -->
+          <button
+            v-if="!savedReportId && !user"
+            class="inline-save-btn inline-save-btn--account"
+            type="button"
+            @click="saveToAccount"
+          >
+            <LogIn :size="15" />
+            <span class="btn-label">{{ ui.saveToAccount }}</span>
+          </button>
+
+          <!-- Logged in but auto-save still in progress -->
+          <span v-else-if="!savedReportId && user" class="inline-saving-indicator">
+            {{ ui.savingLabel }}
+          </span>
+
+          <!-- Saved: show save-changes -->
+          <button
+            v-else
+            class="inline-save-btn"
+            type="button"
+            :disabled="saveState === 'saving'"
+            @click="saveEdits"
+          >
+            <Save :size="15" />
+            <span class="btn-label">{{ saveState === "saved" ? ui.savedLabel : saveState === "saving" ? ui.savingLabel : ui.saveChanges }}</span>
+          </button>
+        </div>
+      </div>
+      <iframe
+        ref="iframeRef"
+        :srcdoc="inlineReportHtml"
+        sandbox="allow-scripts allow-same-origin allow-modals"
+        class="inline-report-frame"
+        :title="ui.reportViewerTitle"
+      />
+    </section>
+
+    <header v-if="!inlineReportHtml && !reportLoading" class="site-nav">
       <div class="nav-inner">
         <a class="brand-lockup" href="#" :aria-label="ui.brandHomeAria">
           <span class="brand-mark" aria-hidden="true">
@@ -1023,75 +1559,102 @@ onBeforeUnmount(() => {
               </option>
             </select>
           </label>
+
+          <template v-if="user">
+            <div class="nav-user-chip">
+              <span class="nav-user-avatar">{{ (user.displayName || user.email || '?')[0].toUpperCase() }}</span>
+              <span class="nav-user-label">{{ user.displayName || user.email }}</span>
+            </div>
+            <button class="nav-icon-btn" type="button" :title="ui.signOut" @click="signOut()">
+              <LogOut :size="16" />
+            </button>
+          </template>
+          <button v-else class="nav-signin-btn" type="button" @click="showAuthModal = true">
+            <LogIn :size="15" />
+            {{ ui.signIn }}
+          </button>
         </div>
+
       </div>
     </header>
 
-    <section class="hero-section" aria-labelledby="page-title">
-      <div class="hero-product" aria-hidden="true">
-        <div class="report-preview">
-          <div class="preview-topline">
-            <span></span>
-            <span></span>
-            <span></span>
+    <section v-if="!inlineReportHtml && !reportLoading" id="brief" class="hero-section" aria-labelledby="page-title">
+      <div class="studio-layout">
+        <div class="hero-content">
+          <p class="eyebrow">{{ ui.heroEyebrow }}</p>
+          <h1 id="page-title">{{ ui.heroTitle }}</h1>
+          <p class="hero-copy">{{ ui.heroCopy }}</p>
+
+          <div class="hero-actions">
+            <button class="primary-link" type="button" @click="openWizard">
+              <Sparkles :size="19" />
+              {{ ui.heroPrimary }}
+              <ArrowRight :size="18" />
+            </button>
           </div>
-          <div class="preview-title"></div>
-          <div class="preview-subtitle"></div>
-          <div class="preview-grid">
-            <div class="preview-column tall"></div>
-            <div class="preview-column medium"></div>
-            <div class="preview-column short"></div>
-          </div>
-          <div class="preview-row"></div>
-          <div class="preview-row small"></div>
-          <div class="preview-score">
-            <span>83</span>
-            <strong>{{ ui.growthScore }}</strong>
+
+          <dl class="hero-stats" :aria-label="ui.productHighlights">
+            <div>
+              <dt>4</dt>
+              <dd>{{ ui.statsLanguages }}</dd>
+            </div>
+            <div>
+              <dt>30</dt>
+              <dd>{{ ui.statsPlan }}</dd>
+            </div>
+            <div>
+              <dt>PDF</dt>
+              <dd>{{ ui.statsPdf }}</dd>
+            </div>
+          </dl>
+
+          <div class="hero-product" aria-hidden="true">
+            <div class="report-preview">
+              <div class="preview-topline">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="preview-title"></div>
+              <div class="preview-subtitle"></div>
+              <div class="preview-grid">
+                <div class="preview-column tall"></div>
+                <div class="preview-column medium"></div>
+                <div class="preview-column short"></div>
+              </div>
+              <div class="preview-row"></div>
+              <div class="preview-row small"></div>
+              <div class="preview-score">
+                <span>83</span>
+                <strong>{{ ui.growthScore }}</strong>
+              </div>
+            </div>
+
           </div>
         </div>
 
-        <div class="insight-board">
-          <div class="insight-label">{{ ui.insightPlan }}</div>
-          <div class="insight-bars">
-            <span style="--value: 74%"></span>
-            <span style="--value: 58%"></span>
-            <span style="--value: 86%"></span>
-          </div>
-          <div class="insight-chip">{{ ui.insightChip }}</div>
-        </div>
-      </div>
-
-      <div class="hero-content">
-        <p class="eyebrow">{{ ui.heroEyebrow }}</p>
-        <h1 id="page-title">{{ ui.heroTitle }}</h1>
-        <p class="hero-copy">{{ ui.heroCopy }}</p>
-
-        <div class="hero-actions">
-          <a class="primary-link" href="#brief">
-            <Sparkles :size="19" />
-            {{ ui.heroPrimary }}
-            <ArrowRight :size="18" />
-          </a>
-        </div>
-
-        <dl class="hero-stats" :aria-label="ui.productHighlights">
-          <div>
-            <dt>4</dt>
-            <dd>{{ ui.statsLanguages }}</dd>
-          </div>
-          <div>
-            <dt>30</dt>
-            <dd>{{ ui.statsPlan }}</dd>
-          </div>
-          <div>
-            <dt>PDF</dt>
-            <dd>{{ ui.statsPdf }}</dd>
-          </div>
-        </dl>
       </div>
     </section>
 
-    <section id="output" class="proof-section" :aria-label="ui.proofAria">
+    <section v-if="user && !inlineReportHtml && !reportLoading" class="saved-reports-section">
+      <div class="saved-reports-inner">
+        <h2 class="saved-reports-title">{{ ui.savedReportsTitle }}</h2>
+        <p v-if="savedReportsLoading" class="saved-reports-empty">{{ ui.savedReportsLoading }}</p>
+        <p v-else-if="!savedReports.length" class="saved-reports-empty">{{ ui.savedReportsEmpty }}</p>
+        <ul v-else class="saved-reports-list">
+          <li v-for="r in savedReports" :key="r.id" class="saved-report-item">
+            <span class="saved-report-title">{{ r.title }}</span>
+            <span class="saved-report-date">{{ r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '' }}</span>
+            <button class="saved-report-open" type="button" @click="openSavedReport(r.id)">{{ ui.savedReportOpen }}</button>
+            <button class="saved-report-delete" type="button" :title="ui.deleteReport" @click="askDeleteReport(r.id)">
+              <Trash2 :size="14" />
+            </button>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section v-if="!inlineReportHtml && !reportLoading" id="output" class="proof-section" :aria-label="ui.proofAria">
       <article class="proof-card">
         <TrendingUp :size="24" />
         <h2>{{ ui.proofCards[0].title }}</h2>
@@ -1109,198 +1672,21 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section id="brief" class="brief-section" aria-labelledby="brief-title">
-      <div class="section-heading">
-        <p class="eyebrow">{{ ui.briefEyebrow }}</p>
-        <h2 id="brief-title">{{ ui.briefTitle }}</h2>
-        <p>{{ ui.briefCopy }}</p>
-      </div>
-
-      <div class="builder-grid">
-        <form class="brief-form" @submit.prevent="generateBusinessKit">
-          <div class="field-grid">
-            <label class="field-block">
-              <span class="field-label">
-                <BriefcaseBusiness :size="18" />
-                {{ ui.businessName }}
-              </span>
-              <input v-model="form.businessName" type="text" :placeholder="ui.businessNamePlaceholder" />
-            </label>
-
-            <label class="field-block">
-              <span class="field-label">
-                <Target :size="18" />
-                {{ ui.market }}
-              </span>
-              <input v-model="form.region" type="text" :placeholder="ui.marketPlaceholder" />
-            </label>
-          </div>
-
-          <div class="field-grid compact">
-            <label class="field-block">
-              <span class="field-label">
-                <Languages :size="18" />
-                {{ ui.reportLanguage }}
-              </span>
-              <select :value="form.language" @change="changeLanguage">
-                <option v-for="language in languageOptions" :key="language.value" :value="language.value">
-                  {{ language.label }}
-                </option>
-              </select>
-            </label>
-
-            <label class="field-block">
-              <span class="field-label">
-                <Sparkles :size="18" />
-                {{ ui.reportTone }}
-              </span>
-              <input v-model="form.tone" type="text" :placeholder="ui.reportTonePlaceholder" />
-            </label>
-          </div>
-
-          <div class="preset-row" :aria-label="ui.tonePresetsAria">
-            <button
-              v-for="preset in tonePresets"
-              :key="preset"
-              type="button"
-              class="preset-button"
-              @click="useTone(preset)"
-            >
-              {{ preset }}
-            </button>
-          </div>
-
-          <label class="field-block">
-            <span class="field-label">
-              <Sparkles :size="18" />
-              {{ ui.businessType }}
-            </span>
-            <textarea
-              v-model="form.businessType"
-              rows="3"
-              :placeholder="ui.businessTypePlaceholder"
-            />
-          </label>
-
-          <label class="field-block">
-            <span class="field-label">
-              <FileText :size="18" />
-              {{ ui.currentOffer }}
-            </span>
-            <textarea v-model="form.offer" rows="3" :placeholder="ui.currentOfferPlaceholder" />
-          </label>
-
-          <div class="field-grid">
-            <label class="field-block">
-              <span class="field-label">
-                <Target :size="18" />
-                {{ ui.targetCustomer }}
-              </span>
-              <textarea v-model="form.audience" rows="4" :placeholder="ui.targetCustomerPlaceholder" />
-            </label>
-
-            <label class="field-block">
-              <span class="field-label">
-                <AlertCircle :size="18" />
-                {{ ui.mainProblem }}
-              </span>
-              <textarea v-model="form.problem" rows="4" :placeholder="ui.mainProblemPlaceholder" />
-            </label>
-          </div>
-
-          <div class="field-grid">
-            <label class="field-block">
-              <span class="field-label">
-                <BarChart3 :size="18" />
-                {{ ui.goal }}
-              </span>
-              <textarea v-model="form.goal" rows="4" :placeholder="ui.goalPlaceholder" />
-            </label>
-
-            <label class="field-block">
-              <span class="field-label">
-                <Sparkles :size="18" />
-                {{ ui.channels }}
-              </span>
-              <textarea v-model="form.channels" rows="4" :placeholder="ui.channelsPlaceholder" />
-            </label>
-          </div>
-
-          <label class="field-block">
-            <span class="field-label">
-              <BarChart3 :size="18" />
-              {{ ui.pricePoint }}
-            </span>
-            <input v-model="form.pricePoint" type="text" :placeholder="ui.pricePointPlaceholder" />
-          </label>
-
-          <button class="generate-button" type="submit" :disabled="!canGenerate">
-            <Loader2 v-if="status === 'loading'" class="spin" :size="20" />
-            <Send v-else :size="20" />
-            <span>{{ actionLabel }}</span>
-          </button>
-        </form>
-
-        <aside class="report-panel" aria-live="polite">
-          <div class="status-header">
-            <div class="status-icon" :data-state="status">
-              <Loader2 v-if="status === 'loading'" class="spin" :size="26" />
-              <CheckCircle2 v-else-if="status === 'success'" :size="26" />
-              <AlertCircle v-else-if="status === 'error'" :size="26" />
-              <FileText v-else :size="26" />
-            </div>
-            <div>
-              <p class="eyebrow">{{ ui.reportStatus }}</p>
-              <h2>{{ statusLabel }}</h2>
-            </div>
-          </div>
-
-          <div class="report-content">
-            <div v-if="status === 'idle'" class="output-stack">
-              <div v-for="(metric, index) in ui.idleMetrics" :key="metric" class="mini-metric">
-                <span>{{ String(index + 1).padStart(2, "0") }}</span>
-                <strong>{{ metric }}</strong>
-              </div>
-            </div>
-
-            <p v-if="status === 'loading'" class="muted-line">{{ ui.loadingLine }}</p>
-
-            <div v-if="status === 'success'" class="download-block">
-              <span class="file-chip">
-                <FileText :size="18" />
-                {{ fileName }}
-              </span>
-              <p class="muted-line">{{ readyLine }}</p>
-
-              <div class="action-row">
-                <button class="secondary-action" type="button" @click="openReportUser" :disabled="!reportHtml">
-                  <ExternalLink :size="18" />
-                  {{ ui.openReport }}
-                </button>
-                <button
-                  class="secondary-action"
-                  type="button"
-                  @click="downloadPdf"
-                  :disabled="!reportHtml || pdfDownloading"
-                >
-                  <FileText :size="18" />
-                  <span v-if="pdfDownloading">{{ ui.downloadingPdf }}</span>
-                  <span v-else>{{ ui.downloadPdf }}</span>
-                </button>
-              </div>
-            </div>
-
-            <p v-if="status === 'error'" class="error-text">{{ errorMessage }}</p>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <footer class="site-footer">
+    <footer v-if="!inlineReportHtml && !reportLoading" class="site-footer">
       <p>
         {{ ui.footerByline }}
         <a href="https://jcode.be" target="_blank" rel="noopener noreferrer">jcode.be</a>
       </p>
     </footer>
+
+    <AuthModal v-model="showAuthModal" />
+    <ConfirmModal
+      v-model="showConfirmDelete"
+      :title="ui.deleteReport"
+      :message="ui.deleteReportConfirm"
+      :confirm-label="ui.deleteReport"
+      :cancel-label="ui.cancel"
+      @confirm="confirmDeleteReport"
+    />
   </main>
 </template>
