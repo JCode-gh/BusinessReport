@@ -156,6 +156,10 @@ const homepageCopy = {
     signIn: "Aanmelden",
     signOut: "Afmelden",
     signInToSave: "Aanmelden om dit rapport op te slaan en terug te openen",
+    reportSaved: "Rapport opgeslagen",
+    accessDenied: "Geen toegang",
+    accessDeniedMessage: "Je hebt geen toestemming om dit rapport te bekijken.",
+    reportNotFound: "Rapport niet gevonden of geen toegang.",
     copy: "Kopiëren",
     copyLink: "Link kopiëren",
     savingLabel: "Opslaan…",
@@ -303,6 +307,10 @@ const homepageCopy = {
     signIn: "Sign in",
     signOut: "Sign out",
     signInToSave: "Sign in to save & re-access this report",
+    reportSaved: "Report saved",
+    accessDenied: "Access denied",
+    accessDeniedMessage: "You don't have permission to view this report.",
+    reportNotFound: "Report not found or access denied.",
     copy: "Copy",
     copyLink: "Copy link",
     savingLabel: "Saving…",
@@ -450,6 +458,10 @@ const homepageCopy = {
     signIn: "Se connecter",
     signOut: "Se déconnecter",
     signInToSave: "Se connecter pour sauvegarder et réaccéder à ce rapport",
+    reportSaved: "Rapport sauvegardé",
+    accessDenied: "Accès refusé",
+    accessDeniedMessage: "Vous n'avez pas la permission de voir ce rapport.",
+    reportNotFound: "Rapport introuvable ou accès refusé.",
     copy: "Copier",
     copyLink: "Copier le lien",
     savingLabel: "Enregistrement…",
@@ -597,6 +609,10 @@ const homepageCopy = {
     signIn: "Anmelden",
     signOut: "Abmelden",
     signInToSave: "Anmelden, um diesen Report zu speichern und erneut abzurufen",
+    reportSaved: "Report gespeichert",
+    accessDenied: "Zugriff verweigert",
+    accessDeniedMessage: "Sie haben keine Berechtigung, diesen Report anzuzeigen.",
+    reportNotFound: "Report nicht gefunden oder Zugriff verweigert.",
     copy: "Kopieren",
     copyLink: "Link kopieren",
     savingLabel: "Speichern…",
@@ -661,6 +677,37 @@ const form = reactive({
 
 const siteLanguage = ref<ReportLanguage>(defaultLanguage);
 
+// Notification system
+const notification = reactive({
+  visible: false,
+  title: "",
+  message: "",
+  type: "error" as "error" | "success" | "info",
+});
+
+let notificationTimer: number | null = null;
+
+function showNotification(title: string, message: string, type: "error" | "success" | "info" = "error") {
+  if (notificationTimer) {
+    clearTimeout(notificationTimer);
+  }
+  notification.title = title;
+  notification.message = message;
+  notification.type = type;
+  notification.visible = true;
+  notificationTimer = window.setTimeout(() => {
+    notification.visible = false;
+  }, 5000);
+}
+
+function hideNotification() {
+  notification.visible = false;
+  if (notificationTimer) {
+    clearTimeout(notificationTimer);
+    notificationTimer = null;
+  }
+}
+
 const status = ref<GenerateStatus>("idle");
 const errorMessage = ref("");
 const fileName = ref("");
@@ -674,7 +721,7 @@ const apiCharsReceived = ref(0);
 const reportLoading = ref(Boolean(getReportParam()));
 
 // Auth
-const { user } = useAuth();
+const { user, authReady } = useAuth();
 const showAuthModal = ref(false);
 const authModalPurpose = ref<"save" | "generate" | undefined>();
 const pendingGenerate = ref(false);
@@ -791,8 +838,12 @@ watch(user, async (newUser) => {
 }, { immediate: true });
 
 async function openSavedReport(id: string) {
+  if (!user.value) {
+    console.warn("[App] Cannot open report: user not logged in");
+    return;
+  }
   try {
-    const stored = await loadReport(id);
+    const stored = await loadReport(id, user.value.uid);
     if (!stored) return;
     const html = stored.editedHtml ?? buildBusinessKitHtml(stored.plan);
     savedReportId.value = id;
@@ -804,6 +855,7 @@ async function openSavedReport(id: string) {
     setReportParam(id);
   } catch (e) {
     console.error("[App] Failed to open saved report", e);
+    showNotification(ui.value.accessDenied, ui.value.accessDeniedMessage, "error");
   }
 }
 
@@ -1225,25 +1277,45 @@ onMounted(async () => {
   // Load saved report from URL param
   const reportParam = getReportParam();
   if (reportParam) {
-    try {
-      const stored = await loadReport(reportParam);
-      if (stored) {
-        const html = stored.editedHtml ?? buildBusinessKitHtml(stored.plan);
-        savedReportId.value = reportParam;
-        currentPlan.value = stored.plan;
-        currentHtml.value = html;
-        inlineReportHtml.value = patchHtmlForEditing(html);
-        setReportHtml(html);
-        fileName.value = businessKitFileName(stored.plan);
-      } else {
-        clearReportParam();
+    // Wait for auth to be ready before loading report
+    const checkAuth = async () => {
+      // Poll for auth ready state (max 5 seconds)
+      for (let i = 0; i < 50; i++) {
+        if (authReady.value) break;
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-    } catch (e) {
-      console.error("[App] Failed to load report", e);
-      clearReportParam();
-    } finally {
-      reportLoading.value = false;
-    }
+      
+      if (!user.value) {
+        console.warn("[App] Cannot load report: user not logged in");
+        showNotification(ui.value.accessDenied, ui.value.accessDeniedMessage, "error");
+        clearReportParam();
+        reportLoading.value = false;
+        return;
+      }
+      
+      try {
+        const stored = await loadReport(reportParam, user.value.uid);
+        if (stored) {
+          const html = stored.editedHtml ?? buildBusinessKitHtml(stored.plan);
+          savedReportId.value = reportParam;
+          currentPlan.value = stored.plan;
+          currentHtml.value = html;
+          inlineReportHtml.value = patchHtmlForEditing(html);
+          setReportHtml(html);
+          fileName.value = businessKitFileName(stored.plan);
+        } else {
+          clearReportParam();
+        }
+      } catch (e) {
+        console.error("[App] Failed to load report", e);
+        showNotification(ui.value.accessDenied, ui.value.reportNotFound, "error");
+        clearReportParam();
+      } finally {
+        reportLoading.value = false;
+      }
+    };
+    
+    checkAuth();
   }
 
   // Handle iframe postMessage
@@ -1273,6 +1345,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   revokeReportUrl();
   stopWaitingRoom();
+  if (notificationTimer) {
+    clearTimeout(notificationTimer);
+  }
 });
 </script>
 
@@ -1524,12 +1599,11 @@ onBeforeUnmount(() => {
             </button>
           </div>
 
-          <!-- Save / permalink panel -->
+          <!-- Save status (no link shown) -->
           <div v-if="savedReportId" class="report-save-panel">
-            <div class="report-save-link">
-              <Link2 :size="15" />
-              <span class="report-save-url" :title="permanentLink(savedReportId)">{{ permanentLink(savedReportId) }}</span>
-              <button class="report-save-copy" type="button" @click="copyPermalink" :title="ui.copyLink">{{ ui.copy }}</button>
+            <div class="report-save-status">
+              <CheckCircle2 :size="15" />
+              <span>{{ ui.reportSaved }}</span>
             </div>
           </div>
           <div v-else-if="!user" class="report-save-panel report-save-panel--cta">
@@ -1769,5 +1843,24 @@ onBeforeUnmount(() => {
       :cancel-label="ui.cancel"
       @confirm="confirmDeleteReport"
     />
+
+    <!-- Notification toast -->
+    <Teleport to="body">
+      <Transition name="notification-slide">
+        <div v-if="notification.visible" class="notification-toast" :class="`notification-${notification.type}`" role="alert">
+          <div class="notification-content">
+            <div class="notification-header">
+              <AlertCircle v-if="notification.type === 'error'" :size="18" />
+              <CheckCircle2 v-if="notification.type === 'success'" :size="18" />
+              <strong>{{ notification.title }}</strong>
+            </div>
+            <p>{{ notification.message }}</p>
+          </div>
+          <button class="notification-close" type="button" @click="hideNotification" aria-label="Close notification">
+            <X :size="16" />
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
   </main>
 </template>

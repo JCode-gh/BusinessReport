@@ -1808,6 +1808,14 @@ input[type="text"]::placeholder {
   color: #4c3ab5;
 }
 
+.report-save-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #059669;
+  font-weight: 600;
+}
+
 .report-save-url {
   flex: 1;
   overflow: hidden;
@@ -2163,4 +2171,112 @@ input[type="text"]::placeholder {
   border-color: rgba(255, 138, 138, 0.7);
   color: #ff8a8a;
   background: rgba(255, 138, 138, 0.08);
+}
+
+/* Notification toast */
+.notification-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10000;
+  max-width: 420px;
+  min-width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  color-scheme: light;
+}
+
+.notification-error {
+  border-left: 4px solid #dc2626;
+}
+
+.notification-success {
+  border-left: 4px solid #059669;
+}
+
+.notification-info {
+  border-left: 4px solid #2563eb;
+}
+
+.notification-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.notification-error .notification-header {
+  color: #dc2626;
+}
+
+.notification-success .notification-header {
+  color: #059669;
+}
+
+.notification-info .notification-header {
+  color: #2563eb;
+}
+
+.notification-content p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.notification-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 2px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.notification-close:hover {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.notification-slide-enter-active,
+.notification-slide-leave-active {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification-slide-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.notification-slide-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .notification-toast {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    max-width: none;
+    min-width: 0;
+  }
 }

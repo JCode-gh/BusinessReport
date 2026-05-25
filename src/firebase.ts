@@ -60,10 +60,19 @@ export async function saveReport(plan: BusinessKitPlan, uid: string): Promise<st
   return ref.id;
 }
 
-export async function loadReport(id: string): Promise<StoredReport | null> {
+export async function loadReport(id: string, currentUid: string): Promise<StoredReport | null> {
   const snap = await getDoc(doc(db, "reports", id));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as StoredReport;
+  
+  const data = snap.data();
+  const report = { id: snap.id, ...data } as StoredReport;
+  
+  // Access control: only the owner can load the report
+  if (report.uid !== currentUid) {
+    throw new Error("Access denied: You don't have permission to view this report");
+  }
+  
+  return report;
 }
 
 export type ReportSummary = {
