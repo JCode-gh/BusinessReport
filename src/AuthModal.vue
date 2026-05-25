@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { X } from "lucide-vue-next";
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from "./firebase";
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAnonymously } from "./firebase";
 
-const props = defineProps<{ modelValue: boolean }>();
+type Language = "en" | "nl" | "fr" | "de";
+
+const props = withDefaults(defineProps<{
+  modelValue: boolean;
+  purpose?: "save" | "generate";
+  language?: Language;
+}>(), {
+  language: "en"
+});
 const emit = defineEmits<{ (e: "update:modelValue", v: boolean): void }>();
 
 function close() {
@@ -13,26 +21,252 @@ function close() {
 // Prevent closing when a drag that started inside the panel ends on the overlay
 const dragFromPanel = ref(false);
 
-const AUTH_ERRORS: Record<string, string> = {
-  "auth/email-already-in-use":    "This email already has an account. Sign in instead.",
-  "auth/user-not-found":          "No account found for this email. Create one below.",
-  "auth/wrong-password":          "Incorrect password. Please try again.",
-  "auth/invalid-credential":      "Incorrect email or password. Please try again.",
-  "auth/invalid-email":           "That doesn't look like a valid email address.",
-  "auth/user-disabled":           "This account has been disabled. Contact support if you think this is a mistake.",
-  "auth/too-many-requests":       "Too many attempts. Please wait a moment before trying again.",
-  "auth/network-request-failed":  "Network error. Check your connection and try again.",
-  "auth/popup-closed-by-user":    "The sign-in window was closed. Please try again.",
-  "auth/cancelled-popup-request": "Another sign-in window is already open.",
-  "auth/popup-blocked":           "Your browser blocked the sign-in popup. Allow popups for this site and try again.",
-  "auth/requires-recent-login":   "For security reasons, please sign in again before continuing.",
-  "auth/weak-password":           "Password must be at least 6 characters.",
-  "auth/operation-not-allowed":   "This sign-in method is not enabled. Contact support.",
+type AuthCopy = {
+  titleSignup: string;
+  titleGenerate: string;
+  titleSave: string;
+  subtitleSignup: string;
+  subtitleGenerate: string;
+  subtitleSave: string;
+  continueWithGoogle: string;
+  or: string;
+  signInWithEmail: string;
+  createAccount: string;
+  continueAsGuest: string;
+  continuing: string;
+  guestHint: string;
+  email: string;
+  password: string;
+  passwordMin: string;
+  signIn: string;
+  signingIn: string;
+  creatingAccount: string;
+  back: string;
+  noAccountYet: string;
+  createOne: string;
+  alreadyHaveAccount: string;
+  signInLink: string;
+  close: string;
+  fillEmailPassword: string;
+  passwordMinLength: string;
+  emailAlreadyInUse: string;
+  userNotFound: string;
+  wrongPassword: string;
+  invalidCredential: string;
+  invalidEmail: string;
+  userDisabled: string;
+  tooManyRequests: string;
+  networkError: string;
+  popupClosed: string;
+  cancelledPopup: string;
+  popupBlocked: string;
+  requiresRecentLogin: string;
+  weakPassword: string;
+  operationNotAllowed: string;
+  genericError: string;
 };
+
+const authCopyMap: Record<Language, AuthCopy> = {
+  nl: {
+    titleSignup: "Account aanmaken",
+    titleGenerate: "Aanmelden om je rapport te genereren",
+    titleSave: "Aanmelden om rapporten op te slaan",
+    subtitleSignup: "Je rapporten worden opgeslagen en toegankelijk via een permanente link.",
+    subtitleGenerate: "Maak een account aan, meld je aan of ga verder als gast om je rapport te genereren.",
+    subtitleSave: "Sla rapporten op en krijg er altijd toegang toe via een permanente link.",
+    continueWithGoogle: "Doorgaan met Google",
+    or: "of",
+    signInWithEmail: "Aanmelden met e-mail",
+    createAccount: "Account aanmaken",
+    continueAsGuest: "Doorgaan als gast",
+    continuing: "Doorgaan…",
+    guestHint: "Geen e-mail vereist — je rapport is gekoppeld aan deze browsersessie.",
+    email: "E-mail",
+    password: "Wachtwoord",
+    passwordMin: "min. 6 tekens",
+    signIn: "Aanmelden",
+    signingIn: "Aanmelden…",
+    creatingAccount: "Account aanmaken…",
+    back: "Terug",
+    noAccountYet: "Nog geen account?",
+    createOne: "Maak er een →",
+    alreadyHaveAccount: "Heb je al een account?",
+    signInLink: "Aanmelden →",
+    close: "Sluiten",
+    fillEmailPassword: "Vul je e-mail en wachtwoord in.",
+    passwordMinLength: "Wachtwoord moet minimaal 6 tekens bevatten.",
+    emailAlreadyInUse: "Dit e-mailadres heeft al een account. Meld je aan.",
+    userNotFound: "Geen account gevonden voor dit e-mailadres. Maak er hieronder een aan.",
+    wrongPassword: "Onjuist wachtwoord. Probeer het opnieuw.",
+    invalidCredential: "Onjuist e-mailadres of wachtwoord. Probeer het opnieuw.",
+    invalidEmail: "Dat lijkt geen geldig e-mailadres.",
+    userDisabled: "Dit account is uitgeschakeld. Neem contact op met support als je denkt dat dit een vergissing is.",
+    tooManyRequests: "Te veel pogingen. Wacht even voordat je het opnieuw probeert.",
+    networkError: "Netwerkfout. Controleer je verbinding en probeer het opnieuw.",
+    popupClosed: "Het aanmeldvenster is gesloten. Probeer het opnieuw.",
+    cancelledPopup: "Er is al een ander aanmeldvenster geopend.",
+    popupBlocked: "Je browser heeft de aanmeldpopup geblokkeerd. Sta popups toe voor deze site en probeer het opnieuw.",
+    requiresRecentLogin: "Om veiligheidsredenen moet je je opnieuw aanmelden voordat je doorgaat.",
+    weakPassword: "Wachtwoord moet minimaal 6 tekens bevatten.",
+    operationNotAllowed: "Deze aanmeldmethode is niet ingeschakeld. Neem contact op met support.",
+    genericError: "Er is iets misgegaan. Probeer het opnieuw.",
+  },
+  en: {
+    titleSignup: "Create an account",
+    titleGenerate: "Sign in to generate your report",
+    titleSave: "Sign in to save reports",
+    subtitleSignup: "Your reports will be saved and accessible via a permanent link.",
+    subtitleGenerate: "Create an account, sign in, or continue as a guest to generate your report.",
+    subtitleSave: "Save reports and access them anytime via a permanent link.",
+    continueWithGoogle: "Continue with Google",
+    or: "or",
+    signInWithEmail: "Sign in with email",
+    createAccount: "Create an account",
+    continueAsGuest: "Continue as guest",
+    continuing: "Continuing…",
+    guestHint: "No email required — your report is tied to this browser session.",
+    email: "Email",
+    password: "Password",
+    passwordMin: "min. 6 characters",
+    signIn: "Sign in",
+    signingIn: "Signing in…",
+    creatingAccount: "Creating account…",
+    back: "Back",
+    noAccountYet: "No account yet?",
+    createOne: "Create one →",
+    alreadyHaveAccount: "Already have an account?",
+    signInLink: "Sign in →",
+    close: "Close",
+    fillEmailPassword: "Fill in your email and password.",
+    passwordMinLength: "Password must be at least 6 characters.",
+    emailAlreadyInUse: "This email already has an account. Sign in instead.",
+    userNotFound: "No account found for this email. Create one below.",
+    wrongPassword: "Incorrect password. Please try again.",
+    invalidCredential: "Incorrect email or password. Please try again.",
+    invalidEmail: "That doesn't look like a valid email address.",
+    userDisabled: "This account has been disabled. Contact support if you think this is a mistake.",
+    tooManyRequests: "Too many attempts. Please wait a moment before trying again.",
+    networkError: "Network error. Check your connection and try again.",
+    popupClosed: "The sign-in window was closed. Please try again.",
+    cancelledPopup: "Another sign-in window is already open.",
+    popupBlocked: "Your browser blocked the sign-in popup. Allow popups for this site and try again.",
+    requiresRecentLogin: "For security reasons, please sign in again before continuing.",
+    weakPassword: "Password must be at least 6 characters.",
+    operationNotAllowed: "This sign-in method is not enabled. Contact support.",
+    genericError: "Something went wrong. Please try again.",
+  },
+  fr: {
+    titleSignup: "Créer un compte",
+    titleGenerate: "Se connecter pour générer votre rapport",
+    titleSave: "Se connecter pour sauvegarder les rapports",
+    subtitleSignup: "Vos rapports seront sauvegardés et accessibles via un lien permanent.",
+    subtitleGenerate: "Créez un compte, connectez-vous ou continuez en tant qu'invité pour générer votre rapport.",
+    subtitleSave: "Sauvegardez les rapports et accédez-y à tout moment via un lien permanent.",
+    continueWithGoogle: "Continuer avec Google",
+    or: "ou",
+    signInWithEmail: "Se connecter avec e-mail",
+    createAccount: "Créer un compte",
+    continueAsGuest: "Continuer en tant qu'invité",
+    continuing: "Continuation…",
+    guestHint: "Aucun e-mail requis — votre rapport est lié à cette session de navigateur.",
+    email: "E-mail",
+    password: "Mot de passe",
+    passwordMin: "min. 6 caractères",
+    signIn: "Se connecter",
+    signingIn: "Connexion…",
+    creatingAccount: "Création du compte…",
+    back: "Retour",
+    noAccountYet: "Pas encore de compte ?",
+    createOne: "En créer un →",
+    alreadyHaveAccount: "Vous avez déjà un compte ?",
+    signInLink: "Se connecter →",
+    close: "Fermer",
+    fillEmailPassword: "Remplissez votre e-mail et votre mot de passe.",
+    passwordMinLength: "Le mot de passe doit contenir au moins 6 caractères.",
+    emailAlreadyInUse: "Cet e-mail a déjà un compte. Connectez-vous plutôt.",
+    userNotFound: "Aucun compte trouvé pour cet e-mail. Créez-en un ci-dessous.",
+    wrongPassword: "Mot de passe incorrect. Veuillez réessayer.",
+    invalidCredential: "E-mail ou mot de passe incorrect. Veuillez réessayer.",
+    invalidEmail: "Cela ne ressemble pas à une adresse e-mail valide.",
+    userDisabled: "Ce compte a été désactivé. Contactez le support si vous pensez que c'est une erreur.",
+    tooManyRequests: "Trop de tentatives. Veuillez attendre un moment avant de réessayer.",
+    networkError: "Erreur réseau. Vérifiez votre connexion et réessayez.",
+    popupClosed: "La fenêtre de connexion a été fermée. Veuillez réessayer.",
+    cancelledPopup: "Une autre fenêtre de connexion est déjà ouverte.",
+    popupBlocked: "Votre navigateur a bloqué la fenêtre contextuelle de connexion. Autorisez les fenêtres contextuelles pour ce site et réessayez.",
+    requiresRecentLogin: "Pour des raisons de sécurité, veuillez vous reconnecter avant de continuer.",
+    weakPassword: "Le mot de passe doit contenir au moins 6 caractères.",
+    operationNotAllowed: "Cette méthode de connexion n'est pas activée. Contactez le support.",
+    genericError: "Une erreur s'est produite. Veuillez réessayer.",
+  },
+  de: {
+    titleSignup: "Konto erstellen",
+    titleGenerate: "Anmelden, um Ihren Bericht zu generieren",
+    titleSave: "Anmelden, um Berichte zu speichern",
+    subtitleSignup: "Ihre Berichte werden gespeichert und über einen permanenten Link zugänglich sein.",
+    subtitleGenerate: "Erstellen Sie ein Konto, melden Sie sich an oder fahren Sie als Gast fort, um Ihren Bericht zu generieren.",
+    subtitleSave: "Speichern Sie Berichte und greifen Sie jederzeit über einen permanenten Link darauf zu.",
+    continueWithGoogle: "Mit Google fortfahren",
+    or: "oder",
+    signInWithEmail: "Mit E-Mail anmelden",
+    createAccount: "Konto erstellen",
+    continueAsGuest: "Als Gast fortfahren",
+    continuing: "Fortfahren…",
+    guestHint: "Keine E-Mail erforderlich — Ihr Bericht ist an diese Browsersitzung gebunden.",
+    email: "E-Mail",
+    password: "Passwort",
+    passwordMin: "mind. 6 Zeichen",
+    signIn: "Anmelden",
+    signingIn: "Anmelden…",
+    creatingAccount: "Konto erstellen…",
+    back: "Zurück",
+    noAccountYet: "Noch kein Konto?",
+    createOne: "Eines erstellen →",
+    alreadyHaveAccount: "Bereits ein Konto?",
+    signInLink: "Anmelden →",
+    close: "Schließen",
+    fillEmailPassword: "Geben Sie Ihre E-Mail und Ihr Passwort ein.",
+    passwordMinLength: "Passwort muss mindestens 6 Zeichen lang sein.",
+    emailAlreadyInUse: "Diese E-Mail hat bereits ein Konto. Melden Sie sich stattdessen an.",
+    userNotFound: "Kein Konto für diese E-Mail gefunden. Erstellen Sie unten eines.",
+    wrongPassword: "Falsches Passwort. Bitte versuchen Sie es erneut.",
+    invalidCredential: "Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.",
+    invalidEmail: "Das sieht nicht nach einer gültigen E-Mail-Adresse aus.",
+    userDisabled: "Dieses Konto wurde deaktiviert. Wenden Sie sich an den Support, wenn Sie glauben, dass dies ein Fehler ist.",
+    tooManyRequests: "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
+    networkError: "Netzwerkfehler. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    popupClosed: "Das Anmeldefenster wurde geschlossen. Bitte versuchen Sie es erneut.",
+    cancelledPopup: "Ein anderes Anmeldefenster ist bereits geöffnet.",
+    popupBlocked: "Ihr Browser hat das Anmelde-Popup blockiert. Erlauben Sie Popups für diese Seite und versuchen Sie es erneut.",
+    requiresRecentLogin: "Aus Sicherheitsgründen melden Sie sich bitte erneut an, bevor Sie fortfahren.",
+    weakPassword: "Passwort muss mindestens 6 Zeichen lang sein.",
+    operationNotAllowed: "Diese Anmeldemethode ist nicht aktiviert. Wenden Sie sich an den Support.",
+    genericError: "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
+  },
+};
+
+const copy = computed(() => authCopyMap[props.language]);
 
 function friendlyError(e: unknown): string {
   const code = (e as { code?: string }).code ?? "";
-  return AUTH_ERRORS[code] ?? "Something went wrong. Please try again.";
+  const c = copy.value;
+  const errorMap: Record<string, string> = {
+    "auth/email-already-in-use": c.emailAlreadyInUse,
+    "auth/user-not-found": c.userNotFound,
+    "auth/wrong-password": c.wrongPassword,
+    "auth/invalid-credential": c.invalidCredential,
+    "auth/invalid-email": c.invalidEmail,
+    "auth/user-disabled": c.userDisabled,
+    "auth/too-many-requests": c.tooManyRequests,
+    "auth/network-request-failed": c.networkError,
+    "auth/popup-closed-by-user": c.popupClosed,
+    "auth/cancelled-popup-request": c.cancelledPopup,
+    "auth/popup-blocked": c.popupBlocked,
+    "auth/requires-recent-login": c.requiresRecentLogin,
+    "auth/weak-password": c.weakPassword,
+    "auth/operation-not-allowed": c.operationNotAllowed,
+  };
+  return errorMap[code] ?? c.genericError;
 }
 
 type Mode = "choose" | "signin" | "signup";
@@ -54,6 +288,21 @@ function switchTo(m: Mode) {
   mode.value = m;
 }
 
+const modalTitle = computed(() => {
+  const c = copy.value;
+  if (mode.value === "signup") return c.titleSignup;
+  if (props.purpose === "generate") return c.titleGenerate;
+  if (props.purpose === "save") return c.titleSave;
+  return c.titleSave;
+});
+
+const modalSubtitle = computed(() => {
+  const c = copy.value;
+  if (mode.value === "signup") return c.subtitleSignup;
+  if (props.purpose === "generate") return c.subtitleGenerate;
+  return c.subtitleSave;
+});
+
 async function handleGoogle() {
   loading.value = true;
   errorMsg.value = "";
@@ -67,9 +316,22 @@ async function handleGoogle() {
   }
 }
 
+async function handleAnonymous() {
+  loading.value = true;
+  errorMsg.value = "";
+  try {
+    await signInAnonymously();
+    close();
+  } catch (e) {
+    errorMsg.value = friendlyError(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
 async function handleSignIn() {
   if (!email.value || !password.value) {
-    errorMsg.value = "Fill in your email and password.";
+    errorMsg.value = copy.value.fillEmailPassword;
     return;
   }
   loading.value = true;
@@ -86,11 +348,11 @@ async function handleSignIn() {
 
 async function handleSignUp() {
   if (!email.value || !password.value) {
-    errorMsg.value = "Fill in your email and password.";
+    errorMsg.value = copy.value.fillEmailPassword;
     return;
   }
   if (password.value.length < 6) {
-    errorMsg.value = "Password must be at least 6 characters.";
+    errorMsg.value = copy.value.passwordMinLength;
     return;
   }
   loading.value = true;
@@ -109,22 +371,16 @@ async function handleSignUp() {
 <template>
   <Teleport to="body">
     <div v-if="modelValue" class="auth-overlay" @click.self="!dragFromPanel && close(); dragFromPanel = false">
-      <div class="auth-panel" role="dialog" aria-modal="true" aria-label="Sign in" @mousedown="dragFromPanel = true">
+      <div class="auth-panel" role="dialog" aria-modal="true" :aria-label="copy.signIn" @mousedown="dragFromPanel = true">
 
         <div class="auth-header">
-          <h2 class="auth-title">
-            {{ mode === 'signup' ? 'Create an account' : 'Sign in to save reports' }}
-          </h2>
-          <button class="auth-close" type="button" @click="close" aria-label="Close">
+          <h2 class="auth-title">{{ modalTitle }}</h2>
+          <button class="auth-close" type="button" @click="close" :aria-label="copy.close">
             <X :size="20" />
           </button>
         </div>
 
-        <p class="auth-subtitle">
-          {{ mode === 'signup'
-            ? 'Your reports will be saved and accessible via a permanent link.'
-            : 'Save reports and access them anytime via a permanent link.' }}
-        </p>
+        <p class="auth-subtitle">{{ modalSubtitle }}</p>
 
         <!-- Choose method -->
         <div v-if="mode === 'choose'" class="auth-body">
@@ -135,17 +391,24 @@ async function handleSignUp() {
               <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/>
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/>
             </svg>
-            Continue with Google
+            {{ copy.continueWithGoogle }}
           </button>
 
-          <div class="auth-divider"><span>or</span></div>
+          <div class="auth-divider"><span>{{ copy.or }}</span></div>
 
           <button class="auth-email-btn" type="button" :disabled="loading" @click="switchTo('signin')">
-            Sign in with email
+            {{ copy.signInWithEmail }}
           </button>
           <button class="auth-email-btn auth-email-btn--secondary" type="button" :disabled="loading" @click="switchTo('signup')">
-            Create an account
+            {{ copy.createAccount }}
           </button>
+
+          <div class="auth-divider"><span>{{ copy.or }}</span></div>
+
+          <button class="auth-guest-btn" type="button" :disabled="loading" @click="handleAnonymous">
+            {{ loading ? copy.continuing : copy.continueAsGuest }}
+          </button>
+          <p class="auth-guest-hint">{{ copy.guestHint }}</p>
 
           <p v-if="errorMsg" class="auth-error">{{ errorMsg }}</p>
         </div>
@@ -153,11 +416,11 @@ async function handleSignUp() {
         <!-- Sign in -->
         <div v-else-if="mode === 'signin'" class="auth-body">
           <label class="auth-field">
-            <span>Email</span>
+            <span>{{ copy.email }}</span>
             <input v-model="email" type="email" autocomplete="email" placeholder="you@example.com" />
           </label>
           <label class="auth-field">
-            <span>Password</span>
+            <span>{{ copy.password }}</span>
             <input v-model="password" type="password" autocomplete="current-password" placeholder="••••••••" @keydown.enter="handleSignIn" />
           </label>
 
@@ -165,25 +428,25 @@ async function handleSignUp() {
 
           <div class="auth-actions">
             <button class="auth-submit-btn" type="button" :disabled="loading" @click="handleSignIn">
-              {{ loading ? 'Signing in…' : 'Sign in' }}
+              {{ loading ? copy.signingIn : copy.signIn }}
             </button>
-            <button class="auth-back-btn" type="button" @click="switchTo('choose'); reset()">Back</button>
+            <button class="auth-back-btn" type="button" @click="switchTo('choose'); reset()">{{ copy.back }}</button>
           </div>
 
           <p class="auth-hint">
-            No account yet?
-            <button class="auth-switch-link" type="button" @click="switchTo('signup')">Create one →</button>
+            {{ copy.noAccountYet }}
+            <button class="auth-switch-link" type="button" @click="switchTo('signup')">{{ copy.createOne }}</button>
           </p>
         </div>
 
         <!-- Sign up -->
         <div v-else class="auth-body">
           <label class="auth-field">
-            <span>Email</span>
+            <span>{{ copy.email }}</span>
             <input v-model="email" type="email" autocomplete="email" placeholder="you@example.com" />
           </label>
           <label class="auth-field">
-            <span>Password <small class="auth-field-hint">(min. 6 characters)</small></span>
+            <span>{{ copy.password }} <small class="auth-field-hint">({{ copy.passwordMin }})</small></span>
             <input v-model="password" type="password" autocomplete="new-password" placeholder="••••••••" @keydown.enter="handleSignUp" />
           </label>
 
@@ -191,14 +454,14 @@ async function handleSignUp() {
 
           <div class="auth-actions">
             <button class="auth-submit-btn" type="button" :disabled="loading" @click="handleSignUp">
-              {{ loading ? 'Creating account…' : 'Create account' }}
+              {{ loading ? copy.creatingAccount : copy.createAccount }}
             </button>
-            <button class="auth-back-btn" type="button" @click="switchTo('choose'); reset()">Back</button>
+            <button class="auth-back-btn" type="button" @click="switchTo('choose'); reset()">{{ copy.back }}</button>
           </div>
 
           <p class="auth-hint">
-            Already have an account?
-            <button class="auth-switch-link" type="button" @click="switchTo('signin')">Sign in →</button>
+            {{ copy.alreadyHaveAccount }}
+            <button class="auth-switch-link" type="button" @click="switchTo('signin')">{{ copy.signInLink }}</button>
           </p>
         </div>
 
@@ -446,5 +709,36 @@ async function handleSignUp() {
 
 .auth-switch-link:hover {
   color: #3d2fa0;
+}
+
+.auth-guest-btn {
+  height: 44px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 10px;
+  background: #fafafa;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.auth-guest-btn:hover:not(:disabled) {
+  border-color: #9ca3af;
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.auth-guest-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-guest-hint {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: -4px 0 0;
+  text-align: center;
+  line-height: 1.4;
 }
 </style>

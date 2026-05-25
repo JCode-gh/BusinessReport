@@ -65,6 +65,7 @@ async function generateReportAsUser(browser: Browser, user: UserScenario) {
     );
     const reportPopupPromise = page.waitForEvent("popup", {timeout: 90_000}).catch(() => null);
     await page.getByRole("button", {name: "Groeikit genereren"}).click();
+    await page.getByRole("button", {name: /doorgaan als gast|continue as guest/i}).click();
 
     const apiRequest = await apiRequestPromise;
     expect(apiRequest.method()).toBe("POST");

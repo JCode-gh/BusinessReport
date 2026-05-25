@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  signInAnonymously as firebaseSignInAnonymously,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
@@ -113,6 +114,10 @@ export async function signInWithEmail(email: string, password: string): Promise<
 
 export async function signUpWithEmail(email: string, password: string): Promise<void> {
   await createUserWithEmailAndPassword(auth, email, password);
+}
+
+export async function signInAnonymously(): Promise<void> {
+  await firebaseSignInAnonymously(auth);
 }
 
 export async function signOut(): Promise<void> {

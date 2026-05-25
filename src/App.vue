@@ -642,6 +642,8 @@ const homepageCopy = {
 } as const;
 
 const draftStorageKey = "business-kit-draft";
+const languagePreferenceStorageKey = "business-kit-language";
+const defaultLanguage: ReportLanguage = "nl";
 
 const form = reactive({
   businessName: "Northstar Studio",
@@ -654,8 +656,10 @@ const form = reactive({
   pricePoint: "Huidige projecten zijn 1500 tot 3500 EUR, doel is 5000 tot 9000 EUR",
   region: "België en Nederland",
   tone: "Premium consultant, direct en praktisch",
-  language: "nl" as ReportLanguage,
+  language: defaultLanguage as ReportLanguage,
 });
+
+const siteLanguage = ref<ReportLanguage>(defaultLanguage);
 
 const status = ref<GenerateStatus>("idle");
 const errorMessage = ref("");
@@ -672,6 +676,8 @@ const reportLoading = ref(Boolean(getReportParam()));
 // Auth
 const { user } = useAuth();
 const showAuthModal = ref(false);
+const authModalPurpose = ref<"save" | "generate" | undefined>();
+const pendingGenerate = ref(false);
 const showConfirmDelete = ref(false);
 const pendingDeleteId = ref<string | null>(null);
 
@@ -734,15 +740,41 @@ function saveToAccount() {
     doSaveReport();
   } else {
     pendingSave.value = true;
+    authModalPurpose.value = "save";
     showAuthModal.value = true;
   }
 }
 
+watch(showAuthModal, (open) => {
+  if (!open) {
+    nextTick(() => {
+      if (!user.value) {
+        pendingGenerate.value = false;
+        pendingSave.value = false;
+      }
+      authModalPurpose.value = undefined;
+    });
+  }
+});
+
 // Auto-save when user logs in after clicking "Save to account"
+// Continue generation after sign-in from the wizard
 // Also refresh the saved reports list whenever auth state changes
 watch(user, async (newUser) => {
   if (newUser && pendingSave.value) {
     doSaveReport();
+  }
+  if (newUser && pendingGenerate.value) {
+    pendingGenerate.value = false;
+    // If wizard is already open, just continue; otherwise open it
+    if (wizardOpen.value) {
+      closeWizard();
+      generateBusinessKit();
+    } else {
+      currentStep.value = 0;
+      wizardForward.value = true;
+      wizardOpen.value = true;
+    }
   }
   if (newUser) {
     savedReportsLoading.value = true;
@@ -825,6 +857,12 @@ const wizardForward = ref(true);
 const wizardProgress = computed(() => Math.round(((currentStep.value + 1) / WIZARD_TOTAL) * 100));
 
 function openWizard() {
+  if (!user.value) {
+    pendingGenerate.value = true;
+    authModalPurpose.value = "generate";
+    showAuthModal.value = true;
+    return;
+  }
   currentStep.value = 0;
   wizardForward.value = true;
   wizardOpen.value = true;
@@ -867,6 +905,13 @@ function onTextareaKey(e: KeyboardEvent) {
 }
 
 function generateAndClose() {
+  if (!canGenerate.value) return;
+  if (!user.value) {
+    pendingGenerate.value = true;
+    authModalPurpose.value = "generate";
+    showAuthModal.value = true;
+    return;
+  }
   closeWizard();
   generateBusinessKit();
 }
@@ -887,7 +932,7 @@ const waitingRoom = reactive({
 });
 let waitingRoomTimer: number | null = null;
 
-const ui = computed(() => homepageCopy[form.language]);
+const ui = computed(() => homepageCopy[siteLanguage.value]);
 
 const tonePresets = computed(() => ui.value.tonePresets);
 
@@ -934,9 +979,7 @@ const resultDescription = computed(() => {
 
 function changeLanguage(event: Event) {
   const nextLanguage = normalizeLanguage((event.target as HTMLSelectElement).value);
-  const currentToneIsPreset = Object.values(homepageCopy).some((copy) => {
-    return (copy.tonePresets as readonly string[]).includes(form.tone);
-  });
+  const currentToneIsPreset = isTonePreset(form.tone);
 
   form.language = nextLanguage;
 
@@ -944,11 +987,7 @@ function changeLanguage(event: Event) {
     form.tone = homepageCopy[nextLanguage].tonePresets[0];
   }
 
-  setDocumentLanguage(nextLanguage);
-}
-
-function setDocumentLanguage(language: ReportLanguage) {
-  document.documentElement.lang = language;
+  saveDraft();
 }
 
 async function generateBusinessKit() {
@@ -1100,10 +1139,7 @@ function restoreDraft() {
 
   try {
     const draft = JSON.parse(rawDraft) as Partial<typeof form>;
-    Object.assign(form, {
-      ...draft,
-      language: normalizeLanguage(draft.language),
-    });
+    Object.assign(form, draft);
   } catch {
     localStorage.removeItem(draftStorageKey);
   }
@@ -1115,6 +1151,32 @@ function normalizeLanguage(value: unknown): ReportLanguage {
   }
 
   return "nl";
+}
+
+function readLanguagePreference(): ReportLanguage | null {
+  const value = localStorage.getItem(languagePreferenceStorageKey);
+  return value === null ? null : normalizeLanguage(value);
+}
+
+function persistLanguagePreference(language: ReportLanguage) {
+  localStorage.setItem(languagePreferenceStorageKey, language);
+}
+
+function setSiteLanguage(language: ReportLanguage) {
+  siteLanguage.value = language;
+  document.documentElement.lang = language;
+  persistLanguagePreference(language);
+}
+
+function changeSiteLanguage(event: Event) {
+  const nextLanguage = normalizeLanguage((event.target as HTMLSelectElement).value);
+  setSiteLanguage(nextLanguage);
+}
+
+function isTonePreset(tone: string): boolean {
+  return Object.values(homepageCopy).some((copy) => {
+    return (copy.tonePresets as readonly string[]).includes(tone);
+  });
 }
 
 function goHome() {
@@ -1149,7 +1211,15 @@ function revokeReportUrl() {
 
 onMounted(async () => {
   restoreDraft();
-  setDocumentLanguage(form.language);
+  
+  // Set site language from preference or default
+  const savedLanguage = localStorage.getItem(languagePreferenceStorageKey);
+  if (savedLanguage && ["nl", "en", "fr", "de"].includes(savedLanguage)) {
+    setSiteLanguage(savedLanguage as ReportLanguage);
+  } else {
+    setSiteLanguage(siteLanguage.value);
+  }
+  
   handleBriefEntry();
 
   // Load saved report from URL param
@@ -1564,7 +1634,7 @@ onBeforeUnmount(() => {
           <label class="language-switcher">
             <Languages :size="17" aria-hidden="true" />
             <span class="sr-only">{{ ui.languageSwitcherLabel }}</span>
-            <select :value="form.language" :aria-label="ui.languageSwitcherLabel" @change="changeLanguage">
+            <select :value="siteLanguage" :aria-label="ui.languageSwitcherLabel" @change="changeSiteLanguage">
               <option v-for="language in languageOptions" :key="language.value" :value="language.value">
                 {{ language.label }}
               </option>
@@ -1690,7 +1760,7 @@ onBeforeUnmount(() => {
       </p>
     </footer>
 
-    <AuthModal v-model="showAuthModal" />
+    <AuthModal v-model="showAuthModal" :purpose="authModalPurpose" :language="siteLanguage" />
     <ConfirmModal
       v-model="showConfirmDelete"
       :title="ui.deleteReport"
