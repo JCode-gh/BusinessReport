@@ -701,6 +701,17 @@ function permanentLink(id: string): string {
   return `${window.location.origin}${window.location.pathname}?report=${id}`;
 }
 
+function injectBase(html: string): string {
+  if (/<base\s/i.test(html)) return html;
+
+  const baseHref = new URL(".", window.location.href).href;
+  const escapedBaseHref = baseHref.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+
+  return html.replace(/<head(\s[^>]*)?>/i, (headTag) => {
+    return `${headTag}\n  <base href="${escapedBaseHref}">`;
+  });
+}
+
 async function doSaveReport() {
   if (!user.value || !currentPlan.value || !currentHtml.value) return;
   saveState.value = "saving";
