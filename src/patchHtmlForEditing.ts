@@ -7,6 +7,9 @@ const MOBILE_STYLES = `
   .cover h1 { font-size: clamp(1.6rem, 7vw, 2.6rem) !important; }
   .cover-subtitle { font-size: 0.95rem !important; margin-bottom: 20px !important; }
   .workspace { margin: -20px 12px 0 !important; padding: 16px !important; grid-template-columns: 1fr !important; gap: 14px !important; }
+  .workspace-actions { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+  .text-button { white-space: nowrap !important; }
+  .focus-card { min-height: 0 !important; }
   .content { padding: 28px 16px 40px !important; }
   .report-section { padding-bottom: 36px !important; margin-bottom: 36px !important; }
   .section-header { flex-wrap: wrap !important; gap: 8px !important; margin-bottom: 20px !important; }

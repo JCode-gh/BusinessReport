@@ -13,6 +13,7 @@ import {
   LogIn,
   LogOut,
   MessageSquareText,
+  Pencil,
   Printer,
   Save,
   ShieldCheck,
@@ -26,13 +27,15 @@ import {
   businessKitFileName,
   createBusinessKit,
   ESTIMATED_RESPONSE_CHARS,
+  REPORT_THEMES,
   type BusinessKitPlan,
+  type ReportThemeKey,
   type RetryInfo,
 } from "./businessKit";
 import AuthModal from "./AuthModal.vue";
 import ConfirmModal from "./ConfirmModal.vue";
 import { useAuth } from "./useAuth";
-import { saveReport, loadReport, listReports, patchReport, deleteReport, signOut, type ReportSummary } from "./firebase";
+import { saveReport, loadReport, listReports, patchReport, renameReport, renameReportTitle, deleteReport, signOut, type ReportSummary } from "./firebase";
 import { patchHtmlForEditing } from "./patchHtmlForEditing";
 
 type GenerateStatus = "idle" | "loading" | "success" | "error";
@@ -117,6 +120,7 @@ const homepageCopy = {
     market: "Markt",
     marketPlaceholder: "België, EU, online, lokaal...",
     reportLanguage: "Rapporttaal",
+    reportTheme: "Rapportkleur",
     reportTone: "Rapporttoon",
     reportTonePlaceholder: "Premium, praktisch, uitgesproken, rustig...",
     tonePresets: [
@@ -168,6 +172,7 @@ const homepageCopy = {
     saveChanges: "Wijzigingen opslaan",
     reportViewerTitle: "Rapportviewer",
     reportFallbackTitle: "Rapport",
+    renamePlaceholder: "Rapportnaam…",
     savedReportsTitle: "Jouw opgeslagen rapporten",
     savedReportsLoading: "Laden…",
     savedReportsEmpty: "Nog geen opgeslagen rapporten.",
@@ -268,6 +273,7 @@ const homepageCopy = {
     market: "Market",
     marketPlaceholder: "Belgium, EU, online, local...",
     reportLanguage: "Report language",
+    reportTheme: "Report color",
     reportTone: "Report tone",
     reportTonePlaceholder: "Premium, practical, bold, calm...",
     tonePresets: [
@@ -319,6 +325,7 @@ const homepageCopy = {
     saveChanges: "Save changes",
     reportViewerTitle: "Report viewer",
     reportFallbackTitle: "Report",
+    renamePlaceholder: "Report name…",
     savedReportsTitle: "Your saved reports",
     savedReportsLoading: "Loading…",
     savedReportsEmpty: "No saved reports yet.",
@@ -419,6 +426,7 @@ const homepageCopy = {
     market: "Marché",
     marketPlaceholder: "Belgique, UE, en ligne, local...",
     reportLanguage: "Langue du rapport",
+    reportTheme: "Couleur du rapport",
     reportTone: "Ton du rapport",
     reportTonePlaceholder: "Premium, pratique, audacieux, calme...",
     tonePresets: [
@@ -470,6 +478,7 @@ const homepageCopy = {
     saveChanges: "Enregistrer les modifications",
     reportViewerTitle: "Visionneuse de rapport",
     reportFallbackTitle: "Rapport",
+    renamePlaceholder: "Nom du rapport…",
     savedReportsTitle: "Vos rapports sauvegardés",
     savedReportsLoading: "Chargement…",
     savedReportsEmpty: "Aucun rapport sauvegardé pour l'instant.",
@@ -570,6 +579,7 @@ const homepageCopy = {
     market: "Markt",
     marketPlaceholder: "Belgien, EU, online, lokal...",
     reportLanguage: "Report-Sprache",
+    reportTheme: "Berichtsfarbe",
     reportTone: "Report-Ton",
     reportTonePlaceholder: "Premium, praktisch, mutig, ruhig...",
     tonePresets: [
@@ -621,6 +631,7 @@ const homepageCopy = {
     saveChanges: "Änderungen speichern",
     reportViewerTitle: "Report-Viewer",
     reportFallbackTitle: "Report",
+    renamePlaceholder: "Report-Name…",
     savedReportsTitle: "Deine gespeicherten Reports",
     savedReportsLoading: "Laden…",
     savedReportsEmpty: "Noch keine gespeicherten Reports.",
@@ -673,6 +684,7 @@ const form = reactive({
   region: "België en Nederland",
   tone: "Premium consultant, direct en praktisch",
   language: defaultLanguage as ReportLanguage,
+  reportTheme: "purple" as ReportThemeKey,
 });
 
 const siteLanguage = ref<ReportLanguage>(defaultLanguage);
@@ -736,6 +748,15 @@ const saveState = ref<"idle" | "saving" | "saved">("idle");
 const pendingSave = ref(false);
 const inlineReportHtml = ref("");
 const iframeRef = ref<HTMLIFrameElement | null>(null);
+
+// Rename state (inline report bar)
+const isRenamingReport = ref(false);
+const renameValue = ref("");
+const renameInputRef = ref<HTMLInputElement | null>(null);
+
+// Rename state (homepage saved reports list)
+const renamingReportId = ref<string | null>(null);
+const renameHomepageValue = ref("");
 
 // User's saved reports list
 const savedReports = ref<ReportSummary[]>([]);
@@ -887,6 +908,48 @@ async function confirmDeleteReport() {
 
 function printReport() {
   iframeRef.value?.contentWindow?.postMessage({ type: "PRINT" }, "*");
+}
+
+function startRename() {
+  if (!currentPlan.value) return;
+  renameValue.value = currentPlan.value.title;
+  isRenamingReport.value = true;
+  nextTick(() => renameInputRef.value?.select());
+}
+
+async function confirmRename() {
+  if (!isRenamingReport.value) return;
+  isRenamingReport.value = false;
+  const newTitle = renameValue.value.trim();
+  if (!newTitle || !currentPlan.value || newTitle === currentPlan.value.title) return;
+  currentPlan.value = { ...currentPlan.value, title: newTitle };
+  const newHtml = patchHtmlForEditing(buildBusinessKitHtml(currentPlan.value));
+  inlineReportHtml.value = newHtml;
+  if (savedReportId.value) {
+    await renameReport(savedReportId.value, newTitle, newHtml);
+  }
+}
+
+function cancelRename() {
+  isRenamingReport.value = false;
+}
+
+function startRenameHomepage(r: ReportSummary) {
+  renamingReportId.value = r.id;
+  renameHomepageValue.value = r.title;
+}
+
+async function confirmRenameHomepage(r: ReportSummary) {
+  if (renamingReportId.value !== r.id) return;
+  renamingReportId.value = null;
+  const newTitle = renameHomepageValue.value.trim();
+  if (!newTitle || newTitle === r.title) return;
+  r.title = newTitle;
+  await renameReportTitle(r.id, newTitle);
+}
+
+function cancelRenameHomepage() {
+  renamingReportId.value = null;
 }
 
 async function saveEdits() {
@@ -1063,6 +1126,7 @@ async function generateBusinessKit() {
       startWaitingRoom,
       (chars) => { apiCharsReceived.value = chars; },
     );
+    kit.theme = form.reportTheme;
     const htmlText = buildBusinessKitHtml(kit);
     const nextFileName = businessKitFileName(kit);
     setReportHtml(htmlText);
@@ -1482,6 +1546,21 @@ onBeforeUnmount(() => {
                       {{ preset }}
                     </button>
                   </div>
+                  <div class="wz-field">
+                    <span class="wz-label">{{ ui.reportTheme }}</span>
+                    <div class="wz-theme-swatches">
+                      <button
+                        v-for="(theme, key) in REPORT_THEMES"
+                        :key="key"
+                        type="button"
+                        class="theme-swatch"
+                        :style="{ background: theme.swatch, boxShadow: form.reportTheme === key ? `0 0 0 2.5px #fff, 0 0 0 4.5px ${theme.swatch}` : 'none' }"
+                        :title="theme.label"
+                        :aria-label="theme.label"
+                        @click="form.reportTheme = key as ReportThemeKey"
+                      />
+                    </div>
+                  </div>
                 </div>
               </template>
 
@@ -1644,9 +1723,23 @@ onBeforeUnmount(() => {
           <ArrowLeft :size="15" />
           <span class="btn-label">{{ ui.backToBrief }}</span>
         </button>
-        <span class="inline-report-bar-label">
-          {{ currentPlan?.title ?? ui.reportFallbackTitle }}
-        </span>
+        <input
+          v-if="isRenamingReport"
+          ref="renameInputRef"
+          v-model="renameValue"
+          class="inline-report-bar-rename-input"
+          type="text"
+          :placeholder="ui.renamePlaceholder"
+          @keydown.enter.prevent="confirmRename"
+          @keydown.escape="cancelRename"
+          @blur="confirmRename"
+        />
+        <template v-else>
+          <span class="inline-report-bar-label">{{ currentPlan?.title ?? ui.reportFallbackTitle }}</span>
+          <button class="inline-rename-btn" type="button" @click="startRename" :title="ui.renamePlaceholder">
+            <Pencil :size="13" />
+          </button>
+        </template>
         <div class="inline-report-bar-actions">
           <!-- Download as PDF -->
           <button class="inline-pdf-btn" type="button" @click="printReport">
@@ -1798,7 +1891,21 @@ onBeforeUnmount(() => {
         <p v-else-if="!savedReports.length" class="saved-reports-empty">{{ ui.savedReportsEmpty }}</p>
         <ul v-else class="saved-reports-list">
           <li v-for="r in savedReports" :key="r.id" class="saved-report-item">
-            <span class="saved-report-title">{{ r.title }}</span>
+            <input
+              v-if="renamingReportId === r.id"
+              :ref="(el) => { if (el) (el as HTMLInputElement).select(); }"
+              v-model="renameHomepageValue"
+              class="saved-report-rename-input"
+              type="text"
+              :placeholder="ui.renamePlaceholder"
+              @keydown.enter.prevent="confirmRenameHomepage(r)"
+              @keydown.escape="cancelRenameHomepage"
+              @blur="confirmRenameHomepage(r)"
+            />
+            <button v-else class="saved-report-title" type="button" @click="startRenameHomepage(r)">
+              <span class="saved-report-title-text">{{ r.title }}</span>
+              <Pencil :size="11" class="saved-report-rename-icon" />
+            </button>
             <span class="saved-report-date">{{ r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '' }}</span>
             <button class="saved-report-open" type="button" @click="openSavedReport(r.id)">{{ ui.savedReportOpen }}</button>
             <button class="saved-report-delete" type="button" :title="ui.deleteReport" @click="askDeleteReport(r.id)">

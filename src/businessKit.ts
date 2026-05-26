@@ -60,8 +60,87 @@ type CompetitorItem = {
   ourAdvantage: string;
 };
 
+export type ReportThemeKey = "purple" | "blue" | "teal" | "rose" | "amber";
+
+export type ReportTheme = {
+  label: string;
+  swatch: string;
+  accent: string;
+  accentMid: string;
+  accentDark: string;
+  coverDark: string;
+  coverGradient: string;
+  bodyBg: string;
+  surface: string;
+  mint: string;
+};
+
+export const REPORT_THEMES: Record<ReportThemeKey, ReportTheme> = {
+  purple: {
+    label: "Purple",
+    swatch: "#7c6bd6",
+    accent: "#7c6bd6",
+    accentMid: "#6f6acf",
+    accentDark: "#4c3ab5",
+    coverDark: "#100d28",
+    coverGradient: "linear-gradient(135deg, #100d28 0%, #1a1635 50%, #6f6acf 100%)",
+    bodyBg: "#f0eeff",
+    surface: "#f7f5ff",
+    mint: "#f3eeff",
+  },
+  blue: {
+    label: "Blue",
+    swatch: "#3b82f6",
+    accent: "#4f7ef7",
+    accentMid: "#3b70f0",
+    accentDark: "#1e40af",
+    coverDark: "#0a1628",
+    coverGradient: "linear-gradient(135deg, #0a1628 0%, #0f2148 50%, #3b70f0 100%)",
+    bodyBg: "#eff6ff",
+    surface: "#eff6ff",
+    mint: "#dbeafe",
+  },
+  teal: {
+    label: "Teal",
+    swatch: "#0d9488",
+    accent: "#0ea5a0",
+    accentMid: "#0d9488",
+    accentDark: "#0f6b60",
+    coverDark: "#081c1a",
+    coverGradient: "linear-gradient(135deg, #081c1a 0%, #0d2926 50%, #0d9488 100%)",
+    bodyBg: "#f0fdfc",
+    surface: "#f0fdf9",
+    mint: "#ccfbf1",
+  },
+  rose: {
+    label: "Rose",
+    swatch: "#db2777",
+    accent: "#e85d8a",
+    accentMid: "#db2777",
+    accentDark: "#9d174d",
+    coverDark: "#1a0b12",
+    coverGradient: "linear-gradient(135deg, #1a0b12 0%, #2d1020 50%, #db2777 100%)",
+    bodyBg: "#fff1f7",
+    surface: "#fff0f6",
+    mint: "#fce7f3",
+  },
+  amber: {
+    label: "Amber",
+    swatch: "#f59e0b",
+    accent: "#f59e0b",
+    accentMid: "#d97706",
+    accentDark: "#92400e",
+    coverDark: "#1c1208",
+    coverGradient: "linear-gradient(135deg, #1c1208 0%, #2d1e08 50%, #d97706 100%)",
+    bodyBg: "#fffbf0",
+    surface: "#fffbeb",
+    mint: "#fef3c7",
+  },
+};
+
 export type BusinessKitPlan = {
   language: BusinessKitLanguage;
+  theme?: ReportThemeKey;
   title: string;
   subtitle: string;
   executiveSummary: string;
@@ -1018,6 +1097,7 @@ function estimateReadingMinutes(plan: BusinessKitPlan): number {
 }
 
 export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
+  const theme = REPORT_THEMES[plan.theme ?? "purple"] ?? REPORT_THEMES.purple;
   const labels = reportLabels[plan.language];
   const readingMinutes = estimateReadingMinutes(plan);
   const hasCompetitors = plan.competitorAnalysis.length > 0;
@@ -1044,17 +1124,17 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       --subtle: #9ca3af;
       --paper: #ffffff;
       --line: #e5e7eb;
-      --surface: #f7f5ff;
-      --accent: #7c6bd6;
-      --accent-mid: #6f6acf;
-      --accent-dark: #4c3ab5;
+      --surface: ${theme.surface};
+      --accent: ${theme.accent};
+      --accent-mid: ${theme.accentMid};
+      --accent-dark: ${theme.accentDark};
       --gold: #d97706;
       --rose: #be185d;
-      --navy: #100d28;
+      --navy: ${theme.coverDark};
       --coral: #c2410c;
-      --mint: #f3eeff;
+      --mint: ${theme.mint};
       --amber: #fffbeb;
-      --sky: #f5f0ff;
+      --sky: ${theme.mint};
       --lavender: #d6a4e3;
     }
 
@@ -1063,7 +1143,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     body {
       margin: 0;
       color: var(--ink);
-      background: #f0eeff;
+      background: ${theme.bodyBg};
       font-family: -apple-system, "Inter", "Helvetica Neue", Arial, sans-serif;
       font-size: 16px;
       line-height: 1.6;
@@ -1088,7 +1168,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .cover {
       padding: 60px 64px 52px;
       color: #fff;
-      background: linear-gradient(135deg, #100d28 0%, #1a1635 50%, #6f6acf 100%);
+      background: ${theme.coverGradient};
     }
 
     .cover-eyebrow {
@@ -1230,7 +1310,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       padding: 20px;
       border-radius: 12px;
       color: #fff;
-      background: linear-gradient(140deg, var(--navy) 0%, #6f6acf 100%);
+      background: linear-gradient(140deg, var(--navy) 0%, var(--accent-mid) 100%);
       min-height: 0;
     }
 
@@ -1791,6 +1871,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       }
 
       .workspace-stats { grid-template-columns: repeat(3, 1fr); }
+      .workspace-actions { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .text-button { white-space: nowrap; }
+      .focus-card { min-height: 0; }
 
       .content { padding: 28px 16px 40px; }
 
@@ -1942,7 +2025,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       .cover {
         break-after: page;
         page-break-after: always;
-        background: linear-gradient(135deg, #100d28 0%, #1a1635 50%, #6f6acf 100%) !important;
+        background: ${theme.coverGradient} !important;
         border-radius: 0 !important;
       }
 

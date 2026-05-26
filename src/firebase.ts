@@ -18,6 +18,7 @@ import {
   getDoc,
   getDocs,
   deleteDoc,
+  updateDoc,
   query,
   where,
   limit,
@@ -107,6 +108,23 @@ export async function patchReport(id: string, editedHtml: string): Promise<void>
     { editedHtml, updatedAt: serverTimestamp() },
     { merge: true },
   );
+}
+
+export async function renameReport(id: string, title: string, editedHtml: string): Promise<void> {
+  await updateDoc(doc(db, "reports", id), {
+    "plan.title": title,
+    editedHtml,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// Rename from the homepage list (no HTML available — clears editedHtml so it rebuilds on next open)
+export async function renameReportTitle(id: string, title: string): Promise<void> {
+  await updateDoc(doc(db, "reports", id), {
+    "plan.title": title,
+    editedHtml: null,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export function onAuthStateChange(cb: (user: User | null) => void) {
