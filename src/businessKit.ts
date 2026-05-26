@@ -527,20 +527,20 @@ BUSINESS BRIEF (translate fully — do not quote verbatim in the output language
 Report language: ${languageNames[request.language]}
 Language instruction: ${languageInstructions[request.language]}
 
-Business name: ${request.businessName ?? "Not provided"}
-Business type: ${request.businessType ?? "Not provided"}
-Current offer: ${request.offer ?? "Not provided"}
-Target customer: ${request.audience ?? "Not provided"}
-Core problem they face: ${request.problem ?? "Not provided"}
-Growth goal (30 days): ${request.goal ?? "Not provided"}
-Active channels: ${request.channels ?? "Not provided"}
-Current / target price point: ${request.pricePoint ?? "Not provided"}
-Region / market: ${request.region ?? "Not provided"}
-Report tone: ${request.tone ?? "Clear, direct, premium, practical"}
+Business name: ${request.businessName || "Not provided"}
+Business type: ${request.businessType || "Not provided"}
+Current offer: ${request.offer || "Not provided"}
+Target customer: ${request.audience || "Not provided"}
+Core problem they face: ${request.problem || "Not provided"}
+Growth goal (30 days): ${request.goal || "Not provided"}
+Active channels: ${request.channels || "Not provided"}
+Current / target price point: ${request.pricePoint || "Not provided"}
+Region / market: ${request.region || "Not provided"}
+Report tone: ${request.tone || "Clear, direct, premium, practical"}
 
 COMPETITIVE CONTEXT
 ===================
-Based on businessType "${request.businessType ?? "Not provided"}" and region "${request.region ?? "Not provided"}", identify 2–3 specific competitors or alternatives the target customer (${request.audience ?? "Not provided"}) is most likely comparing right now. Name real companies, platforms, or approaches (e.g. "Fiverr freelancers", "Wix website builders", "local marketing agencies") — not vague categories. For each: name the competitor, identify one specific weakness from the buyer's perspective, and state a concrete advantage the business above has over them. Include this as the "competitorAnalysis" field in the JSON.
+Based on businessType "${request.businessType || "Not provided"}" and region "${request.region || "Not provided"}", identify 2–3 specific competitors or alternatives the target customer (${request.audience || "Not provided"}) is most likely comparing right now. Name real companies, platforms, or approaches (e.g. "Fiverr freelancers", "Wix website builders", "local marketing agencies") — not vague categories. For each: name the competitor, identify one specific weakness from the buyer's perspective, and state a concrete advantage the business above has over them. Include this as the "competitorAnalysis" field in the JSON.
 
 Build a full entrepreneur growth kit for this business. Every section must be specific to the brief above — never use placeholder text or generic advice that could apply to any business.
 

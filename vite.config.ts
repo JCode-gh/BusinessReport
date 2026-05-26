@@ -6,4 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  esbuild: {
+    // Drop debug logs in production; keep warn/error for diagnostics.
+    drop: ["debugger"],
+    pure: ["console.log", "console.info", "console.debug"],
+  },
 });

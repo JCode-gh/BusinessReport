@@ -9,7 +9,6 @@ import {
   Clock,
   FileText,
   Languages,
-  Link2,
   LogIn,
   LogOut,
   MessageSquareText,
@@ -72,13 +71,11 @@ const homepageCopy = {
     printReport: "Afdrukken / PDF",
     downloadPdf: "PDF downloaden",
     preparingPdf: "PDF voorbereiden...",
-    downloadingPdf: "PDF downloaden...",
     backToBrief: "Terug naar start",
     errorEyebrow: "Generatie mislukt",
     errorTitle: "Het rapport kon niet worden afgerond.",
     errorRetry: "Brief opnieuw invullen",
     errorDismiss: "Terug naar start",
-    popupBlockedNote: "Je browser blokkeerde het nieuwe tabblad. Open het rapport hieronder handmatig.",
     generatedReportDetails: "Details van gegenereerd rapport",
     ready: "Klaar",
     language: "Taal",
@@ -164,8 +161,6 @@ const homepageCopy = {
     accessDenied: "Geen toegang",
     accessDeniedMessage: "Je hebt geen toestemming om dit rapport te bekijken.",
     reportNotFound: "Rapport niet gevonden of geen toegang.",
-    copy: "Kopiëren",
-    copyLink: "Link kopiëren",
     savingLabel: "Opslaan…",
     saveToAccount: "Opslaan op account",
     savedLabel: "Opgeslagen!",
@@ -225,13 +220,11 @@ const homepageCopy = {
     printReport: "Print / PDF",
     downloadPdf: "Download PDF",
     preparingPdf: "Preparing PDF...",
-    downloadingPdf: "Downloading PDF...",
     backToBrief: "Back to home",
     errorEyebrow: "Generation failed",
     errorTitle: "The report could not be completed.",
     errorRetry: "Edit brief again",
     errorDismiss: "Back to home",
-    popupBlockedNote: "Your browser blocked the new tab. Open the report manually below.",
     generatedReportDetails: "Generated report details",
     ready: "Ready",
     language: "Language",
@@ -317,8 +310,6 @@ const homepageCopy = {
     accessDenied: "Access denied",
     accessDeniedMessage: "You don't have permission to view this report.",
     reportNotFound: "Report not found or access denied.",
-    copy: "Copy",
-    copyLink: "Copy link",
     savingLabel: "Saving…",
     saveToAccount: "Save to account",
     savedLabel: "Saved!",
@@ -378,13 +369,11 @@ const homepageCopy = {
     printReport: "Imprimer / PDF",
     downloadPdf: "Télécharger le PDF",
     preparingPdf: "Préparation du PDF...",
-    downloadingPdf: "Téléchargement du PDF...",
     backToBrief: "Retour à l'accueil",
     errorEyebrow: "Échec de génération",
     errorTitle: "Le rapport n'a pas pu être finalisé.",
     errorRetry: "Modifier le brief",
     errorDismiss: "Retour à l'accueil",
-    popupBlockedNote: "Votre navigateur a bloqué le nouvel onglet. Ouvrez le rapport manuellement ci-dessous.",
     generatedReportDetails: "Détails du rapport généré",
     ready: "Prêt",
     language: "Langue",
@@ -470,8 +459,6 @@ const homepageCopy = {
     accessDenied: "Accès refusé",
     accessDeniedMessage: "Vous n'avez pas la permission de voir ce rapport.",
     reportNotFound: "Rapport introuvable ou accès refusé.",
-    copy: "Copier",
-    copyLink: "Copier le lien",
     savingLabel: "Enregistrement…",
     saveToAccount: "Sauvegarder sur le compte",
     savedLabel: "Enregistré !",
@@ -531,13 +518,11 @@ const homepageCopy = {
     printReport: "Drucken / PDF",
     downloadPdf: "PDF herunterladen",
     preparingPdf: "PDF wird vorbereitet...",
-    downloadingPdf: "PDF wird heruntergeladen...",
     backToBrief: "Zurück zur Startseite",
     errorEyebrow: "Generierung fehlgeschlagen",
     errorTitle: "Der Report konnte nicht fertiggestellt werden.",
     errorRetry: "Briefing erneut ausfüllen",
     errorDismiss: "Zurück zur Startseite",
-    popupBlockedNote: "Dein Browser hat den neuen Tab blockiert. Öffne den Report unten manuell.",
     generatedReportDetails: "Details zum generierten Report",
     ready: "Bereit",
     language: "Sprache",
@@ -623,8 +608,6 @@ const homepageCopy = {
     accessDenied: "Zugriff verweigert",
     accessDeniedMessage: "Sie haben keine Berechtigung, diesen Report anzuzeigen.",
     reportNotFound: "Report nicht gefunden oder Zugriff verweigert.",
-    copy: "Kopieren",
-    copyLink: "Link kopieren",
     savingLabel: "Speichern…",
     saveToAccount: "Auf Konto speichern",
     savedLabel: "Gespeichert!",
@@ -673,21 +656,22 @@ const languagePreferenceStorageKey = "business-kit-language";
 const defaultLanguage: ReportLanguage = "nl";
 
 const form = reactive({
-  businessName: "Northstar Studio",
-  businessType: "B2B webdesign- en automatiseringsbureau voor kleine dienstverleners",
-  offer: "Een vaste-scope website- en automatiseringssprint die ondernemers helpt meer gekwalificeerde leads te krijgen",
-  audience: "Lokale dienstverleners met 5 tot 30 medewerkers die sterk op referrals vertrouwen",
-  problem: "Ze hebben een verouderde website, zwakke follow-up en een inconsistente salespipeline",
-  goal: "Meer gekwalificeerde salesgesprekken boeken en binnen 30 dagen hogere pakketten verkopen",
-  channels: "LinkedIn, e-mailoutreach, referrals, website",
-  pricePoint: "Huidige projecten zijn 1500 tot 3500 EUR, doel is 5000 tot 9000 EUR",
-  region: "België en Nederland",
-  tone: "Premium consultant, direct en praktisch",
+  businessName: "",
+  businessType: "",
+  offer: "",
+  audience: "",
+  problem: "",
+  goal: "",
+  channels: "",
+  pricePoint: "",
+  region: "",
+  tone: "",
   language: defaultLanguage as ReportLanguage,
   reportTheme: "purple" as ReportThemeKey,
 });
 
 const siteLanguage = ref<ReportLanguage>(defaultLanguage);
+const currentYear = new Date().getFullYear();
 
 // Notification system
 const notification = reactive({
@@ -770,9 +754,6 @@ function setReportParam(id: string) {
 }
 function clearReportParam() {
   history.replaceState({}, "", window.location.pathname);
-}
-function permanentLink(id: string): string {
-  return `${window.location.origin}${window.location.pathname}?report=${id}`;
 }
 
 function injectBase(html: string): string {
@@ -958,11 +939,6 @@ async function saveEdits() {
   iframeRef.value.contentWindow.postMessage({ type: "REQUEST_CONTENT" }, "*");
 }
 
-function copyPermalink() {
-  if (!savedReportId.value) return;
-  navigator.clipboard.writeText(permanentLink(savedReportId.value)).catch(() => {});
-}
-
 const WIZARD_TOTAL = 8;
 const wizardOpen = ref(false);
 const currentStep = ref(0);
@@ -1037,6 +1013,15 @@ watch(currentStep, () => {
     el?.focus();
   });
 });
+
+const BRAND_TITLE = "GrowthKit Studio";
+watch(
+  () => (inlineReportHtml.value ? currentPlan.value?.title : null),
+  (reportTitle) => {
+    document.title = reportTitle ? `${reportTitle} — ${BRAND_TITLE}` : `${BRAND_TITLE} — AI growth reports for entrepreneurs`;
+  },
+  { immediate: true },
+);
 
 const waitingRoom = reactive({
   active: false,
@@ -1274,6 +1259,15 @@ function readLanguagePreference(): ReportLanguage | null {
   return value === null ? null : normalizeLanguage(value);
 }
 
+function detectBrowserLanguage(): ReportLanguage {
+  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const raw of candidates) {
+    const code = raw.toLowerCase().split("-")[0];
+    if (code === "nl" || code === "en" || code === "fr" || code === "de") return code;
+  }
+  return defaultLanguage;
+}
+
 function persistLanguagePreference(language: ReportLanguage) {
   localStorage.setItem(languagePreferenceStorageKey, language);
 }
@@ -1328,12 +1322,12 @@ function revokeReportUrl() {
 onMounted(async () => {
   restoreDraft();
   
-  // Set site language from preference or default
-  const savedLanguage = localStorage.getItem(languagePreferenceStorageKey);
-  if (savedLanguage && ["nl", "en", "fr", "de"].includes(savedLanguage)) {
-    setSiteLanguage(savedLanguage as ReportLanguage);
-  } else {
-    setSiteLanguage(siteLanguage.value);
+  // Set site language: stored preference > browser locale > default
+  const savedLanguage = readLanguagePreference();
+  setSiteLanguage(savedLanguage ?? detectBrowserLanguage());
+  // Mirror the resolved language onto the form for first-time visitors
+  if (!savedLanguage) {
+    form.language = siteLanguage.value;
   }
   
   handleBriefEntry();
@@ -1729,6 +1723,7 @@ onBeforeUnmount(() => {
           v-model="renameValue"
           class="inline-report-bar-rename-input"
           type="text"
+          maxlength="120"
           :placeholder="ui.renamePlaceholder"
           @keydown.enter.prevent="confirmRename"
           @keydown.escape="cancelRename"
@@ -1888,7 +1883,13 @@ onBeforeUnmount(() => {
       <div class="saved-reports-inner">
         <h2 class="saved-reports-title">{{ ui.savedReportsTitle }}</h2>
         <p v-if="savedReportsLoading" class="saved-reports-empty">{{ ui.savedReportsLoading }}</p>
-        <p v-else-if="!savedReports.length" class="saved-reports-empty">{{ ui.savedReportsEmpty }}</p>
+        <div v-else-if="!savedReports.length" class="saved-reports-empty">
+          <p>{{ ui.savedReportsEmpty }}</p>
+          <button class="saved-reports-cta" type="button" @click="openWizard">
+            <Sparkles :size="16" />
+            {{ ui.heroPrimary }}
+          </button>
+        </div>
         <ul v-else class="saved-reports-list">
           <li v-for="r in savedReports" :key="r.id" class="saved-report-item">
             <input
@@ -1897,6 +1898,7 @@ onBeforeUnmount(() => {
               v-model="renameHomepageValue"
               class="saved-report-rename-input"
               type="text"
+              maxlength="120"
               :placeholder="ui.renamePlaceholder"
               @keydown.enter.prevent="confirmRenameHomepage(r)"
               @keydown.escape="cancelRenameHomepage"
@@ -1936,7 +1938,7 @@ onBeforeUnmount(() => {
 
     <footer v-if="!inlineReportHtml && !reportLoading" class="site-footer">
       <p>
-        {{ ui.footerByline }}
+        © {{ currentYear }} · {{ ui.footerByline }}
         <a href="https://jcode.be" target="_blank" rel="noopener noreferrer">jcode.be</a>
       </p>
     </footer>
