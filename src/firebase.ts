@@ -3,7 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  getRedirectResult,
+  signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInAnonymously as firebaseSignInAnonymously,
@@ -131,8 +132,14 @@ export function onAuthStateChange(cb: (user: User | null) => void) {
   return onAuthStateChanged(auth, cb);
 }
 
+// Redirect flow avoids popup blockers and third-party cookie issues on custom domains.
 export async function signInWithGoogle(): Promise<void> {
-  await signInWithPopup(auth, googleProvider);
+  await signInWithRedirect(auth, googleProvider);
+}
+
+export async function completeGoogleRedirectSignIn(): Promise<User | null> {
+  const result = await getRedirectResult(auth);
+  return result?.user ?? null;
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {

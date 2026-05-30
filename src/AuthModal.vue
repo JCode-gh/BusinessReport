@@ -2,6 +2,7 @@
 import { ref, computed } from "vue";
 import { X } from "lucide-vue-next";
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAnonymously } from "./firebase";
+import { getAuthErrorMessage } from "./authErrors";
 
 type Language = "en" | "nl" | "fr" | "de";
 
@@ -49,21 +50,6 @@ type AuthCopy = {
   close: string;
   fillEmailPassword: string;
   passwordMinLength: string;
-  emailAlreadyInUse: string;
-  userNotFound: string;
-  wrongPassword: string;
-  invalidCredential: string;
-  invalidEmail: string;
-  userDisabled: string;
-  tooManyRequests: string;
-  networkError: string;
-  popupClosed: string;
-  cancelledPopup: string;
-  popupBlocked: string;
-  requiresRecentLogin: string;
-  weakPassword: string;
-  operationNotAllowed: string;
-  genericError: string;
 };
 
 const authCopyMap: Record<Language, AuthCopy> = {
@@ -95,21 +81,6 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Sluiten",
     fillEmailPassword: "Vul je e-mail en wachtwoord in.",
     passwordMinLength: "Wachtwoord moet minimaal 6 tekens bevatten.",
-    emailAlreadyInUse: "Dit e-mailadres heeft al een account. Meld je aan.",
-    userNotFound: "Geen account gevonden voor dit e-mailadres. Maak er hieronder een aan.",
-    wrongPassword: "Onjuist wachtwoord. Probeer het opnieuw.",
-    invalidCredential: "Onjuist e-mailadres of wachtwoord. Probeer het opnieuw.",
-    invalidEmail: "Dat lijkt geen geldig e-mailadres.",
-    userDisabled: "Dit account is uitgeschakeld. Neem contact op met support als je denkt dat dit een vergissing is.",
-    tooManyRequests: "Te veel pogingen. Wacht even voordat je het opnieuw probeert.",
-    networkError: "Netwerkfout. Controleer je verbinding en probeer het opnieuw.",
-    popupClosed: "Het aanmeldvenster is gesloten. Probeer het opnieuw.",
-    cancelledPopup: "Er is al een ander aanmeldvenster geopend.",
-    popupBlocked: "Je browser heeft de aanmeldpopup geblokkeerd. Sta popups toe voor deze site en probeer het opnieuw.",
-    requiresRecentLogin: "Om veiligheidsredenen moet je je opnieuw aanmelden voordat je doorgaat.",
-    weakPassword: "Wachtwoord moet minimaal 6 tekens bevatten.",
-    operationNotAllowed: "Deze aanmeldmethode is niet ingeschakeld. Neem contact op met support.",
-    genericError: "Er is iets misgegaan. Probeer het opnieuw.",
   },
   en: {
     titleSignup: "Create an account",
@@ -139,21 +110,6 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Close",
     fillEmailPassword: "Fill in your email and password.",
     passwordMinLength: "Password must be at least 6 characters.",
-    emailAlreadyInUse: "This email already has an account. Sign in instead.",
-    userNotFound: "No account found for this email. Create one below.",
-    wrongPassword: "Incorrect password. Please try again.",
-    invalidCredential: "Incorrect email or password. Please try again.",
-    invalidEmail: "That doesn't look like a valid email address.",
-    userDisabled: "This account has been disabled. Contact support if you think this is a mistake.",
-    tooManyRequests: "Too many attempts. Please wait a moment before trying again.",
-    networkError: "Network error. Check your connection and try again.",
-    popupClosed: "The sign-in window was closed. Please try again.",
-    cancelledPopup: "Another sign-in window is already open.",
-    popupBlocked: "Your browser blocked the sign-in popup. Allow popups for this site and try again.",
-    requiresRecentLogin: "For security reasons, please sign in again before continuing.",
-    weakPassword: "Password must be at least 6 characters.",
-    operationNotAllowed: "This sign-in method is not enabled. Contact support.",
-    genericError: "Something went wrong. Please try again.",
   },
   fr: {
     titleSignup: "Créer un compte",
@@ -183,21 +139,6 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Fermer",
     fillEmailPassword: "Remplissez votre e-mail et votre mot de passe.",
     passwordMinLength: "Le mot de passe doit contenir au moins 6 caractères.",
-    emailAlreadyInUse: "Cet e-mail a déjà un compte. Connectez-vous plutôt.",
-    userNotFound: "Aucun compte trouvé pour cet e-mail. Créez-en un ci-dessous.",
-    wrongPassword: "Mot de passe incorrect. Veuillez réessayer.",
-    invalidCredential: "E-mail ou mot de passe incorrect. Veuillez réessayer.",
-    invalidEmail: "Cela ne ressemble pas à une adresse e-mail valide.",
-    userDisabled: "Ce compte a été désactivé. Contactez le support si vous pensez que c'est une erreur.",
-    tooManyRequests: "Trop de tentatives. Veuillez attendre un moment avant de réessayer.",
-    networkError: "Erreur réseau. Vérifiez votre connexion et réessayez.",
-    popupClosed: "La fenêtre de connexion a été fermée. Veuillez réessayer.",
-    cancelledPopup: "Une autre fenêtre de connexion est déjà ouverte.",
-    popupBlocked: "Votre navigateur a bloqué la fenêtre contextuelle de connexion. Autorisez les fenêtres contextuelles pour ce site et réessayez.",
-    requiresRecentLogin: "Pour des raisons de sécurité, veuillez vous reconnecter avant de continuer.",
-    weakPassword: "Le mot de passe doit contenir au moins 6 caractères.",
-    operationNotAllowed: "Cette méthode de connexion n'est pas activée. Contactez le support.",
-    genericError: "Une erreur s'est produite. Veuillez réessayer.",
   },
   de: {
     titleSignup: "Konto erstellen",
@@ -227,46 +168,13 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Schließen",
     fillEmailPassword: "Geben Sie Ihre E-Mail und Ihr Passwort ein.",
     passwordMinLength: "Passwort muss mindestens 6 Zeichen lang sein.",
-    emailAlreadyInUse: "Diese E-Mail hat bereits ein Konto. Melden Sie sich stattdessen an.",
-    userNotFound: "Kein Konto für diese E-Mail gefunden. Erstellen Sie unten eines.",
-    wrongPassword: "Falsches Passwort. Bitte versuchen Sie es erneut.",
-    invalidCredential: "Falsche E-Mail oder Passwort. Bitte versuchen Sie es erneut.",
-    invalidEmail: "Das sieht nicht nach einer gültigen E-Mail-Adresse aus.",
-    userDisabled: "Dieses Konto wurde deaktiviert. Wenden Sie sich an den Support, wenn Sie glauben, dass dies ein Fehler ist.",
-    tooManyRequests: "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
-    networkError: "Netzwerkfehler. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-    popupClosed: "Das Anmeldefenster wurde geschlossen. Bitte versuchen Sie es erneut.",
-    cancelledPopup: "Ein anderes Anmeldefenster ist bereits geöffnet.",
-    popupBlocked: "Ihr Browser hat das Anmelde-Popup blockiert. Erlauben Sie Popups für diese Seite und versuchen Sie es erneut.",
-    requiresRecentLogin: "Aus Sicherheitsgründen melden Sie sich bitte erneut an, bevor Sie fortfahren.",
-    weakPassword: "Passwort muss mindestens 6 Zeichen lang sein.",
-    operationNotAllowed: "Diese Anmeldemethode ist nicht aktiviert. Wenden Sie sich an den Support.",
-    genericError: "Etwas ist schief gelaufen. Bitte versuchen Sie es erneut.",
   },
 };
 
 const copy = computed(() => authCopyMap[props.language]);
 
 function friendlyError(e: unknown): string {
-  const code = (e as { code?: string }).code ?? "";
-  const c = copy.value;
-  const errorMap: Record<string, string> = {
-    "auth/email-already-in-use": c.emailAlreadyInUse,
-    "auth/user-not-found": c.userNotFound,
-    "auth/wrong-password": c.wrongPassword,
-    "auth/invalid-credential": c.invalidCredential,
-    "auth/invalid-email": c.invalidEmail,
-    "auth/user-disabled": c.userDisabled,
-    "auth/too-many-requests": c.tooManyRequests,
-    "auth/network-request-failed": c.networkError,
-    "auth/popup-closed-by-user": c.popupClosed,
-    "auth/cancelled-popup-request": c.cancelledPopup,
-    "auth/popup-blocked": c.popupBlocked,
-    "auth/requires-recent-login": c.requiresRecentLogin,
-    "auth/weak-password": c.weakPassword,
-    "auth/operation-not-allowed": c.operationNotAllowed,
-  };
-  return errorMap[code] ?? c.genericError;
+  return getAuthErrorMessage(e, props.language);
 }
 
 type Mode = "choose" | "signin" | "signup";
@@ -308,10 +216,9 @@ async function handleGoogle() {
   errorMsg.value = "";
   try {
     await signInWithGoogle();
-    close();
+    // Page redirects to Google; no further UI updates needed.
   } catch (e) {
     errorMsg.value = friendlyError(e);
-  } finally {
     loading.value = false;
   }
 }
