@@ -1,0 +1,27 @@
+# GrowthKit Studio
+
+> GrowthKit Studio is a free, browser-based tool that turns a short business brief into a polished, AI-generated growth report for entrepreneurs and small business owners.
+
+GrowthKit Studio (product name: Entrepreneur Growth Kit) builds a consultant-style growth report from a few inputs about a business. The report is generated in the visitor's browser and delivered as a styled HTML document with one-click PDF export.
+
+- What it does: turns a business brief (offer, audience, market, problem, goal, channels, pricing, tone) into a structured growth report.
+- Report contents: positioning audit, offer rewrite, ideal customer profile, growth scorecard, 30-day action plan, sales and follow-up templates, content ideas, and metrics to track.
+- Output: styled HTML report with PDF export.
+- Languages: Dutch, English, French, and German, for both the report and the interface.
+- Accounts: optional sign-in with Google or email (via Firebase) to save reports and re-open them later. Saved reports are private to their owner and are not publicly listed.
+- Pricing: free to use.
+- Made by: jcode.be.
+
+## Key pages
+
+- [GrowthKit Studio home](https://growthkit.jcode.be/): Landing page and starting point for generating a growth report.
+- [Start a report brief](https://growthkit.jcode.be/brief): Opens the guided brief wizard used to generate a new growth report.
+
+## Company facts
+
+- [jcode.be](https://jcode.be): Independent studio behind GrowthKit Studio. Contact runs through this site.
+
+## Optional
+
+- [Report output overview](https://growthkit.jcode.be/#output): On-page section that summarizes what the generated report includes.
+- [Source code on GitHub](https://github.com/JCode-gh/BusinessReport): Public repository for the project.

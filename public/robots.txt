@@ -1,0 +1,9 @@
+# LLM-friendly site summary: https://growthkit.jcode.be/llms.txt
+
+User-agent: *
+Allow: /
+
+# Saved reports are private and account-specific, not for indexing
+Disallow: /*?report=
+
+Sitemap: https://growthkit.jcode.be/sitemap.xml
