@@ -152,5 +152,137 @@
       "title": "Finalen Report polieren",
       "detail": "Browserfertigen HTML-Report rendern und PDF-Export vorbereiten."
     }
+  ],
+  "termsLink": "Allgemeine Geschäftsbedingungen",
+  "termsPageTitle": "Allgemeine Geschäftsbedingungen",
+  "termsBackHome": "Zurück zur Startseite",
+  "termsLastUpdated": "Zuletzt aktualisiert: 30. Mai 2026",
+  "termsIntro": "Diese Allgemeinen Geschäftsbedingungen (\"Bedingungen\") regeln Ihren Zugang zu und Ihre Nutzung von GrowthKit Studio (der \"Dienst\"), betrieben von jcode.be. Durch die Nutzung des Dienstes stimmen Sie diesen Bedingungen zu. Wenn Sie nicht einverstanden sind, nutzen Sie den Dienst nicht.",
+  "termsSections": [
+    {
+      "title": "1. Über den Dienst",
+      "paragraphs": [
+        "GrowthKit Studio (auch Entrepreneur Growth Kit genannt) ist ein browserbasiertes Tool, das Geschäftsbriefings in gestaltete Wachstumsberichte umwandelt, einschließlich Positionierungsanalyse, Angebotsvorschlägen, Scorecards, Vorlagen und Aktionsplänen.",
+        "Der Dienst wird unter https://growthkit.jcode.be bereitgestellt. Er läuft überwiegend in Ihrem Browser und kann KI- und Cloud-Dienste Dritter zur Generierung und Speicherung von Inhalten nutzen."
+      ]
+    },
+    {
+      "title": "2. Betreiber",
+      "paragraphs": [
+        "Der Dienst wird von jcode.be (\"wir\", \"uns\" oder \"unser\") betrieben. Bei Fragen zu diesen Bedingungen kontaktieren Sie uns über https://jcode.be."
+      ]
+    },
+    {
+      "title": "3. Voraussetzungen und Konten",
+      "paragraphs": [
+        "Sie müssen mindestens 16 Jahre alt sein und in der Lage sein, einen verbindlichen Vertrag abzuschließen, um den Dienst zu nutzen.",
+        "Einige Funktionen, wie das Speichern von Berichten in Ihrem Konto, erfordern eine Anmeldung über Google oder E-Mail. Sie sind für die Sicherheit Ihrer Zugangsdaten und für alle Aktivitäten unter Ihrem Konto verantwortlich.",
+        "Sie müssen korrekte Angaben machen und uns unverzüglich informieren, wenn Sie unbefugten Zugriff auf Ihr Konto vermuten."
+      ]
+    },
+    {
+      "title": "4. Ihre Inhalte",
+      "paragraphs": [
+        "Sie können Geschäftsinformationen, Briefings und andere Eingaben (\"Nutzerinhalte\") einreichen, um Berichte zu generieren. Sie behalten das Eigentum an Ihren Nutzerinhalten.",
+        "Sie gewähren uns eine beschränkte Lizenz, Ihre Nutzerinhalte ausschließlich zur Bereitstellung und Verbesserung des Dienstes zu verarbeiten, zu speichern, zu übertragen und anzuzeigen, einschließlich der Generierung von Berichten und deren Speicherung in Ihrem Konto, wenn Sie dies wählen.",
+        "Sie erklären, dass Sie berechtigt sind, Ihre Nutzerinhalte einzureichen und dass diese keine Rechte Dritter verletzen oder geltendes Recht verstoßen."
+      ]
+    },
+    {
+      "title": "5. KI-generierte Ausgabe",
+      "paragraphs": [
+        "Berichte werden mit automatisierten Systemen erstellt, einschließlich KI-Modellen Dritter. Ausgaben können unvollständig, ungenau, veraltet oder für Ihre Situation ungeeignet sein.",
+        "Der Dienst und seine Ausgabe dienen ausschließlich allgemeinen Informations- und Planungszwecken. Sie stellen keine Rechts-, Finanz-, Steuer-, Buchhaltungs- oder professionelle Unternehmensberatung dar. Sie sind allein verantwortlich für die Prüfung, Validierung und Anwendung generierter Inhalte.",
+        "Wir garantieren keine spezifischen Geschäftsergebnisse durch die Nutzung des Dienstes oder eines von ihm erstellten Berichts."
+      ]
+    },
+    {
+      "title": "6. Zulässige Nutzung",
+      "paragraphs": [
+        "Sie verpflichten sich, den Dienst nicht missbräuchlich zu nutzen. Verbotenes Verhalten umfasst unter anderem: unbefugten Zugriff auf Systeme oder Konten zu versuchen; den Dienst oder seine Infrastruktur zu stören; Daten über normale Nutzung hinaus zu scrapen oder massenhaft zu extrahieren; rechtswidrige, schädliche oder missbräuchliche Inhalte einzureichen; sich als andere auszugeben; oder den Dienst zur Entwicklung konkurrierender Datensätze oder Modelle unter Verstoß gegen geltende Drittanbieterbedingungen zu nutzen.",
+        "Wir können den Zugang sperren oder beenden, wenn wir begründet annehmen, dass Sie diese Bedingungen oder geltendes Recht verletzt haben."
+      ]
+    },
+    {
+      "title": "7. Geistiges Eigentum",
+      "paragraphs": [
+        "Wir besitzen den Dienst, einschließlich Software, Design, Marke und zugrunde liegender Technologie, mit Ausnahme von Nutzerinhalten und Materialien Dritter.",
+        "Vorbehaltlich dieser Bedingungen gewähren wir Ihnen eine persönliche, nicht-exklusive, nicht übertragbare Lizenz zur Nutzung des Dienstes und zum Export von Berichten für Ihre eigenen Geschäftszwecke.",
+        "Sie dürfen den Dienst selbst nicht kopieren, modifizieren, reverse engineeren, weiterverkaufen oder kommerziell ausnutzen, es sei denn, dies ist ausdrücklich erlaubt."
+      ]
+    },
+    {
+      "title": "8. Dienste Dritter",
+      "paragraphs": [
+        "Der Dienst stützt sich auf Drittanbieter, darunter KI-Generierungsdienste, Firebase-Authentifizierung und -Datenbank sowie Hosting-Anbieter. Ihre Nutzung dieser Funktionen kann auch den jeweiligen Bedingungen und Datenschutzrichtlinien unterliegen.",
+        "Wir sind nicht verantwortlich für Drittanbieterdienste außerhalb unserer angemessenen Kontrolle, einschließlich Ausfällen, Ratenlimits oder Richtlinienänderungen."
+      ]
+    },
+    {
+      "title": "9. Verfügbarkeit und Änderungen",
+      "paragraphs": [
+        "Wir bemühen uns, den Dienst verfügbar zu halten, garantieren jedoch keinen unterbrechungsfreien oder fehlerfreien Betrieb. Funktionen können jederzeit geändert, eingeschränkt oder eingestellt werden.",
+        "Kostenlose oder gemeinsam genutzte API-Stufen können Ratenlimits, Warteschlangen oder vorübergehende Verzögerungen verursachen. Wir haften nicht für Verzögerungen durch solche Limits oder Wartung."
+      ]
+    },
+    {
+      "title": "10. Gebühren",
+      "paragraphs": [
+        "Sofern wir nicht ausdrücklich etwas anderes angeben, wird der Dienst derzeit kostenlos angeboten. Wenn kostenpflichtige Funktionen eingeführt werden, legen wir die geltenden Preise und Zahlungsbedingungen dar, bevor Ihnen Kosten entstehen."
+      ]
+    },
+    {
+      "title": "11. Haftungsausschluss",
+      "paragraphs": [
+        "Der Dienst wird \"wie besehen\" und \"wie verfügbar\" im gesetzlich zulässigen Umfang bereitgestellt. Wir schließen alle Garantien aus, ob ausdrücklich, stillschweigend oder gesetzlich, einschließlich Garantien der Marktgängigkeit, Eignung für einen bestimmten Zweck, Genauigkeit und Nichtverletzung."
+      ]
+    },
+    {
+      "title": "12. Haftungsbeschränkung",
+      "paragraphs": [
+        "Im gesetzlich zulässigen Umfang haften jcode.be und seine Betreiber nicht für indirekte, beiläufige, besondere, Folge- oder Strafschäden oder für entgangenen Gewinn, Umsatz, Daten, Goodwill oder Geschäftsmöglichkeiten, die aus Ihrer Nutzung des Dienstes entstehen.",
+        "Unsere Gesamthaftung für Ansprüche im Zusammenhang mit dem Dienst ist begrenzt auf den höheren Betrag von (a) dem Betrag, den Sie uns in den zwölf Monaten vor dem Anspruch für den Dienst gezahlt haben, oder (b) 50 EUR.",
+        "Nichts in diesen Bedingungen schließt eine Haftung aus, die nach geltendem Recht nicht ausgeschlossen werden kann."
+      ]
+    },
+    {
+      "title": "13. Freistellung",
+      "paragraphs": [
+        "Sie verpflichten sich, jcode.be von Ansprüchen, Schäden, Verlusten und Kosten (einschließlich angemessener Anwaltskosten) freizustellen, die aus Ihren Nutzerinhalten, Ihrer Nutzung des Dienstes oder Ihrem Verstoß gegen diese Bedingungen oder geltendes Recht entstehen."
+      ]
+    },
+    {
+      "title": "14. Kündigung",
+      "paragraphs": [
+        "Sie können die Nutzung des Dienstes jederzeit beenden. Wir können Ihren Zugang sperren oder beenden, wenn Sie diese Bedingungen verletzen oder die weitere Bereitstellung aus rechtlichen, Sicherheits- oder betrieblichen Gründen unpraktikabel wird.",
+        "Bestimmungen, die ihrer Natur nach nach Beendigung fortbestehen sollen, bleiben in Kraft, einschließlich geistigem Eigentum, Haftungsausschlüssen, Haftungsbeschränkung und anwendbarem Recht."
+      ]
+    },
+    {
+      "title": "15. Datenschutz",
+      "paragraphs": [
+        "Ihre Nutzung des Dienstes umfasst die Verarbeitung personenbezogener und geschäftlicher Daten, einschließlich Kontoinformationen und gespeicherter Berichte. Wir verarbeiten Daten gemäß geltendem Datenschutzrecht, einschließlich der DSGVO, wo anwendbar.",
+        "Daten können lokal in Ihrem Browser gespeichert werden und, wenn Sie sich anmelden und Berichte speichern, in Cloud-Infrastruktur, die mit Ihrem Konto verknüpft ist. Reichen Sie keine sensiblen personenbezogenen Daten ein, es sei denn, dies ist für Ihre beabsichtigte Nutzung erforderlich."
+      ]
+    },
+    {
+      "title": "16. Änderungen dieser Bedingungen",
+      "paragraphs": [
+        "Wir können diese Bedingungen von Zeit zu Zeit aktualisieren. Das Datum \"Zuletzt aktualisiert\" oben zeigt die neueste Fassung an. Wesentliche Änderungen werden auf dieser Seite wiedergegeben. Die fortgesetzte Nutzung des Dienstes nach Inkrafttreten von Änderungen gilt als Annahme der aktualisierten Bedingungen."
+      ]
+    },
+    {
+      "title": "17. Anwendbares Recht und Streitigkeiten",
+      "paragraphs": [
+        "Diese Bedingungen unterliegen belgischem Recht, ohne Berücksichtigung kollisionsrechtlicher Regeln. Sofern zwingendes Verbraucherschutzrecht nichts anderes vorschreibt, sind die belgischen Gerichte ausschließlich zuständig für Streitigkeiten aus diesen Bedingungen oder dem Dienst.",
+        "Wenn Sie Verbraucher in der Europäischen Union sind, können Ihnen auch Rechte nach zwingenden lokalen Verbraucherschutzvorschriften zustehen."
+      ]
+    },
+    {
+      "title": "18. Kontakt",
+      "paragraphs": [
+        "Fragen zu diesen Bedingungen oder dem Dienst können über https://jcode.be gesendet werden."
+      ]
+    }
   ]
 }

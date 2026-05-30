@@ -152,5 +152,137 @@
       "title": "Finition du rapport",
       "detail": "Rendre le rapport HTML prêt pour le navigateur et préparer l'export PDF."
     }
+  ],
+  "termsLink": "Conditions générales",
+  "termsPageTitle": "Conditions générales",
+  "termsBackHome": "Retour à l'accueil",
+  "termsLastUpdated": "Dernière mise à jour : 30 mai 2026",
+  "termsIntro": "Les présentes conditions générales (\"Conditions\") régissent votre accès et votre utilisation de GrowthKit Studio (le \"Service\"), exploité par jcode.be. En utilisant le Service, vous acceptez ces Conditions. Dans le cas contraire, n'utilisez pas le Service.",
+  "termsSections": [
+    {
+      "title": "1. À propos du Service",
+      "paragraphs": [
+        "GrowthKit Studio (également appelé Entrepreneur Growth Kit) est un outil basé sur navigateur qui transforme des briefs d'entreprise en rapports de croissance stylisés, incluant analyse de positionnement, suggestions d'offres, scorecards, modèles et plans d'action.",
+        "Le Service est disponible sur https://growthkit.jcode.be. Il s'exécute principalement dans votre navigateur et peut utiliser des services d'IA et cloud tiers pour générer et stocker du contenu."
+      ]
+    },
+    {
+      "title": "2. Exploitant",
+      "paragraphs": [
+        "Le Service est exploité par jcode.be (\"nous\", \"notre\" ou \"nos\"). Pour toute question relative à ces Conditions, contactez-nous via https://jcode.be."
+      ]
+    },
+    {
+      "title": "3. Éligibilité et comptes",
+      "paragraphs": [
+        "Vous devez avoir au moins 16 ans et être capable de conclure un contrat contraignant pour utiliser le Service.",
+        "Certaines fonctionnalités, comme l'enregistrement de rapports sur votre compte, nécessitent une connexion via Google ou e-mail. Vous êtes responsable de la sécurité de vos identifiants et de toute activité sur votre compte.",
+        "Vous devez fournir des informations exactes et nous informer rapidement en cas de suspicion d'accès non autorisé à votre compte."
+      ]
+    },
+    {
+      "title": "4. Votre contenu",
+      "paragraphs": [
+        "Vous pouvez soumettre des informations commerciales, briefs et autres entrées (\"Contenu utilisateur\") pour générer des rapports. Vous conservez la propriété de votre Contenu utilisateur.",
+        "Vous nous accordez une licence limitée pour traiter, stocker, transmettre et afficher votre Contenu utilisateur uniquement afin d'exploiter et d'améliorer le Service, y compris la génération de rapports et leur enregistrement sur votre compte lorsque vous le choisissez.",
+        "Vous déclarez avoir le droit de soumettre votre Contenu utilisateur et qu'il ne porte pas atteinte aux droits de tiers ni ne viole la loi applicable."
+      ]
+    },
+    {
+      "title": "5. Contenu généré par IA",
+      "paragraphs": [
+        "Les rapports sont générés par des systèmes automatisés, y compris des modèles d'IA tiers. Le contenu produit peut être incomplet, inexact, obsolète ou inadapté à votre situation.",
+        "Le Service et son contenu sont fournis à titre informatif et de planification générale uniquement. Ils ne constituent pas un conseil juridique, financier, fiscal, comptable ou professionnel en matière d'entreprise. Vous êtes seul responsable de l'examen, de la validation et de l'utilisation du contenu généré.",
+        "Nous ne garantissons aucun résultat commercial spécifique lié à l'utilisation du Service ou d'un rapport produit."
+      ]
+    },
+    {
+      "title": "6. Utilisation acceptable",
+      "paragraphs": [
+        "Vous vous engagez à ne pas utiliser le Service de manière abusive. Les comportements interdits incluent notamment : tenter d'obtenir un accès non autorisé aux systèmes ou comptes ; perturber le Service ou son infrastructure ; extraire des données en masse au-delà d'un usage normal ; soumettre du contenu illégal, nuisible ou abusif ; usurper l'identité d'autrui ; ou utiliser le Service pour développer des jeux de données ou modèles concurrents en violation des conditions de tiers applicables.",
+        "Nous pouvons suspendre ou résilier l'accès si nous estimons raisonnablement que vous avez violé ces Conditions ou la loi applicable."
+      ]
+    },
+    {
+      "title": "7. Propriété intellectuelle",
+      "paragraphs": [
+        "Nous détenons le Service, y compris son logiciel, design, marque et technologie sous-jacente, à l'exception du Contenu utilisateur et des contenus tiers.",
+        "Sous réserve de ces Conditions, nous vous accordons une licence personnelle, non exclusive et non transférable pour utiliser le Service et exporter des rapports à des fins commerciales propres.",
+        "Vous ne pouvez pas copier, modifier, désosser, revendre ou exploiter commercialement le Service lui-même, sauf autorisation expresse."
+      ]
+    },
+    {
+      "title": "8. Services tiers",
+      "paragraphs": [
+        "Le Service s'appuie sur des prestataires tiers, pouvant inclure des services de génération IA, Firebase pour l'authentification et la base de données, et des hébergeurs. Votre utilisation de ces fonctionnalités peut également être soumise aux conditions et politiques de confidentialité respectives.",
+        "Nous ne sommes pas responsables des services tiers hors de notre contrôle raisonnable, y compris pannes, limites de débit ou changements de politique."
+      ]
+    },
+    {
+      "title": "9. Disponibilité et modifications",
+      "paragraphs": [
+        "Nous visons à maintenir le Service disponible, sans garantir un fonctionnement ininterrompu ou sans erreur. Les fonctionnalités peuvent être modifiées, limitées ou retirées à tout moment.",
+        "Les niveaux API gratuits ou partagés peuvent imposer des limites, files d'attente ou retards temporaires. Nous ne sommes pas responsables des retards causés par ces limites ou par la maintenance."
+      ]
+    },
+    {
+      "title": "10. Tarifs",
+      "paragraphs": [
+        "Sauf indication contraire expresse, le Service est actuellement proposé gratuitement. Si des fonctionnalités payantes sont introduites, nous présenterons les tarifs et conditions de paiement applicables avant toute facturation."
+      ]
+    },
+    {
+      "title": "11. Exclusion de garanties",
+      "paragraphs": [
+        "Le Service est fourni \"en l'état\" et \"selon disponibilité\" dans toute la mesure permise par la loi. Nous excluons toute garantie, expresse, implicite ou légale, y compris les garanties de qualité marchande, d'adéquation à un usage particulier, d'exactitude et de non-contrefaçon."
+      ]
+    },
+    {
+      "title": "12. Limitation de responsabilité",
+      "paragraphs": [
+        "Dans toute la mesure permise par la loi, jcode.be et ses opérateurs ne seront pas responsables des dommages indirects, accessoires, spéciaux, consécutifs ou punitifs, ni des pertes de profits, revenus, données, goodwill ou opportunités commerciales découlant de votre utilisation du Service.",
+        "Notre responsabilité totale pour toute réclamation liée au Service est limitée au plus élevé de (a) le montant que vous nous avez payé pour le Service au cours des douze mois précédant la réclamation, ou (b) 50 EUR.",
+        "Rien dans ces Conditions n'exclut une responsabilité qui ne peut être exclue en vertu de la loi applicable."
+      ]
+    },
+    {
+      "title": "13. Indemnisation",
+      "paragraphs": [
+        "Vous acceptez d'indemniser et de dégager jcode.be de toute responsabilité en cas de réclamations, dommages, pertes et frais (y compris honoraires juridiques raisonnables) découlant de votre Contenu utilisateur, de votre utilisation du Service ou de votre violation de ces Conditions ou de la loi applicable."
+      ]
+    },
+    {
+      "title": "14. Résiliation",
+      "paragraphs": [
+        "Vous pouvez cesser d'utiliser le Service à tout moment. Nous pouvons suspendre ou résilier votre accès en cas de violation de ces Conditions ou si la poursuite du Service devient impraticable pour des raisons juridiques, de sécurité ou opérationnelles.",
+        "Les dispositions qui, de par leur nature, doivent survivre à la résiliation resteront en vigueur, notamment celles relatives à la propriété intellectuelle, aux exclusions de garantie, à la limitation de responsabilité et au droit applicable."
+      ]
+    },
+    {
+      "title": "15. Confidentialité",
+      "paragraphs": [
+        "Votre utilisation du Service implique le traitement de données personnelles et commerciales, y compris les informations de compte et les rapports enregistrés. Nous traitons les données conformément à la législation applicable en matière de protection des données, y compris le RGPD le cas échéant.",
+        "Les données peuvent être stockées localement dans votre navigateur et, lorsque vous vous connectez et enregistrez des rapports, dans une infrastructure cloud liée à votre compte. Ne soumettez pas de données personnelles sensibles sauf si nécessaire pour votre usage prévu."
+      ]
+    },
+    {
+      "title": "16. Modifications des Conditions",
+      "paragraphs": [
+        "Nous pouvons mettre à jour ces Conditions de temps à autre. La date \"Dernière mise à jour\" en haut indique la révision la plus récente. Les modifications importantes seront reflétées sur cette page. L'utilisation continue du Service après l'entrée en vigueur des modifications vaut acceptation des Conditions mises à jour."
+      ]
+    },
+    {
+      "title": "17. Droit applicable et litiges",
+      "paragraphs": [
+        "Ces Conditions sont régies par le droit belge, sans égard aux règles de conflit de lois. Sauf si le droit impératif de protection des consommateurs en dispose autrement, les tribunaux belges seront seuls compétents pour tout litige découlant de ces Conditions ou du Service.",
+        "Si vous êtes consommateur dans l'Union européenne, vous pouvez également bénéficier de droits en vertu des règles impératoires locales de protection des consommateurs."
+      ]
+    },
+    {
+      "title": "18. Contact",
+      "paragraphs": [
+        "Les questions relatives à ces Conditions ou au Service peuvent être adressées via https://jcode.be."
+      ]
+    }
   ]
 }

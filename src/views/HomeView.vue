@@ -279,6 +279,7 @@ onMounted(async () => {
       <p>
         © {{ currentYear }} · {{ ui.footerByline }}
         <a href="https://jcode.be" target="_blank" rel="noopener noreferrer">jcode.be</a>
+        · <router-link to="/terms">{{ ui.termsLink }}</router-link>
       </p>
     </footer>
 

@@ -793,6 +793,70 @@ input[type="text"]::placeholder {
   text-decoration: underline;
 }
 
+.site-footer .router-link-active {
+  color: var(--accent);
+}
+
+/* Legal pages */
+
+.legal-page {
+  width: min(760px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+.legal-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+  color: var(--accent);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.legal-back:hover {
+  text-decoration: underline;
+}
+
+.legal-page h1 {
+  margin-bottom: 8px;
+  font-size: 2.4rem;
+}
+
+.legal-updated {
+  margin: 0 0 32px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.legal-intro {
+  margin: 0 0 40px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.legal-section {
+  margin-bottom: 32px;
+}
+
+.legal-section h2 {
+  margin-bottom: 12px;
+  color: var(--ink);
+  font-size: 1.15rem;
+}
+
+.legal-section p {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  line-height: 1.65;
+}
+
+.legal-section p:last-child {
+  margin-bottom: 0;
+}
+
 /* Loading overlay */
 
 .loading-overlay {

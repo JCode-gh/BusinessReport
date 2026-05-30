@@ -152,5 +152,137 @@
       "title": "Polishing the final report",
       "detail": "Rendering the browser-ready HTML report and preparing PDF export actions."
     }
+  ],
+  "termsLink": "Terms & Conditions",
+  "termsPageTitle": "Terms & Conditions",
+  "termsBackHome": "Back to home",
+  "termsLastUpdated": "Last updated: 30 May 2026",
+  "termsIntro": "These Terms & Conditions (\"Terms\") govern your access to and use of GrowthKit Studio (the \"Service\"), operated by jcode.be. By using the Service, you agree to these Terms. If you do not agree, do not use the Service.",
+  "termsSections": [
+    {
+      "title": "1. About the Service",
+      "paragraphs": [
+        "GrowthKit Studio (also referred to as Entrepreneur Growth Kit) is a browser-based tool that turns business briefs into styled growth reports, including positioning analysis, offer suggestions, scorecards, templates, and action plans.",
+        "The Service is provided at https://growthkit.jcode.be. It runs primarily in your browser and may use third-party AI and cloud services to generate and store content."
+      ]
+    },
+    {
+      "title": "2. Operator",
+      "paragraphs": [
+        "The Service is operated by jcode.be (\"we\", \"us\", or \"our\"). For questions about these Terms, contact us via https://jcode.be."
+      ]
+    },
+    {
+      "title": "3. Eligibility and Accounts",
+      "paragraphs": [
+        "You must be at least 16 years old and able to enter a binding agreement to use the Service.",
+        "Some features, such as saving reports to your account, require sign-in via Google or email. You are responsible for maintaining the security of your account credentials and for all activity under your account.",
+        "You must provide accurate information and notify us promptly if you suspect unauthorised access to your account."
+      ]
+    },
+    {
+      "title": "4. Your Content",
+      "paragraphs": [
+        "You may submit business information, briefs, and other inputs (\"User Content\") to generate reports. You retain ownership of your User Content.",
+        "You grant us a limited licence to process, store, transmit, and display your User Content solely to operate and improve the Service, including generating reports and saving them to your account when you choose to do so.",
+        "You represent that you have the right to submit your User Content and that it does not infringe third-party rights or violate applicable law."
+      ]
+    },
+    {
+      "title": "5. AI-Generated Output",
+      "paragraphs": [
+        "Reports are generated using automated systems, including third-party AI models. Output may be incomplete, inaccurate, outdated, or unsuitable for your specific situation.",
+        "The Service and its output are provided for general informational and planning purposes only. They do not constitute legal, financial, tax, accounting, or professional business advice. You are solely responsible for reviewing, validating, and acting on any generated content.",
+        "We do not guarantee specific business results from using the Service or any report it produces."
+      ]
+    },
+    {
+      "title": "6. Acceptable Use",
+      "paragraphs": [
+        "You agree not to misuse the Service. Prohibited conduct includes, without limitation: attempting to gain unauthorised access to systems or accounts; interfering with the Service or its infrastructure; scraping or bulk-extracting data beyond normal use; submitting unlawful, harmful, or abusive content; impersonating others; or using the Service to develop competing datasets or models in violation of applicable third-party terms.",
+        "We may suspend or terminate access if we reasonably believe you have violated these Terms or applicable law."
+      ]
+    },
+    {
+      "title": "7. Intellectual Property",
+      "paragraphs": [
+        "We own the Service, including its software, design, branding, and underlying technology, except for User Content and third-party materials.",
+        "Subject to these Terms, we grant you a personal, non-exclusive, non-transferable licence to use the Service and to export reports for your own business purposes.",
+        "You may not copy, modify, reverse engineer, resell, or commercially exploit the Service itself except as expressly permitted."
+      ]
+    },
+    {
+      "title": "8. Third-Party Services",
+      "paragraphs": [
+        "The Service relies on third-party providers, which may include AI generation services, Firebase authentication and database services, and hosting providers. Your use of those features may also be subject to the respective providers' terms and privacy policies.",
+        "We are not responsible for third-party services outside our reasonable control, including outages, rate limits, or policy changes."
+      ]
+    },
+    {
+      "title": "9. Availability and Changes",
+      "paragraphs": [
+        "We aim to keep the Service available but do not guarantee uninterrupted or error-free operation. Features may change, be limited, or be withdrawn at any time.",
+        "Free or shared API tiers may impose rate limits, queues, or temporary delays. We are not liable for delays caused by such limits or by maintenance."
+      ]
+    },
+    {
+      "title": "10. Fees",
+      "paragraphs": [
+        "Unless we expressly state otherwise, the Service is currently offered without charge. If paid features are introduced, we will present applicable pricing and payment terms before you are charged."
+      ]
+    },
+    {
+      "title": "11. Disclaimer of Warranties",
+      "paragraphs": [
+        "The Service is provided \"as is\" and \"as available\" to the fullest extent permitted by law. We disclaim all warranties, whether express, implied, or statutory, including warranties of merchantability, fitness for a particular purpose, accuracy, and non-infringement."
+      ]
+    },
+    {
+      "title": "12. Limitation of Liability",
+      "paragraphs": [
+        "To the fullest extent permitted by law, jcode.be and its operators will not be liable for any indirect, incidental, special, consequential, or punitive damages, or for loss of profits, revenue, data, goodwill, or business opportunities arising from your use of the Service.",
+        "Our total liability for any claim relating to the Service is limited to the greater of (a) the amount you paid us for the Service in the twelve months before the claim, or (b) EUR 50.",
+        "Nothing in these Terms excludes liability that cannot be excluded under applicable law."
+      ]
+    },
+    {
+      "title": "13. Indemnification",
+      "paragraphs": [
+        "You agree to indemnify and hold harmless jcode.be from claims, damages, losses, and expenses (including reasonable legal fees) arising from your User Content, your use of the Service, or your violation of these Terms or applicable law."
+      ]
+    },
+    {
+      "title": "14. Termination",
+      "paragraphs": [
+        "You may stop using the Service at any time. We may suspend or terminate your access if you breach these Terms or if continued provision becomes impractical for legal, security, or operational reasons.",
+        "Provisions that by their nature should survive termination will remain in effect, including sections on intellectual property, disclaimers, limitation of liability, and governing law."
+      ]
+    },
+    {
+      "title": "15. Privacy",
+      "paragraphs": [
+        "Your use of the Service involves processing of personal and business data, including account information and saved reports. We handle data in accordance with applicable privacy law, including the GDPR where it applies.",
+        "Data may be stored locally in your browser and, when you sign in and save reports, in cloud infrastructure linked to your account. Do not submit sensitive personal data unless necessary for your intended use."
+      ]
+    },
+    {
+      "title": "16. Changes to These Terms",
+      "paragraphs": [
+        "We may update these Terms from time to time. The \"Last updated\" date at the top indicates the latest revision. Material changes will be reflected on this page. Continued use of the Service after changes take effect constitutes acceptance of the updated Terms."
+      ]
+    },
+    {
+      "title": "17. Governing Law and Disputes",
+      "paragraphs": [
+        "These Terms are governed by the laws of Belgium, without regard to conflict-of-law rules. Unless mandatory consumer protection law requires otherwise, the courts of Belgium shall have exclusive jurisdiction over disputes arising from these Terms or the Service.",
+        "If you are a consumer in the European Union, you may also have rights under mandatory local consumer protection rules."
+      ]
+    },
+    {
+      "title": "18. Contact",
+      "paragraphs": [
+        "Questions about these Terms or the Service can be sent via https://jcode.be."
+      ]
+    }
   ]
 }

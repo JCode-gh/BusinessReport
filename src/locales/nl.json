@@ -152,5 +152,137 @@
       "title": "Het eindrapport polijsten",
       "detail": "Het browserklare HTML-rapport renderen en PDF-export voorbereiden."
     }
+  ],
+  "termsLink": "Algemene voorwaarden",
+  "termsPageTitle": "Algemene voorwaarden",
+  "termsBackHome": "Terug naar home",
+  "termsLastUpdated": "Laatst bijgewerkt: 30 mei 2026",
+  "termsIntro": "Deze algemene voorwaarden (\"Voorwaarden\") regelen uw toegang tot en gebruik van GrowthKit Studio (de \"Dienst\"), beheerd door jcode.be. Door de Dienst te gebruiken, gaat u akkoord met deze Voorwaarden. Als u niet akkoord gaat, gebruik de Dienst dan niet.",
+  "termsSections": [
+    {
+      "title": "1. Over de Dienst",
+      "paragraphs": [
+        "GrowthKit Studio (ook wel Entrepreneur Growth Kit genoemd) is een browsergebaseerde tool die zakelijke briefings omzet in gestileerde groeirapporten, waaronder positioneringsanalyse, offer-suggesties, scorecards, templates en actieplannen.",
+        "De Dienst wordt aangeboden op https://growthkit.jcode.be. Ze draait voornamelijk in uw browser en kan gebruikmaken van AI- en clouddiensten van derden om content te genereren en op te slaan."
+      ]
+    },
+    {
+      "title": "2. Exploitant",
+      "paragraphs": [
+        "De Dienst wordt beheerd door jcode.be (\"wij\", \"ons\" of \"onze\"). Voor vragen over deze Voorwaarden kunt u contact opnemen via https://jcode.be."
+      ]
+    },
+    {
+      "title": "3. Geschiktheid en accounts",
+      "paragraphs": [
+        "U moet minstens 16 jaar oud zijn en in staat zijn een bindende overeenkomst aan te gaan om de Dienst te gebruiken.",
+        "Sommige functies, zoals het opslaan van rapporten op uw account, vereisen aanmelding via Google of e-mail. U bent verantwoordelijk voor de beveiliging van uw accountgegevens en voor alle activiteit onder uw account.",
+        "U moet accurate informatie verstrekken en ons onmiddellijk informeren als u ongeautoriseerde toegang tot uw account vermoedt."
+      ]
+    },
+    {
+      "title": "4. Uw content",
+      "paragraphs": [
+        "U kunt zakelijke informatie, briefings en andere invoer (\"Gebruikerscontent\") indienen om rapporten te genereren. U behoudt het eigendom van uw Gebruikerscontent.",
+        "U verleent ons een beperkte licentie om uw Gebruikerscontent te verwerken, op te slaan, over te dragen en weer te geven uitsluitend om de Dienst te exploiteren en te verbeteren, inclusief het genereren van rapporten en het opslaan ervan op uw account wanneer u daarvoor kiest.",
+        "U verklaart dat u het recht heeft om uw Gebruikerscontent in te dienen en dat deze geen inbreuk maakt op rechten van derden of toepasselijk recht schendt."
+      ]
+    },
+    {
+      "title": "5. AI-gegenereerde output",
+      "paragraphs": [
+        "Rapporten worden gegenereerd met geautomatiseerde systemen, waaronder AI-modellen van derden. Output kan onvolledig, onnauwkeurig, verouderd of ongeschikt zijn voor uw specifieke situatie.",
+        "De Dienst en de output worden uitsluitend aangeboden voor algemene informatieve en planningsdoeleinden. Ze vormen geen juridisch, financieel, fiscaal, boekhoudkundig of professioneel bedrijfsadvies. U bent zelf verantwoordelijk voor het beoordelen, valideren en toepassen van gegenereerde content.",
+        "Wij garanderen geen specifieke bedrijfsresultaten door het gebruik van de Dienst of een door haar geproduceerd rapport."
+      ]
+    },
+    {
+      "title": "6. Aanvaardbaar gebruik",
+      "paragraphs": [
+        "U stemt ermee in de Dienst niet te misbruiken. Verboden gedrag omvat onder meer: pogingen tot ongeautoriseerde toegang tot systemen of accounts; het verstoren van de Dienst of haar infrastructuur; scraping of bulk-extractie van data buiten normaal gebruik; het indienen van onwettige, schadelijke of beledigende content; zich voordoen als anderen; of het gebruik van de Dienst om concurrerende datasets of modellen te ontwikkelen in strijd met toepasselijke voorwaarden van derden.",
+        "Wij kunnen de toegang opschorten of beëindigen als wij redelijkerwijs menen dat u deze Voorwaarden of toepasselijk recht heeft geschonden."
+      ]
+    },
+    {
+      "title": "7. Intellectueel eigendom",
+      "paragraphs": [
+        "Wij bezitten de Dienst, inclusief software, design, branding en onderliggende technologie, behalve Gebruikerscontent en materialen van derden.",
+        "Onder voorbehoud van deze Voorwaarden verlenen wij u een persoonlijke, niet-exclusieve, niet-overdraagbare licentie om de Dienst te gebruiken en rapporten te exporteren voor uw eigen zakelijke doeleinden.",
+        "U mag de Dienst zelf niet kopiëren, wijzigen, reverse engineeren, doorverkopen of commercieel exploiteren, behalve zoals uitdrukkelijk toegestaan."
+      ]
+    },
+    {
+      "title": "8. Diensten van derden",
+      "paragraphs": [
+        "De Dienst steunt op providers van derden, waaronder AI-generatiediensten, Firebase-authenticatie en -database, en hostingproviders. Uw gebruik van die functies kan ook onderworpen zijn aan de respectieve voorwaarden en privacybeleidsregels.",
+        "Wij zijn niet verantwoordelijk voor diensten van derden buiten onze redelijke controle, waaronder uitval, rate limits of beleidswijzigingen."
+      ]
+    },
+    {
+      "title": "9. Beschikbaarheid en wijzigingen",
+      "paragraphs": [
+        "Wij streven ernaar de Dienst beschikbaar te houden, maar garanderen geen ononderbroken of foutloze werking. Functies kunnen op elk moment worden gewijzigd, beperkt of ingetrokken.",
+        "Gratis of gedeelde API-tiers kunnen rate limits, wachtrijen of tijdelijke vertragingen opleggen. Wij zijn niet aansprakelijk voor vertragingen door dergelijke limieten of onderhoud."
+      ]
+    },
+    {
+      "title": "10. Kosten",
+      "paragraphs": [
+        "Tenzij wij uitdrukkelijk anders vermelden, wordt de Dienst momenteel kosteloos aangeboden. Als betaalde functies worden geïntroduceerd, presenteren wij de toepasselijke prijzen en betalingsvoorwaarden voordat u wordt gefactureerd."
+      ]
+    },
+    {
+      "title": "11. Uitsluiting van garanties",
+      "paragraphs": [
+        "De Dienst wordt aangeboden \"as is\" en \"as available\" voor zover wettelijk toegestaan. Wij sluiten alle garanties uit, expliciet, impliciet of wettelijk, waaronder garanties van verkoopbaarheid, geschiktheid voor een bepaald doel, nauwkeurigheid en niet-inbreuk."
+      ]
+    },
+    {
+      "title": "12. Beperking van aansprakelijkheid",
+      "paragraphs": [
+        "Voor zover wettelijk toegestaan zijn jcode.be en haar exploitanten niet aansprakelijk voor indirecte, incidentele, bijzondere, gevolg- of strafschade, of voor verlies van winst, omzet, data, goodwill of zakelijke kansen voortvloeiend uit uw gebruik van de Dienst.",
+        "Onze totale aansprakelijkheid voor elke claim met betrekking tot de Dienst is beperkt tot het hoogste van (a) het bedrag dat u ons in de twaalf maanden vóór de claim heeft betaald voor de Dienst, of (b) EUR 50.",
+        "Niets in deze Voorwaarden sluit aansprakelijkheid uit die onder toepasselijk recht niet kan worden uitgesloten."
+      ]
+    },
+    {
+      "title": "13. Vrijwaring",
+      "paragraphs": [
+        "U stemt ermee in jcode.be te vrijwaren van claims, schade, verliezen en kosten (inclusief redelijke juridische kosten) voortvloeiend uit uw Gebruikerscontent, uw gebruik van de Dienst, of uw schending van deze Voorwaarden of toepasselijk recht."
+      ]
+    },
+    {
+      "title": "14. Beëindiging",
+      "paragraphs": [
+        "U kunt op elk moment stoppen met het gebruik van de Dienst. Wij kunnen uw toegang opschorten of beëindigen als u deze Voorwaarden schendt of als voortgezette levering om juridische, veiligheids- of operationele redenen onpraktisch wordt.",
+        "Bepalingen die naar hun aard na beëindiging van kracht moeten blijven, blijven gelden, waaronder intellectueel eigendom, uitsluitingen, aansprakelijkheidsbeperking en toepasselijk recht."
+      ]
+    },
+    {
+      "title": "15. Privacy",
+      "paragraphs": [
+        "Uw gebruik van de Dienst omvat verwerking van persoonlijke en zakelijke gegevens, waaronder accountinformatie en opgeslagen rapporten. Wij verwerken gegevens in overeenstemming met toepasselijke privacywetgeving, waaronder de AVG waar van toepassing.",
+        "Gegevens kunnen lokaal in uw browser worden opgeslagen en, wanneer u zich aanmeldt en rapporten opslaat, in cloudinfrastructuur gekoppeld aan uw account. Dien geen gevoelige persoonsgegevens in tenzij noodzakelijk voor uw beoogde gebruik."
+      ]
+    },
+    {
+      "title": "16. Wijzigingen in deze Voorwaarden",
+      "paragraphs": [
+        "Wij kunnen deze Voorwaarden van tijd tot tijd bijwerken. De datum \"Laatst bijgewerkt\" bovenaan geeft de meest recente revisie aan. Materiële wijzigingen worden op deze pagina weergegeven. Voortgezet gebruik van de Dienst na inwerkingtreding van wijzigingen geldt als aanvaarding van de bijgewerkte Voorwaarden."
+      ]
+    },
+    {
+      "title": "17. Toepasselijk recht en geschillen",
+      "paragraphs": [
+        "Deze Voorwaarden worden beheerst door het Belgische recht, zonder rekening te houden met conflicterende rechtsregels. Tenzij dwingend consumentenrecht anders vereist, zijn de Belgische rechtbanken exclusief bevoegd voor geschillen voortvloeiend uit deze Voorwaarden of de Dienst.",
+        "Als u consument bent in de Europese Unie, kunt u ook rechten hebben onder dwingende lokale consumentenbeschermingsregels."
+      ]
+    },
+    {
+      "title": "18. Contact",
+      "paragraphs": [
+        "Vragen over deze Voorwaarden of de Dienst kunnen worden gestuurd via https://jcode.be."
+      ]
+    }
   ]
 }
