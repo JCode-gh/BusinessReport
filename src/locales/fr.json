@@ -126,7 +126,8 @@
   "deleteReport": "Supprimer",
   "deleteReportConfirm": "Êtes-vous sûr de vouloir supprimer définitivement ce rapport ? Cette action est irréversible.",
   "validationErrorTitle": "Champs requis manquants",
-  "validationErrorMessage": "Veuillez remplir au moins un des champs suivants : type d'entreprise, offre actuelle, client cible, problème principal ou objectif.",
+  "validationStepErrorMessage": "Veuillez remplir tous les champs de cette étape avant de continuer.",
+  "validationErrorMessage": "Veuillez compléter chaque étape du brief avant de générer votre rapport.",
   "generationSteps": [
     {
       "title": "Lecture du brief business",

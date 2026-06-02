@@ -1685,10 +1685,15 @@ input[type="text"]::placeholder {
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
-.wizard-next:hover {
+.wizard-next:hover:not(:disabled) {
   transform: translateY(-2px);
   background: var(--btn-hover);
   box-shadow: 0 14px 38px rgba(90, 78, 200, 0.45);
+}
+
+.wizard-next:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .wizard-generate {

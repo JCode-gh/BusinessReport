@@ -126,7 +126,8 @@
   "deleteReport": "Löschen",
   "deleteReportConfirm": "Bist du sicher, dass du diesen Report dauerhaft löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
   "validationErrorTitle": "Erforderliche Felder fehlen",
-  "validationErrorMessage": "Bitte fülle mindestens eines der folgenden Felder aus: Unternehmenstyp, aktuelles Angebot, Zielkunde, Hauptproblem oder Ziel.",
+  "validationStepErrorMessage": "Bitte fülle alle Felder in diesem Schritt aus, bevor du fortfährst.",
+  "validationErrorMessage": "Bitte schließe jeden Schritt im Brief ab, bevor du deinen Report generierst.",
   "generationSteps": [
     {
       "title": "Business-Briefing lesen",

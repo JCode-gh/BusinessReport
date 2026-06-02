@@ -10,7 +10,36 @@ import {
 
 type GenerateStatus = 'idle' | 'loading' | 'success' | 'error';
 
+export const WIZARD_STEP_COUNT = 8;
+
 const defaultLanguage: ReportLanguage = 'nl';
+
+function fieldFilled(value: string): boolean {
+  return value.trim().length > 0;
+}
+
+export function isWizardStepValid(step: number): boolean {
+  switch (step) {
+    case 0:
+      return fieldFilled(form.businessName) && fieldFilled(form.region);
+    case 1:
+      return fieldFilled(form.businessType);
+    case 2:
+      return fieldFilled(form.offer);
+    case 3:
+      return fieldFilled(form.audience);
+    case 4:
+      return fieldFilled(form.problem);
+    case 5:
+      return fieldFilled(form.goal);
+    case 6:
+      return fieldFilled(form.channels) && fieldFilled(form.pricePoint);
+    case 7:
+      return fieldFilled(form.tone);
+    default:
+      return false;
+  }
+}
 
 export const form = reactive({
   businessName: '',
@@ -49,17 +78,14 @@ const waitingRoom = reactive({
 let waitingRoomTimer: number | null = null;
 
 export function useReportGeneration() {
-  const hasBusinessContext = computed(() => {
-    return Boolean(
-      form.businessType.trim() ||
-        form.offer.trim() ||
-        form.audience.trim() ||
-        form.problem.trim() ||
-        form.goal.trim()
-    );
+  const isBriefComplete = computed(() => {
+    for (let step = 0; step < WIZARD_STEP_COUNT; step++) {
+      if (!isWizardStepValid(step)) return false;
+    }
+    return true;
   });
 
-  const canGenerate = computed(() => hasBusinessContext.value && status.value !== 'loading');
+  const canGenerate = computed(() => isBriefComplete.value && status.value !== 'loading');
 
   const loadingProgress = computed(() => {
     if (apiCharsReceived.value === 0) return 3;
@@ -199,7 +225,7 @@ export function useReportGeneration() {
     currentPlan,
     currentHtml,
     waitingRoom,
-    hasBusinessContext,
+    isBriefComplete,
     canGenerate,
     loadingProgress,
     waitingCountdownPercent,

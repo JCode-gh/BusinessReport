@@ -2,7 +2,12 @@
 import { ref, computed, nextTick, watch } from 'vue';
 import { X, ArrowRight, Sparkles } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
-import { form, useReportGeneration } from '../composables/useReportGeneration';
+import {
+  form,
+  useReportGeneration,
+  isWizardStepValid,
+  WIZARD_STEP_COUNT,
+} from '../composables/useReportGeneration';
 import { REPORT_THEMES, type ReportThemeKey } from '../businessKit';
 import { useNotification } from '../composables/useNotification';
 
@@ -19,11 +24,13 @@ const { ui, siteLanguage } = useLanguage();
 const { canGenerate, resetBriefForm } = useReportGeneration();
 const { showNotification } = useNotification();
 
-const WIZARD_TOTAL = 8;
 const currentStep = ref(0);
 const wizardForward = ref(true);
 
-const wizardProgress = computed(() => Math.round(((currentStep.value + 1) / WIZARD_TOTAL) * 100));
+const wizardProgress = computed(() =>
+  Math.round(((currentStep.value + 1) / WIZARD_STEP_COUNT) * 100)
+);
+const canProceed = computed(() => isWizardStepValid(currentStep.value));
 
 const tonePresets = computed(() => ui.value.tonePresets);
 
@@ -31,8 +38,20 @@ function closeWizard() {
   emit('update:modelValue', false);
 }
 
+function showStepValidationError() {
+  showNotification(
+    ui.value.validationErrorTitle,
+    ui.value.validationStepErrorMessage,
+    'error'
+  );
+}
+
 function goNext() {
-  if (currentStep.value < WIZARD_TOTAL - 1) {
+  if (!canProceed.value) {
+    showStepValidationError();
+    return;
+  }
+  if (currentStep.value < WIZARD_STEP_COUNT - 1) {
     wizardForward.value = true;
     currentStep.value++;
   }
@@ -48,7 +67,7 @@ function goPrev() {
 function onInputKey(e: KeyboardEvent) {
   if (e.key === 'Enter') {
     e.preventDefault();
-    if (currentStep.value === WIZARD_TOTAL - 1) generateAndClose();
+    if (currentStep.value === WIZARD_STEP_COUNT - 1) generateAndClose();
     else goNext();
   }
   if (e.key === 'Escape') closeWizard();
@@ -57,7 +76,7 @@ function onInputKey(e: KeyboardEvent) {
 function onTextareaKey(e: KeyboardEvent) {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
     e.preventDefault();
-    if (currentStep.value === WIZARD_TOTAL - 1) generateAndClose();
+    if (currentStep.value === WIZARD_STEP_COUNT - 1) generateAndClose();
     else goNext();
   }
   if (e.key === 'Escape') closeWizard();
@@ -117,7 +136,7 @@ watch(
           <div class="wizard-progress-fill" :style="{ width: wizardProgress + '%' }"></div>
         </div>
         <span class="wizard-counter" aria-live="polite"
-          >{{ String(currentStep + 1).padStart(2, '0') }} / {{ String(WIZARD_TOTAL).padStart(2, '0') }}</span
+          >{{ String(currentStep + 1).padStart(2, '0') }} / {{ String(WIZARD_STEP_COUNT).padStart(2, '0') }}</span
         >
       </div>
 
@@ -329,9 +348,10 @@ watch(
         </button>
         <div class="wizard-footer-right">
           <button
-            v-if="currentStep < WIZARD_TOTAL - 1"
+            v-if="currentStep < WIZARD_STEP_COUNT - 1"
             class="wizard-next"
             type="button"
+            :disabled="!canProceed"
             @click="goNext"
           >
             OK <ArrowRight :size="16" />

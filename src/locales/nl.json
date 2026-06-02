@@ -126,7 +126,8 @@
   "deleteReport": "Verwijderen",
   "deleteReportConfirm": "Weet je zeker dat je dit rapport permanent wil verwijderen? Dit kan niet ongedaan worden gemaakt.",
   "validationErrorTitle": "Vereiste velden ontbreken",
-  "validationErrorMessage": "Vul minstens één van de volgende velden in: bedrijfstype, huidig aanbod, doelklant, probleem of doel.",
+  "validationStepErrorMessage": "Vul alle velden op deze stap in voordat je verdergaat.",
+  "validationErrorMessage": "Vul elke stap in de brief volledig in voordat je je rapport genereert.",
   "generationSteps": [
     {
       "title": "De businessbrief lezen",

@@ -126,7 +126,8 @@
   "deleteReport": "Delete",
   "deleteReportConfirm": "Are you sure you want to permanently delete this report? This cannot be undone.",
   "validationErrorTitle": "Required fields missing",
-  "validationErrorMessage": "Please fill in at least one of the following fields: business type, current offer, target customer, main problem, or goal.",
+  "validationStepErrorMessage": "Please fill in all fields on this step before continuing.",
+  "validationErrorMessage": "Please complete every step in the brief before generating your report.",
   "generationSteps": [
     {
       "title": "Reading the business brief",
