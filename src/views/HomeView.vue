@@ -211,9 +211,10 @@ onMounted(async () => {
         <p v-if="savedReportsLoading" class="saved-reports-empty">{{ ui.savedReportsLoading }}</p>
         <div v-else-if="!savedReports.length" class="saved-reports-empty">
           <p>{{ ui.savedReportsEmpty }}</p>
-          <button class="saved-reports-cta" type="button" @click="openWizard">
-            <Sparkles :size="16" />
+          <button class="primary-link" type="button" @click="openWizard">
+            <Sparkles :size="19" />
             {{ ui.heroPrimary }}
+            <ArrowRight :size="18" />
           </button>
         </div>
         <ul v-else class="saved-reports-list">
