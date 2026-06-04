@@ -1,21 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-
-function getDb() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Netlify stores multiline secrets as literal \n — replace them
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  }
-  return getFirestore();
-}
+import { getDb, grantCreditOnce } from './lib/credits';
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -56,17 +41,14 @@ export const handler: Handler = async (event) => {
       return { statusCode: 200, body: 'OK' };
     }
 
+    if (session.payment_status !== 'paid') {
+      return { statusCode: 200, body: 'OK' };
+    }
+
     try {
       const db = getDb();
-      await db.collection('users').doc(uid).set(
-        {
-          credits: FieldValue.increment(1),
-          lastPaidAt: new Date().toISOString(),
-          lastStripeSessionId: session.id,
-        },
-        { merge: true },
-      );
-      console.log('[stripe-webhook] Payment recorded for uid:', uid);
+      await grantCreditOnce(db, session.id, uid);
+      console.log('[stripe-webhook] Credit ensured for uid:', uid);
     } catch (err) {
       console.error('[stripe-webhook] Firestore write failed:', err);
       return { statusCode: 500, body: 'Database update failed' };

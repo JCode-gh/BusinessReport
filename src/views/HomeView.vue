@@ -26,7 +26,7 @@ const { status, generateBusinessKit, dismissError, currentPlan, currentHtml, sho
 const { savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
   useReportManagement();
 const { showNotification } = useNotification();
-const { user, credits, refreshPayment } = useAuth();
+const { user, credits, refreshPayment, waitForAuthReady } = useAuth();
 
 const wizardOpen = ref(false);
 const showAuthModal = ref(false);
@@ -142,6 +142,65 @@ const paymentSuccessCopy: Record<string, { title: string; message: string }> = {
   de: { title: 'Zahlung erfolgreich!', message: 'Ihr Berichts-Guthaben ist bereit. Der Assistent öffnet sich gleich.' },
 };
 
+async function activatePaymentOnReturn(sessionId: string | null) {
+  const lang = siteLanguage.value as string;
+  const c = paymentSuccessCopy[lang] ?? paymentSuccessCopy.nl;
+
+  // After the Stripe redirect the page reloaded — wait for Firebase auth to restore
+  await waitForAuthReady();
+
+  if (!user.value) {
+    showNotification(
+      c.title,
+      lang === 'nl'
+        ? 'Betaling geslaagd. Meld je aan om je rapport te genereren.'
+        : 'Payment successful. Sign in to generate your report.',
+      'success',
+    );
+    showAuthModal.value = true;
+    return;
+  }
+
+  // Primary path: verify the session with Stripe and grant the credit synchronously
+  if (sessionId) {
+    try {
+      const res = await fetch('/.netlify/functions/verify-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, uid: user.value.uid }),
+      });
+      const data = (await res.json()) as { paid?: boolean; credits?: number; error?: string };
+      if (res.ok && data.paid) {
+        await refreshPayment();
+        showNotification(c.title, c.message, 'success');
+        if (credits.value > 0) wizardOpen.value = true;
+        return;
+      }
+    } catch (err) {
+      console.error('[payment] verify-checkout failed, falling back to webhook polling', err);
+    }
+  }
+
+  // Fallback: poll Firestore in case the webhook is the one writing the credit
+  showNotification(c.title, c.message, 'success');
+  for (let i = 0; i < 10; i++) {
+    await new Promise((r) => setTimeout(r, i < 3 ? 800 : 1500));
+    await refreshPayment();
+    if (credits.value > 0) break;
+  }
+  if (credits.value > 0) {
+    wizardOpen.value = true;
+  } else {
+    showNotification(
+      lang === 'nl' ? 'Betaling ontvangen' : 'Payment received',
+      lang === 'nl'
+        ? 'Betaling is verwerkt maar activatie duurt iets langer. Ververs de pagina en probeer opnieuw.'
+        : 'Payment confirmed but activation is taking a moment. Refresh and try again.',
+      'success',
+    );
+  }
+}
+
 onMounted(async () => {
   localStorage.removeItem('business-kit-draft');
   initializeLanguage();
@@ -152,30 +211,11 @@ onMounted(async () => {
     showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');
   }
 
-  // Handle Stripe redirect back — poll until webhook has written the credit
+  // Handle Stripe redirect back
   if (route.query.payment === 'success') {
+    const sessionId = typeof route.query.session_id === 'string' ? route.query.session_id : null;
     router.replace({ query: {} });
-    const lang = siteLanguage.value as string;
-    const c = paymentSuccessCopy[lang] ?? paymentSuccessCopy.nl;
-    showNotification(c.title, c.message, 'success');
-    // Poll up to 10× with increasing delay (max ~15s total) waiting for webhook
-    for (let i = 0; i < 10; i++) {
-      await new Promise((r) => setTimeout(r, i < 3 ? 800 : 1500));
-      await refreshPayment();
-      if (credits.value > 0) break;
-    }
-    if (credits.value > 0) {
-      wizardOpen.value = true;
-    } else {
-      // Webhook took too long — let user open manually
-      showNotification(
-        lang === 'nl' ? 'Betaling ontvangen' : 'Payment received',
-        lang === 'nl'
-          ? 'Betaling is verwerkt maar activatie duurt iets langer. Ververs de pagina en probeer opnieuw.'
-          : 'Payment confirmed but activation is taking a moment. Refresh and try again.',
-        'success',
-      );
-    }
+    await activatePaymentOnReturn(sessionId);
   }
 
   // Auto-open wizard if pending generate after auth
