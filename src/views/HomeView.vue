@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { Sparkles, ArrowRight, TrendingUp, MessageSquareText, ShieldCheck, Pencil, Trash2 } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
 import { useReportGeneration } from '../composables/useReportGeneration';
@@ -13,21 +13,24 @@ import SiteHeader from '../components/SiteHeader.vue';
 import GenerationWizard from '../components/GenerationWizard.vue';
 import GenerationLoader from '../components/GenerationLoader.vue';
 import ResultScreen from '../components/ResultScreen.vue';
+import PaywallModal from '../components/PaywallModal.vue';
 import AuthModal from '../AuthModal.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
 
 const router = useRouter();
+const route = useRoute();
 const { ui, siteLanguage, initializeLanguage } = useLanguage();
 const { status, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
   useReportGeneration();
 const { savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
   useReportManagement();
 const { showNotification } = useNotification();
-const { user } = useAuth();
+const { user, hasPaid, refreshPayment } = useAuth();
 
 const wizardOpen = ref(false);
 const showAuthModal = ref(false);
+const showPaywallModal = ref(false);
 const authModalPurpose = ref<'save' | 'generate' | undefined>();
 const pendingGenerate = ref(false);
 const showConfirmDelete = ref(false);
@@ -41,6 +44,10 @@ function openWizard() {
     pendingGenerate.value = true;
     authModalPurpose.value = 'generate';
     showAuthModal.value = true;
+    return;
+  }
+  if (!hasPaid.value) {
+    showPaywallModal.value = true;
     return;
   }
   wizardOpen.value = true;
@@ -63,8 +70,19 @@ function handleOpenReport() {
 }
 
 function handleDownloadPdf() {
-  // TODO: Implement PDF download logic (moved from App.vue)
-  console.log('Download PDF');
+  if (!currentHtml.value) return;
+  const blob = new Blob([currentHtml.value], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  if (!win) {
+    showNotification(ui.value.errorEyebrow, ui.value.printError, 'error');
+    URL.revokeObjectURL(url);
+    return;
+  }
+  win.addEventListener('load', () => {
+    win.print();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  });
 }
 
 function handleGoHome() {
@@ -116,9 +134,16 @@ function cancelRenameHomepage() {
   renamingReportId.value = null;
 }
 
+const paymentSuccessCopy: Record<string, { title: string; message: string }> = {
+  nl: { title: 'Betaling geslaagd!', message: 'Welkom! Je kunt nu onbeperkt rapporten genereren.' },
+  en: { title: 'Payment successful!', message: 'Welcome! You can now generate unlimited reports.' },
+  fr: { title: 'Paiement réussi !', message: 'Bienvenue ! Vous pouvez maintenant générer des rapports illimités.' },
+  de: { title: 'Zahlung erfolgreich!', message: 'Willkommen! Sie können jetzt unbegrenzt Berichte generieren.' },
+};
+
 onMounted(async () => {
   localStorage.removeItem('business-kit-draft');
-  const initialLang = initializeLanguage();
+  initializeLanguage();
 
   try {
     await completeGoogleRedirectSignIn();
@@ -126,10 +151,29 @@ onMounted(async () => {
     showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');
   }
 
+  // Handle Stripe redirect back
+  if (route.query.payment === 'success') {
+    router.replace({ query: {} });
+    const lang = siteLanguage.value as string;
+    const c = paymentSuccessCopy[lang] ?? paymentSuccessCopy.nl;
+    showNotification(c.title, c.message, 'success');
+    // Poll Firestore up to 3× (webhook may not have fired yet)
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      await refreshPayment();
+      if (hasPaid.value) break;
+    }
+    if (hasPaid.value) wizardOpen.value = true;
+  }
+
   // Auto-open wizard if pending generate after auth
   if (user.value && pendingGenerate.value) {
     pendingGenerate.value = false;
-    wizardOpen.value = true;
+    if (hasPaid.value) {
+      wizardOpen.value = true;
+    } else {
+      showPaywallModal.value = true;
+    }
   }
 });
 </script>
@@ -285,6 +329,7 @@ onMounted(async () => {
     </footer>
 
     <GenerationWizard v-model="wizardOpen" @generate="handleGenerate" />
+    <PaywallModal v-model="showPaywallModal" :language="siteLanguage" />
     <AuthModal v-model="showAuthModal" :purpose="authModalPurpose" :language="siteLanguage" />
     <ConfirmModal
       v-model="showConfirmDelete"
