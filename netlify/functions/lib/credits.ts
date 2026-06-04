@@ -3,14 +3,21 @@ import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 
 export function getDb(): Firestore {
   if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Netlify stores multiline secrets with literal \n — convert back to real newlines
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    // Netlify stores multiline secrets with literal \n — convert back to real newlines
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+    const missing = [
+      !projectId && 'FIREBASE_PROJECT_ID',
+      !clientEmail && 'FIREBASE_CLIENT_EMAIL',
+      !privateKey && 'FIREBASE_PRIVATE_KEY',
+    ].filter(Boolean);
+    if (missing.length) {
+      throw new Error(`Missing Firebase Admin env vars: ${missing.join(', ')}`);
+    }
+
+    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
   }
   return getFirestore();
 }

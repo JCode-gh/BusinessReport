@@ -28,25 +28,34 @@ export const handler: Handler = async (event) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-04-30.basil' as any });
 
+  // Step 1: retrieve the Stripe session
+  let session: Stripe.Checkout.Session;
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    session = await stripe.checkout.sessions.retrieve(sessionId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[verify-checkout] Stripe retrieve failed:', message);
+    return { statusCode: 500, headers: jsonHeaders, body: JSON.stringify({ error: `Stripe: ${message}` }) };
+  }
 
-    if (session.payment_status !== 'paid') {
-      return { statusCode: 200, headers: jsonHeaders, body: JSON.stringify({ paid: false }) };
-    }
+  if (session.payment_status !== 'paid') {
+    return { statusCode: 200, headers: jsonHeaders, body: JSON.stringify({ paid: false }) };
+  }
 
-    // Security: the session must belong to the user claiming it
-    if (session.client_reference_id !== uid) {
-      console.error('[verify-checkout] uid mismatch', { sessionUid: session.client_reference_id, uid });
-      return { statusCode: 403, headers: jsonHeaders, body: JSON.stringify({ error: 'Session does not belong to this user' }) };
-    }
+  // Security: the session must belong to the user claiming it
+  if (session.client_reference_id !== uid) {
+    console.error('[verify-checkout] uid mismatch', { sessionUid: session.client_reference_id, uid });
+    return { statusCode: 403, headers: jsonHeaders, body: JSON.stringify({ error: 'Session does not belong to this user' }) };
+  }
 
+  // Step 2: grant the credit in Firestore (via Firebase Admin)
+  try {
     const db = getDb();
     const credits = await grantCreditOnce(db, session.id, uid);
-
     return { statusCode: 200, headers: jsonHeaders, body: JSON.stringify({ paid: true, credits }) };
   } catch (err) {
-    console.error('[verify-checkout]', err);
-    return { statusCode: 500, headers: jsonHeaders, body: JSON.stringify({ error: 'Verification failed' }) };
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[verify-checkout] Firestore/Admin failed:', message);
+    return { statusCode: 500, headers: jsonHeaders, body: JSON.stringify({ error: `Firebase: ${message}` }) };
   }
 };
