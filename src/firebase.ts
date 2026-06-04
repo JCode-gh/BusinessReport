@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   onAuthStateChanged,
   getRedirectResult,
+  signInWithPopup,
   signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -138,9 +139,22 @@ export function onAuthStateChange(cb: (user: User | null) => void) {
   return onAuthStateChanged(auth, cb);
 }
 
-// Redirect flow avoids popup blockers and third-party cookie issues on custom domains.
+// Popup flow uses postMessage instead of third-party cookies, so it keeps working
+// even when authDomain differs from the app's domain (modern browsers block the
+// cross-domain storage that signInWithRedirect relies on). Falls back to redirect
+// only when the popup itself can't open.
 export async function signInWithGoogle(): Promise<void> {
-  await signInWithRedirect(auth, googleProvider);
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (err) {
+    const code = (err as { code?: string })?.code ?? "";
+    if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+      await signInWithRedirect(auth, googleProvider);
+      return;
+    }
+    // auth/popup-closed-by-user, cancelled-popup-request, etc. — let the caller handle it
+    throw err;
+  }
 }
 
 export async function completeGoogleRedirectSignIn(): Promise<User | null> {
