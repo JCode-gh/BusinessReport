@@ -18,6 +18,12 @@ export function useAuth() {
     credits.value = await getUserCredits(user.value.uid);
   }
 
+  // Trust an authoritative credit count (e.g. returned by the verify-checkout
+  // function), without re-reading Firestore from the client.
+  function setCredits(n: number) {
+    credits.value = Math.max(0, Math.floor(n));
+  }
+
   // Resolves once Firebase has reported the initial auth state.
   // Needed after a Stripe redirect, where the page reloads and auth must restore.
   function waitForAuthReady(): Promise<void> {
@@ -37,6 +43,7 @@ export function useAuth() {
     authReady: readonly(authReady),
     credits: readonly(credits),
     refreshPayment,
+    setCredits,
     waitForAuthReady,
   };
 }

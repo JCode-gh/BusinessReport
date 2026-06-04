@@ -160,12 +160,22 @@ export async function signOut(): Promise<void> {
 }
 
 export async function getUserCredits(uid: string): Promise<number> {
-  const snap = await getDoc(doc(db, "users", uid));
-  if (!snap.exists()) return 0;
-  const val = snap.data()?.credits;
-  return typeof val === "number" ? Math.max(0, val) : 0;
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return 0;
+    const val = snap.data()?.credits;
+    return typeof val === "number" ? Math.max(0, val) : 0;
+  } catch (e) {
+    // A denied read (e.g. Firestore rules not deployed) must not crash the app
+    console.error("[getUserCredits] read failed — check Firestore rules for /users", e);
+    return 0;
+  }
 }
 
 export async function decrementCredits(uid: string): Promise<void> {
-  await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
+  try {
+    await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
+  } catch (e) {
+    console.error("[decrementCredits] update failed — check Firestore rules for /users", e);
+  }
 }

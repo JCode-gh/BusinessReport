@@ -26,7 +26,7 @@ const { status, generateBusinessKit, dismissError, currentPlan, currentHtml, sho
 const { savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
   useReportManagement();
 const { showNotification } = useNotification();
-const { user, credits, refreshPayment, waitForAuthReady } = useAuth();
+const { user, credits, refreshPayment, setCredits, waitForAuthReady } = useAuth();
 
 const wizardOpen = ref(false);
 const showAuthModal = ref(false);
@@ -161,7 +161,8 @@ async function activatePaymentOnReturn(sessionId: string | null) {
     return;
   }
 
-  // Primary path: verify the session with Stripe and grant the credit synchronously
+  // Primary path: verify the session with Stripe and grant the credit synchronously.
+  // We TRUST the credit count returned by the function — no client Firestore read needed.
   if (sessionId) {
     try {
       const res = await fetch('/.netlify/functions/verify-checkout', {
@@ -170,18 +171,35 @@ async function activatePaymentOnReturn(sessionId: string | null) {
         body: JSON.stringify({ sessionId, uid: user.value.uid }),
       });
       const data = (await res.json()) as { paid?: boolean; credits?: number; error?: string };
+
       if (res.ok && data.paid) {
-        await refreshPayment();
+        const serverCredits = typeof data.credits === 'number' ? data.credits : 0;
+        setCredits(serverCredits);
         showNotification(c.title, c.message, 'success');
-        if (credits.value > 0) wizardOpen.value = true;
+        if (serverCredits > 0) {
+          wizardOpen.value = true;
+        } else {
+          // Payment confirmed but this session's credit was already used (e.g. revisited link)
+          showNotification(
+            c.title,
+            lang === 'nl'
+              ? 'Deze betaling is al gebruikt voor een rapport.'
+              : 'This payment has already been used for a report.',
+            'success',
+          );
+        }
         return;
       }
+
+      // Server reachable but returned an error or not-paid — log the reason for diagnosis
+      console.error('[payment] verify-checkout did not confirm payment:', res.status, data.error ?? data);
     } catch (err) {
-      console.error('[payment] verify-checkout failed, falling back to webhook polling', err);
+      console.error('[payment] verify-checkout request failed', err);
     }
   }
 
-  // Fallback: poll Firestore in case the webhook is the one writing the credit
+  // Fallback: poll Firestore in case the webhook is the one writing the credit.
+  // (getUserCredits is hardened to never throw, so this loop is safe.)
   showNotification(c.title, c.message, 'success');
   for (let i = 0; i < 10; i++) {
     await new Promise((r) => setTimeout(r, i < 3 ? 800 : 1500));
@@ -194,9 +212,9 @@ async function activatePaymentOnReturn(sessionId: string | null) {
     showNotification(
       lang === 'nl' ? 'Betaling ontvangen' : 'Payment received',
       lang === 'nl'
-        ? 'Betaling is verwerkt maar activatie duurt iets langer. Ververs de pagina en probeer opnieuw.'
-        : 'Payment confirmed but activation is taking a moment. Refresh and try again.',
-      'success',
+        ? 'Betaling gelukt, maar activatie is nog niet rond. Controleer de Netlify-functielogs (verify-checkout) — meestal ontbreken de Firebase Admin env-variabelen.'
+        : 'Payment succeeded but activation did not complete. Check the Netlify function logs (verify-checkout) — usually the Firebase Admin env vars are missing.',
+      'error',
     );
   }
 }
