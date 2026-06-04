@@ -12,7 +12,7 @@ import {
   type User,
 } from "firebase/auth";
 import {
-  getFirestore,
+  initializeFirestore,
   collection,
   doc,
   setDoc,
@@ -39,7 +39,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Auto-detect long polling: falls back from WebChannel when it is blocked
+// (Safari, VPNs, ad blockers, restrictive networks) which otherwise causes
+// "client is offline" / WebChannelConnection transport errors.
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 export const googleProvider = new GoogleAuthProvider();
 
 export type StoredReport = {
