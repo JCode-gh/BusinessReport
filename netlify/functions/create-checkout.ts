@@ -1,13 +1,18 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-04-30.basil' as any });
-
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('[create-checkout] Missing STRIPE_SECRET_KEY env var');
+    return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Server misconfiguration' }) };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-04-30.basil' as any });
 
   let uid: string;
   let email: string | undefined;

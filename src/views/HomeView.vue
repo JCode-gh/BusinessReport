@@ -7,7 +7,7 @@ import { useReportGeneration } from '../composables/useReportGeneration';
 import { useReportManagement } from '../composables/useReportManagement';
 import { useNotification } from '../composables/useNotification';
 import { useAuth } from '../useAuth';
-import { completeGoogleRedirectSignIn } from '../firebase';
+import { completeGoogleRedirectSignIn, decrementCredits } from '../firebase';
 import { getAuthErrorMessage } from '../authErrors';
 import SiteHeader from '../components/SiteHeader.vue';
 import GenerationWizard from '../components/GenerationWizard.vue';
@@ -26,7 +26,7 @@ const { status, generateBusinessKit, dismissError, currentPlan, currentHtml, sho
 const { savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
   useReportManagement();
 const { showNotification } = useNotification();
-const { user, hasPaid, refreshPayment } = useAuth();
+const { user, credits, refreshPayment } = useAuth();
 
 const wizardOpen = ref(false);
 const showAuthModal = ref(false);
@@ -46,7 +46,7 @@ function openWizard() {
     showAuthModal.value = true;
     return;
   }
-  if (!hasPaid.value) {
+  if (credits.value <= 0) {
     showPaywallModal.value = true;
     return;
   }
@@ -55,11 +55,12 @@ function openWizard() {
 
 async function handleGenerate() {
   const success = await generateBusinessKit();
-  if (success && user.value && currentPlan.value) {
-    const id = await doSaveReport(currentPlan.value);
-    if (id) {
-      // Optionally navigate to report view
-      // router.push({ name: 'report', params: { id } });
+  if (success && user.value) {
+    // Deduct the credit now that the report is generated
+    await decrementCredits(user.value.uid);
+    await refreshPayment();
+    if (currentPlan.value) {
+      await doSaveReport(currentPlan.value);
     }
   }
 }
@@ -135,10 +136,10 @@ function cancelRenameHomepage() {
 }
 
 const paymentSuccessCopy: Record<string, { title: string; message: string }> = {
-  nl: { title: 'Betaling geslaagd!', message: 'Welkom! Je kunt nu onbeperkt rapporten genereren.' },
-  en: { title: 'Payment successful!', message: 'Welcome! You can now generate unlimited reports.' },
-  fr: { title: 'Paiement réussi !', message: 'Bienvenue ! Vous pouvez maintenant générer des rapports illimités.' },
-  de: { title: 'Zahlung erfolgreich!', message: 'Willkommen! Sie können jetzt unbegrenzt Berichte generieren.' },
+  nl: { title: 'Betaling geslaagd!', message: 'Je rapport-credit is klaar. De wizard opent zo meteen.' },
+  en: { title: 'Payment successful!', message: 'Your report credit is ready. Opening the wizard now.' },
+  fr: { title: 'Paiement réussi !', message: 'Votre crédit rapport est prêt. L\'assistant s\'ouvre dans un instant.' },
+  de: { title: 'Zahlung erfolgreich!', message: 'Ihr Berichts-Guthaben ist bereit. Der Assistent öffnet sich gleich.' },
 };
 
 onMounted(async () => {
@@ -151,25 +152,36 @@ onMounted(async () => {
     showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');
   }
 
-  // Handle Stripe redirect back
+  // Handle Stripe redirect back — poll until webhook has written the credit
   if (route.query.payment === 'success') {
     router.replace({ query: {} });
     const lang = siteLanguage.value as string;
     const c = paymentSuccessCopy[lang] ?? paymentSuccessCopy.nl;
     showNotification(c.title, c.message, 'success');
-    // Poll Firestore up to 3× (webhook may not have fired yet)
-    for (let i = 0; i < 3; i++) {
-      await new Promise((r) => setTimeout(r, 1500));
+    // Poll up to 10× with increasing delay (max ~15s total) waiting for webhook
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, i < 3 ? 800 : 1500));
       await refreshPayment();
-      if (hasPaid.value) break;
+      if (credits.value > 0) break;
     }
-    if (hasPaid.value) wizardOpen.value = true;
+    if (credits.value > 0) {
+      wizardOpen.value = true;
+    } else {
+      // Webhook took too long — let user open manually
+      showNotification(
+        lang === 'nl' ? 'Betaling ontvangen' : 'Payment received',
+        lang === 'nl'
+          ? 'Betaling is verwerkt maar activatie duurt iets langer. Ververs de pagina en probeer opnieuw.'
+          : 'Payment confirmed but activation is taking a moment. Refresh and try again.',
+        'success',
+      );
+    }
   }
 
   // Auto-open wizard if pending generate after auth
   if (user.value && pendingGenerate.value) {
     pendingGenerate.value = false;
-    if (hasPaid.value) {
+    if (credits.value > 0) {
       wizardOpen.value = true;
     } else {
       showPaywallModal.value = true;

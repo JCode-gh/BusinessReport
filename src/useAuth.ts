@@ -1,27 +1,27 @@
 import { ref, readonly } from "vue";
-import { onAuthStateChange, getUserPaid } from "./firebase";
+import { onAuthStateChange, getUserCredits } from "./firebase";
 import type { User } from "firebase/auth";
 
 const user = ref<User | null>(null);
 const authReady = ref(false);
-const hasPaid = ref(false);
+const credits = ref(0);
 
 onAuthStateChange(async (u) => {
   user.value = u;
   authReady.value = true;
-  hasPaid.value = u ? await getUserPaid(u.uid) : false;
+  credits.value = u ? await getUserCredits(u.uid) : 0;
 });
 
 export function useAuth() {
   async function refreshPayment() {
     if (!user.value) return;
-    hasPaid.value = await getUserPaid(user.value.uid);
+    credits.value = await getUserCredits(user.value.uid);
   }
 
   return {
     user: readonly(user),
     authReady: readonly(authReady),
-    hasPaid: readonly(hasPaid),
+    credits: readonly(credits),
     refreshPayment,
   };
 }

@@ -20,6 +20,7 @@ import {
   getDocs,
   deleteDoc,
   updateDoc,
+  increment,
   query,
   where,
   limit,
@@ -158,8 +159,13 @@ export async function signOut(): Promise<void> {
   await firebaseSignOut(auth);
 }
 
-export async function getUserPaid(uid: string): Promise<boolean> {
+export async function getUserCredits(uid: string): Promise<number> {
   const snap = await getDoc(doc(db, "users", uid));
-  if (!snap.exists()) return false;
-  return snap.data()?.hasPaid === true;
+  if (!snap.exists()) return 0;
+  const val = snap.data()?.credits;
+  return typeof val === "number" ? Math.max(0, val) : 0;
+}
+
+export async function decrementCredits(uid: string): Promise<void> {
+  await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
 }

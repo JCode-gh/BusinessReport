@@ -34,11 +34,11 @@ const copy: Record<Language, {
   nl: {
     eyebrow: 'Eenmalige betaling',
     title: 'Groeikit ontgrendelen',
-    subtitle: 'Betaal één keer en genereer onbeperkt rapporten voor al je bedrijven.',
+    subtitle: 'Betaal €5 en genereer één volledig rapport voor jouw bedrijf.',
     price: '€5',
-    priceNote: 'eenmalig, levenslange toegang',
+    priceNote: 'per rapport',
     features: [
-      'Onbeperkt rapporten genereren',
+      '1 volledig rapport',
       'Positionering, aanbod & ICP',
       '30-daags actieplan met checkboxes',
       'Kant-en-klare sales-templates',
@@ -54,11 +54,11 @@ const copy: Record<Language, {
   en: {
     eyebrow: 'One-time payment',
     title: 'Unlock Growth Kit',
-    subtitle: 'Pay once and generate unlimited reports for all your businesses.',
+    subtitle: 'Pay €5 and generate one complete report for your business.',
     price: '€5',
-    priceNote: 'one-time, lifetime access',
+    priceNote: 'per report',
     features: [
-      'Unlimited report generation',
+      '1 full report',
       'Positioning, offer & ICP',
       '30-day action plan with checkboxes',
       'Ready-to-send sales templates',
@@ -74,11 +74,11 @@ const copy: Record<Language, {
   fr: {
     eyebrow: 'Paiement unique',
     title: 'Déverrouiller le Growth Kit',
-    subtitle: 'Payez une fois et générez des rapports illimités pour toutes vos entreprises.',
+    subtitle: 'Payez €5 et générez un rapport complet pour votre entreprise.',
     price: '€5',
-    priceNote: 'paiement unique, accès à vie',
+    priceNote: 'par rapport',
     features: [
-      'Génération de rapports illimitée',
+      '1 rapport complet',
       'Positionnement, offre & ICP',
       "Plan d'action 30 jours avec cases à cocher",
       'Templates de vente prêts à envoyer',
@@ -94,11 +94,11 @@ const copy: Record<Language, {
   de: {
     eyebrow: 'Einmalige Zahlung',
     title: 'Growth Kit freischalten',
-    subtitle: 'Einmal bezahlen und unbegrenzt Berichte für alle Ihre Unternehmen generieren.',
+    subtitle: 'Zahlen Sie €5 und generieren Sie einen vollständigen Bericht für Ihr Unternehmen.',
     price: '€5',
-    priceNote: 'einmalig, lebenslanger Zugang',
+    priceNote: 'pro Bericht',
     features: [
-      'Unbegrenzte Berichtsgenerierung',
+      '1 vollständiger Bericht',
       'Positionierung, Angebot & ICP',
       '30-Tage-Aktionsplan mit Checkboxen',
       'Versandfertige Verkaufs-Templates',

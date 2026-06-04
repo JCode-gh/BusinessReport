@@ -1,10 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-04-30.basil' as any });
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 function getDb() {
   if (!getApps().length) {
@@ -25,6 +22,14 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('[stripe-webhook] Missing Stripe env vars');
+    return { statusCode: 500, body: 'Server misconfiguration' };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-04-30.basil' as any });
+
   const sig = event.headers['stripe-signature'];
   if (!sig) {
     return { statusCode: 400, body: 'Missing Stripe signature' };
@@ -35,7 +40,7 @@ export const handler: Handler = async (event) => {
     stripeEvent = stripe.webhooks.constructEvent(
       event.body ?? '',
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET!,
+      process.env.STRIPE_WEBHOOK_SECRET,
     );
   } catch (err) {
     console.error('[stripe-webhook] Signature verification failed:', err);
@@ -55,9 +60,9 @@ export const handler: Handler = async (event) => {
       const db = getDb();
       await db.collection('users').doc(uid).set(
         {
-          hasPaid: true,
-          paidAt: new Date().toISOString(),
-          stripeSessionId: session.id,
+          credits: FieldValue.increment(1),
+          lastPaidAt: new Date().toISOString(),
+          lastStripeSessionId: session.id,
         },
         { merge: true },
       );

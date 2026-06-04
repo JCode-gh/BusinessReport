@@ -8,10 +8,14 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
     }
 
-    // Users: only the owner can read their own document
-    // Writing is done exclusively via the stripe-webhook Netlify Function (Firebase Admin, bypasses rules)
+    // Users: owner can read their own document
+    // Credits can only be decreased by the client (never increased — that happens via Firebase Admin in the webhook)
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.credits < resource.data.credits
+        && request.resource.data.credits >= 0;
     }
   }
 }
