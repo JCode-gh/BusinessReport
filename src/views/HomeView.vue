@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Sparkles, ArrowRight, TrendingUp, MessageSquareText, ShieldCheck, Pencil, Trash2 } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
@@ -48,6 +48,20 @@ async function ensureCredits(): Promise<boolean> {
   await refreshPayment();
   return credits.value > 0;
 }
+
+// After a popup sign-in there is no page reload, so continue the action the user
+// intended (generate) once they become authenticated.
+watch(user, async (u) => {
+  if (u && pendingGenerate.value) {
+    pendingGenerate.value = false;
+    showAuthModal.value = false;
+    if (await ensureCredits()) {
+      wizardOpen.value = true;
+    } else {
+      showPaywallModal.value = true;
+    }
+  }
+});
 
 async function openWizard() {
   await waitForAuthReady();

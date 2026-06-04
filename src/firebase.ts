@@ -40,11 +40,12 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-// Auto-detect long polling: falls back from WebChannel when it is blocked
-// (Safari, VPNs, ad blockers, restrictive networks) which otherwise causes
-// "client is offline" / WebChannelConnection transport errors.
+// Force long polling instead of WebChannel. Auto-detect still makes a WebChannel
+// attempt first, which throws "client is offline" on networks/browsers that block
+// it (Safari, VPNs, ad blockers, corporate firewalls) before it can fall back.
+// Forcing long polling skips that failing attempt entirely for a stable connection.
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
+  experimentalForceLongPolling: true,
 });
 export const googleProvider = new GoogleAuthProvider();
 

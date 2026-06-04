@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { X } from "lucide-vue-next";
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAnonymously } from "./firebase";
 import { getAuthErrorMessage } from "./authErrors";
@@ -191,6 +191,18 @@ function reset() {
   loading.value = false;
 }
 
+// Start from a clean state every time the modal opens, so a left-over loading
+// flag (e.g. from a previous popup sign-in) can never freeze the buttons.
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) {
+      mode.value = "choose";
+      reset();
+    }
+  },
+);
+
 function switchTo(m: Mode) {
   errorMsg.value = "";
   mode.value = m;
@@ -216,7 +228,10 @@ async function handleGoogle() {
   errorMsg.value = "";
   try {
     await signInWithGoogle();
-    // Page redirects to Google; no further UI updates needed.
+    // Popup resolved in place → sign-in succeeded, close the modal.
+    // (If the popup was blocked and it fell back to a redirect, the page has
+    // already navigated away and this line is never reached.)
+    close();
   } catch (e) {
     errorMsg.value = friendlyError(e);
     loading.value = false;
