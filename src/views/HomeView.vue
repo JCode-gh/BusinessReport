@@ -39,14 +39,25 @@ const renamingReportId = ref<string | null>(null);
 const renameHomepageValue = ref('');
 const currentYear = new Date().getFullYear();
 
-function openWizard() {
+// Returns true if the user has at least one credit. If the local count is 0,
+// it re-reads from Firestore first — this avoids falsely showing the paywall
+// during the brief window after a page load where the initial read hasn't
+// resolved yet (user is set, but credits are still being fetched).
+async function ensureCredits(): Promise<boolean> {
+  if (credits.value > 0) return true;
+  await refreshPayment();
+  return credits.value > 0;
+}
+
+async function openWizard() {
+  await waitForAuthReady();
   if (!user.value) {
     pendingGenerate.value = true;
     authModalPurpose.value = 'generate';
     showAuthModal.value = true;
     return;
   }
-  if (credits.value <= 0) {
+  if (!(await ensureCredits())) {
     showPaywallModal.value = true;
     return;
   }
@@ -239,7 +250,7 @@ onMounted(async () => {
   // Auto-open wizard if pending generate after auth
   if (user.value && pendingGenerate.value) {
     pendingGenerate.value = false;
-    if (credits.value > 0) {
+    if (await ensureCredits()) {
       wizardOpen.value = true;
     } else {
       showPaywallModal.value = true;
