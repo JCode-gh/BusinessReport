@@ -50,9 +50,6 @@ const paymentActivationStartedAt = isPaymentReturn ? Date.now() : 0;
 if (isPaymentReturn) {
   router.replace({ query: {} });
   wizardOpen.value = true;
-  // #region agent log
-  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'payment-ux',hypothesisId:'P1',location:'HomeView.vue:paymentReturn:immediate',message:'wizard opened immediately on payment return',data:{hasSessionId:!!paymentSessionId},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 }
 
 function waitForPaymentActivation(): Promise<void> {
@@ -75,11 +72,7 @@ async function ensureCredits(): Promise<boolean> {
   if (activatingPayment.value) {
     await waitForPaymentActivation();
   }
-  const cachedCredits = credits.value;
   await refreshPayment();
-  // #region agent log
-  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'B',location:'HomeView.vue:ensureCredits:refreshed',message:'ensureCredits after server refresh',data:{cachedCredits,credits:credits.value},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return credits.value > 0;
 }
 
@@ -123,15 +116,11 @@ async function handleGenerate() {
   // not on the homepage (wizard closes before this handler's first await).
   beginGeneration();
   wizardOpen.value = false;
-  // #region agent log
-  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'gen-ux',hypothesisId:'G1',location:'HomeView.vue:handleGenerate:loading',message:'loading screen shown before credit checks',data:{status:status.value},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   if (activatingPayment.value) {
     await waitForPaymentActivation();
   }
 
-  const creditsBefore = credits.value;
   await refreshPayment();
   if (credits.value <= 0) {
     dismissError();
@@ -139,12 +128,22 @@ async function handleGenerate() {
     return;
   }
 
+  const creditsBefore = credits.value;
   const deducted = await decrementCredits(user.value.uid);
   await refreshPayment();
+  const deductFailed = !deducted || credits.value >= creditsBefore;
   // #region agent log
-  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'C',location:'HomeView.vue:handleGenerate:afterDeduct',message:'deduct before generate',data:{deducted,creditsBefore,creditsAfter:credits.value},timestamp:Date.now()})}).catch(()=>{});
+  console.info('[GK-CREDITS]', {
+    hypothesisId: 'A',
+    location: 'HomeView.vue:handleGenerate:afterDeduct',
+    deducted,
+    creditsBefore,
+    creditsAfter: credits.value,
+    deductFailed,
+    oldCheckWouldFail: !deducted || credits.value > 0,
+  });
   // #endregion
-  if (!deducted || credits.value > 0) {
+  if (deductFailed) {
     dismissError();
     wizardOpen.value = true;
     showNotification(
@@ -158,9 +157,6 @@ async function handleGenerate() {
   }
 
   const success = await generateBusinessKit();
-  // #region agent log
-  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'C',location:'HomeView.vue:handleGenerate:afterGenerate',message:'generate finished',data:{success,creditsAfter:credits.value},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (success && currentPlan.value) {
     await doSaveReport(currentPlan.value);
   }
@@ -321,9 +317,6 @@ async function activatePaymentOnReturn(sessionId: string | null) {
     }
   } finally {
     activatingPayment.value = false;
-    // #region agent log
-    fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'payment-ux',hypothesisId:'P1',location:'HomeView.vue:activatePaymentOnReturn:done',message:'payment activation finished',data:{elapsedMs:paymentActivationStartedAt?Date.now()-paymentActivationStartedAt:0,wizardOpen:wizardOpen.value,credits:credits.value},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   }
 }
 
