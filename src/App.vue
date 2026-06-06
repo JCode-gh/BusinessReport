@@ -1,7 +1,11 @@
 <script setup lang="ts">
-// Root App component - routing handled by vue-router
+import { useAppBoot } from './composables/useAppBoot';
+import AppBootSplash from './components/AppBootSplash.vue';
+
+const { bootComplete } = useAppBoot();
 </script>
 
 <template>
-  <router-view />
+  <AppBootSplash v-if="!bootComplete" />
+  <router-view v-else />
 </template>

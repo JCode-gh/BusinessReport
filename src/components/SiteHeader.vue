@@ -11,16 +11,15 @@ const props = defineProps<{
 }>();
 
 const { siteLanguage, ui, setSiteLanguage } = useLanguage();
-const { user, credits, authReady } = useAuth();
+const { user, credits } = useAuth();
 
 const creditsText = computed(() => {
-  if (!authReady.value) return '…';
   const n = credits.value;
   if (n === 1) return ui.value.creditsCountOne;
   return ui.value.creditsCountMany.replace('{n}', String(n));
 });
 
-const creditsEmpty = computed(() => authReady.value && credits.value === 0);
+const creditsEmpty = computed(() => credits.value === 0);
 const creditsClickable = computed(() => creditsEmpty.value && !!props.showPaywall);
 
 function changeSiteLanguage(event: Event) {

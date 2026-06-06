@@ -8,8 +8,8 @@ const credits = ref(0);
 
 onAuthStateChange(async (u) => {
   user.value = u;
-  authReady.value = true;
   credits.value = u ? await getUserCredits(u.uid) : 0;
+  if (!authReady.value) authReady.value = true;
 });
 
 export function useAuth() {

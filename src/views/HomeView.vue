@@ -20,7 +20,7 @@ import NotificationToast from '../components/NotificationToast.vue';
 
 const router = useRouter();
 const route = useRoute();
-const { ui, siteLanguage, initializeLanguage } = useLanguage();
+const { ui, siteLanguage } = useLanguage();
 const { status, beginGeneration, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
   useReportGeneration();
 const { savedReportId, savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
@@ -326,7 +326,6 @@ async function activatePaymentOnReturn(sessionId: string | null) {
 
 onMounted(async () => {
   localStorage.removeItem('business-kit-draft');
-  initializeLanguage();
 
   const googleSignIn = completeGoogleRedirectSignIn().catch((e) => {
     showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');

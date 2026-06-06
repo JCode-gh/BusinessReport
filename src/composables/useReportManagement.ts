@@ -1,7 +1,6 @@
 import { ref, watch } from 'vue';
 import { useAuth } from '../useAuth';
 import type { BusinessKitPlan } from '../businessKit';
-import { buildBusinessKitHtml } from '../businessKit';
 import {
   saveReport,
   loadReport,
@@ -12,15 +11,48 @@ import {
   type ReportSummary,
 } from '../firebase';
 
+const { user } = useAuth();
+
 const savedReportId = ref<string | null>(null);
 const savedReports = ref<ReportSummary[]>([]);
 const savedReportsLoading = ref(false);
 const saveState = ref<'idle' | 'saving' | 'saved'>('idle');
 const pendingSave = ref(false);
 
-export function useReportManagement() {
-  const { user } = useAuth();
+watch(
+  user,
+  async (newUser) => {
+    if (newUser) {
+      savedReportsLoading.value = true;
+      try {
+        savedReports.value = await listReports(newUser.uid);
+      } catch {
+        savedReports.value = [];
+      } finally {
+        savedReportsLoading.value = false;
+      }
+    } else {
+      savedReports.value = [];
+      savedReportsLoading.value = false;
+    }
+  },
+  { immediate: true }
+);
 
+function waitForInitialReportsLoad(): Promise<void> {
+  if (!user.value) return Promise.resolve();
+  if (!savedReportsLoading.value) return Promise.resolve();
+  return new Promise((resolve) => {
+    const stop = watch(savedReportsLoading, (loading) => {
+      if (!loading) {
+        stop();
+        resolve();
+      }
+    });
+  });
+}
+
+export function useReportManagement() {
   async function doSaveReport(plan: BusinessKitPlan): Promise<string | null> {
     if (!user.value || !plan) return null;
     saveState.value = 'saving';
@@ -31,7 +63,6 @@ export function useReportManagement() {
       setTimeout(() => {
         saveState.value = 'idle';
       }, 2500);
-      // Refresh list
       if (user.value) {
         listReports(user.value.uid)
           .then((r) => {
@@ -103,26 +134,6 @@ export function useReportManagement() {
     }
   }
 
-  // Auto-refresh saved reports list when auth state changes
-  watch(
-    user,
-    async (newUser) => {
-      if (newUser) {
-        savedReportsLoading.value = true;
-        try {
-          savedReports.value = await listReports(newUser.uid);
-        } catch {
-          savedReports.value = [];
-        } finally {
-          savedReportsLoading.value = false;
-        }
-      } else {
-        savedReports.value = [];
-      }
-    },
-    { immediate: true }
-  );
-
   return {
     savedReportId,
     savedReports,
@@ -134,5 +145,6 @@ export function useReportManagement() {
     deleteReportById,
     updateReportTitle,
     patchReportHtml,
+    waitForInitialReportsLoad,
   };
 }

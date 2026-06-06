@@ -857,6 +857,74 @@ input[type="text"]::placeholder {
   margin-bottom: 0;
 }
 
+/* App boot splash */
+
+.app-boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 22% 24%, rgba(111, 106, 207, 0.16) 0%, transparent 50%),
+    var(--bg);
+  color: var(--ink);
+}
+
+.app-boot-splash-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-boot-splash-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #d6a4e3 0%, #6f6acf 100%);
+  color: #fff;
+  animation: app-boot-pulse 1.6s ease-in-out infinite;
+}
+
+.app-boot-splash-title {
+  font-family: "Clash Display", "Montserrat", sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-boot-splash-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(214, 164, 227, 0.9);
+  border-radius: 50%;
+  animation: app-boot-spin 0.8s linear infinite;
+}
+
+@keyframes app-boot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.88;
+  }
+}
+
+@keyframes app-boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Loading overlay */
 
 .loading-overlay {
