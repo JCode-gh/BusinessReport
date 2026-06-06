@@ -357,7 +357,10 @@ onMounted(async () => {
 
 <template>
   <div class="product-shell">
-    <SiteHeader :show-auth-modal="() => (showAuthModal = true)" />
+    <SiteHeader
+      :show-auth-modal="() => (showAuthModal = true)"
+      :show-paywall="() => (showPaywallModal = true)"
+    />
 
     <GenerationLoader v-if="status === 'loading'" />
 

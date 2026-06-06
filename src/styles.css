@@ -1799,6 +1799,50 @@ input[type="text"]::placeholder {
 }
 
 /* ── Auth nav controls ─────────────────────────────────────────── */
+.nav-credits-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-credits-badge svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.nav-credits-badge--empty {
+  color: rgba(255, 255, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.nav-credits-badge--empty svg {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.nav-credits-badge--clickable {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.nav-credits-badge--clickable:hover {
+  border-color: rgba(214, 164, 227, 0.45);
+  background: rgba(214, 164, 227, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.nav-credits-badge--clickable:hover svg {
+  color: var(--accent);
+}
+
 .nav-user-chip {
   display: flex;
   align-items: center;

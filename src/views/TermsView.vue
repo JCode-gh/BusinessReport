@@ -3,11 +3,13 @@ import { ref, onMounted } from 'vue';
 import { ArrowLeft } from 'lucide-vue-next';
 import SiteHeader from '../components/SiteHeader.vue';
 import AuthModal from '../AuthModal.vue';
+import PaywallModal from '../components/PaywallModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
 import { useLanguage } from '../composables/useLanguage';
 
 const { ui, siteLanguage, initializeLanguage } = useLanguage();
 const showAuthModal = ref(false);
+const showPaywallModal = ref(false);
 const currentYear = new Date().getFullYear();
 
 onMounted(() => {
@@ -18,7 +20,10 @@ onMounted(() => {
 
 <template>
   <div class="product-shell">
-    <SiteHeader :show-auth-modal="() => (showAuthModal = true)" />
+    <SiteHeader
+      :show-auth-modal="() => (showAuthModal = true)"
+      :show-paywall="() => (showPaywallModal = true)"
+    />
 
     <main class="legal-page">
       <router-link to="/" class="legal-back">
@@ -45,6 +50,7 @@ onMounted(() => {
     </footer>
 
     <AuthModal v-model="showAuthModal" :language="siteLanguage" />
+    <PaywallModal v-model="showPaywallModal" :language="siteLanguage" />
     <NotificationToast />
   </div>
 </template>
