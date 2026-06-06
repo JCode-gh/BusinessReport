@@ -131,6 +131,8 @@
   "deleteReportConfirm": "Êtes-vous sûr de vouloir supprimer définitivement ce rapport ? Cette action est irréversible.",
   "validationErrorTitle": "Champs requis manquants",
   "validationStepErrorMessage": "Veuillez remplir tous les champs de cette étape avant de continuer.",
+  "validationFieldRequired": "Ce champ est obligatoire",
+  "validationMissingFieldsList": "Encore vide : {fields}",
   "validationErrorMessage": "Veuillez compléter chaque étape du brief avant de générer votre rapport.",
   "generationSteps": [
     {

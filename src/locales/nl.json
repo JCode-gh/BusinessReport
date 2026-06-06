@@ -131,6 +131,8 @@
   "deleteReportConfirm": "Weet je zeker dat je dit rapport permanent wil verwijderen? Dit kan niet ongedaan worden gemaakt.",
   "validationErrorTitle": "Vereiste velden ontbreken",
   "validationStepErrorMessage": "Vul alle velden op deze stap in voordat je verdergaat.",
+  "validationFieldRequired": "Dit veld is verplicht",
+  "validationMissingFieldsList": "Nog leeg: {fields}",
   "validationErrorMessage": "Vul elke stap in de brief volledig in voordat je je rapport genereert.",
   "generationSteps": [
     {

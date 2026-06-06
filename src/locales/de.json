@@ -131,6 +131,8 @@
   "deleteReportConfirm": "Bist du sicher, dass du diesen Report dauerhaft löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
   "validationErrorTitle": "Erforderliche Felder fehlen",
   "validationStepErrorMessage": "Bitte fülle alle Felder in diesem Schritt aus, bevor du fortfährst.",
+  "validationFieldRequired": "Dieses Feld ist erforderlich",
+  "validationMissingFieldsList": "Noch leer: {fields}",
   "validationErrorMessage": "Bitte schließe jeden Schritt im Brief ab, bevor du deinen Report generierst.",
   "generationSteps": [
     {

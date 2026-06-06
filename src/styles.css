@@ -1565,6 +1565,23 @@ input[type="text"]::placeholder {
   grid-column: 1 / -1;
 }
 
+.wz-field--error .wz-label {
+  color: var(--danger);
+}
+
+.wz-field--error input[type="text"],
+.wz-field--error textarea,
+.wz-field--error select {
+  border-color: rgba(255, 138, 138, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 138, 138, 0.12);
+}
+
+.wz-field-error {
+  color: var(--danger);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .wz-label {
   color: var(--muted);
   font-size: 0.82rem;

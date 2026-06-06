@@ -18,27 +18,37 @@ function fieldFilled(value: string): boolean {
   return value.trim().length > 0;
 }
 
+export type WizardFieldKey =
+  | 'businessName'
+  | 'region'
+  | 'businessType'
+  | 'offer'
+  | 'audience'
+  | 'problem'
+  | 'goal'
+  | 'channels'
+  | 'pricePoint'
+  | 'tone';
+
+const WIZARD_STEP_FIELDS: Record<number, WizardFieldKey[]> = {
+  0: ['businessName', 'region'],
+  1: ['businessType'],
+  2: ['offer'],
+  3: ['audience'],
+  4: ['problem'],
+  5: ['goal'],
+  6: ['channels', 'pricePoint'],
+  7: ['tone'],
+};
+
+export function getWizardStepMissingFields(step: number): WizardFieldKey[] {
+  const fields = WIZARD_STEP_FIELDS[step];
+  if (!fields) return [];
+  return fields.filter((key) => !fieldFilled(form[key]));
+}
+
 export function isWizardStepValid(step: number): boolean {
-  switch (step) {
-    case 0:
-      return fieldFilled(form.businessName) && fieldFilled(form.region);
-    case 1:
-      return fieldFilled(form.businessType);
-    case 2:
-      return fieldFilled(form.offer);
-    case 3:
-      return fieldFilled(form.audience);
-    case 4:
-      return fieldFilled(form.problem);
-    case 5:
-      return fieldFilled(form.goal);
-    case 6:
-      return fieldFilled(form.channels) && fieldFilled(form.pricePoint);
-    case 7:
-      return fieldFilled(form.tone);
-    default:
-      return false;
-  }
+  return getWizardStepMissingFields(step).length === 0;
 }
 
 export const form = reactive({

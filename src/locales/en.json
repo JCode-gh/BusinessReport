@@ -131,6 +131,8 @@
   "deleteReportConfirm": "Are you sure you want to permanently delete this report? This cannot be undone.",
   "validationErrorTitle": "Required fields missing",
   "validationStepErrorMessage": "Please fill in all fields on this step before continuing.",
+  "validationFieldRequired": "This field is required",
+  "validationMissingFieldsList": "Still empty: {fields}",
   "validationErrorMessage": "Please complete every step in the brief before generating your report.",
   "generationSteps": [
     {
