@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { X, Sparkles, CheckCircle2, AlertCircle } from 'lucide-vue-next';
 import { useAuth } from '../useAuth';
+import {
+  CREDIT_PLANS,
+  DEFAULT_CREDIT_PLAN_ID,
+  formatEur,
+  perReportCents,
+  type CreditPlanId,
+} from '../creditPlans';
 
 type Language = 'nl' | 'en' | 'fr' | 'de';
 
@@ -18,27 +25,31 @@ const { user } = useAuth();
 
 const loading = ref(false);
 const errorMsg = ref('');
+const selectedPlanId = ref<CreditPlanId>(DEFAULT_CREDIT_PLAN_ID);
 
-const copy: Record<Language, {
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  price: string;
-  priceNote: string;
-  features: string[];
-  cta: string;
-  ctaLoading: string;
-  errorFallback: string;
-  close: string;
-}> = {
+const copy: Record<
+  Language,
+  {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    features: string[];
+    cta: string;
+    ctaLoading: string;
+    errorFallback: string;
+    close: string;
+    popular: string;
+    perReport: string;
+    reports: (n: number) => string;
+    save: (amount: string) => string;
+    stripeNote: string;
+  }
+> = {
   nl: {
     eyebrow: 'Eenmalige betaling',
     title: 'Groeikit ontgrendelen',
-    subtitle: 'Betaal €5 en genereer één volledig rapport voor jouw bedrijf.',
-    price: '€5',
-    priceNote: 'per rapport',
+    subtitle: 'Kies een pakket en genereer volledige groeirapporten voor jouw bedrijf.',
     features: [
-      '1 volledig rapport',
       'Positionering, aanbod & ICP',
       '30-daags actieplan met checkboxes',
       'Kant-en-klare sales-templates',
@@ -50,15 +61,17 @@ const copy: Record<Language, {
     ctaLoading: 'Doorsturen naar Stripe…',
     errorFallback: 'Kon de betaalpagina niet openen. Probeer opnieuw.',
     close: 'Sluiten',
+    popular: 'Populair',
+    perReport: 'per rapport',
+    reports: (n) => (n === 1 ? '1 rapport' : `${n} rapporten`),
+    save: (amount) => `Bespaar ${amount}`,
+    stripeNote: 'Veilig betalen via Stripe · Visa, Mastercard, iDEAL, Bancontact',
   },
   en: {
     eyebrow: 'One-time payment',
     title: 'Unlock Growth Kit',
-    subtitle: 'Pay €5 and generate one complete report for your business.',
-    price: '€5',
-    priceNote: 'per report',
+    subtitle: 'Pick a bundle and generate complete growth reports for your business.',
     features: [
-      '1 full report',
       'Positioning, offer & ICP',
       '30-day action plan with checkboxes',
       'Ready-to-send sales templates',
@@ -70,15 +83,17 @@ const copy: Record<Language, {
     ctaLoading: 'Redirecting to Stripe…',
     errorFallback: 'Could not open payment page. Please try again.',
     close: 'Close',
+    popular: 'Popular',
+    perReport: 'per report',
+    reports: (n) => (n === 1 ? '1 report' : `${n} reports`),
+    save: (amount) => `Save ${amount}`,
+    stripeNote: 'Secure payment via Stripe · Visa, Mastercard, iDEAL, Bancontact',
   },
   fr: {
     eyebrow: 'Paiement unique',
     title: 'Déverrouiller le Growth Kit',
-    subtitle: 'Payez €5 et générez un rapport complet pour votre entreprise.',
-    price: '€5',
-    priceNote: 'par rapport',
+    subtitle: 'Choisissez un pack et générez des rapports de croissance complets.',
     features: [
-      '1 rapport complet',
       'Positionnement, offre & ICP',
       "Plan d'action 30 jours avec cases à cocher",
       'Templates de vente prêts à envoyer',
@@ -90,15 +105,17 @@ const copy: Record<Language, {
     ctaLoading: 'Redirection vers Stripe…',
     errorFallback: "Impossible d'ouvrir la page de paiement. Réessayez.",
     close: 'Fermer',
+    popular: 'Populaire',
+    perReport: 'par rapport',
+    reports: (n) => (n === 1 ? '1 rapport' : `${n} rapports`),
+    save: (amount) => `Économisez ${amount}`,
+    stripeNote: 'Paiement sécurisé via Stripe · Visa, Mastercard, iDEAL, Bancontact',
   },
   de: {
     eyebrow: 'Einmalige Zahlung',
     title: 'Growth Kit freischalten',
-    subtitle: 'Zahlen Sie €5 und generieren Sie einen vollständigen Bericht für Ihr Unternehmen.',
-    price: '€5',
-    priceNote: 'pro Bericht',
+    subtitle: 'Wählen Sie ein Paket und generieren Sie vollständige Wachstumsberichte.',
     features: [
-      '1 vollständiger Bericht',
       'Positionierung, Angebot & ICP',
       '30-Tage-Aktionsplan mit Checkboxen',
       'Versandfertige Verkaufs-Templates',
@@ -110,11 +127,40 @@ const copy: Record<Language, {
     ctaLoading: 'Weiterleitung zu Stripe…',
     errorFallback: 'Zahlungsseite konnte nicht geöffnet werden. Bitte erneut versuchen.',
     close: 'Schließen',
+    popular: 'Beliebt',
+    perReport: 'pro Bericht',
+    reports: (n) => (n === 1 ? '1 Bericht' : `${n} Berichte`),
+    save: (amount) => `${amount} sparen`,
+    stripeNote: 'Sichere Zahlung via Stripe · Visa, Mastercard, iDEAL, Bancontact',
   },
 };
 
+const lang = computed<Language>(() => props.language ?? 'nl');
+const c = computed(() => copy[lang.value]);
+
+const singlePlan = CREDIT_PLANS[0];
+
+const plans = computed(() =>
+  CREDIT_PLANS.map((plan) => {
+    const fullPrice = plan.credits * singlePlan.priceCents;
+    const savingsCents = fullPrice - plan.priceCents;
+    return {
+      ...plan,
+      priceLabel: formatEur(plan.priceCents),
+      perReportLabel: formatEur(perReportCents(plan)),
+      savingsLabel: savingsCents > 0 ? formatEur(savingsCents) : null,
+    };
+  }),
+);
+
+const selectedPlan = computed(() => plans.value.find((p) => p.id === selectedPlanId.value) ?? plans.value[0]);
+
 function close() {
   emit('update:modelValue', false);
+}
+
+function selectPlan(planId: CreditPlanId) {
+  if (!loading.value) selectedPlanId.value = planId;
 }
 
 async function startCheckout() {
@@ -129,10 +175,11 @@ async function startCheckout() {
       body: JSON.stringify({
         uid: user.value.uid,
         email: user.value.email ?? undefined,
+        planId: selectedPlanId.value,
       }),
     });
 
-    const data = await res.json() as { url?: string; error?: string };
+    const data = (await res.json()) as { url?: string; error?: string };
 
     if (!res.ok || !data.url) {
       throw new Error(data.error ?? 'No checkout URL returned');
@@ -145,10 +192,6 @@ async function startCheckout() {
     loading.value = false;
   }
 }
-
-import { computed } from 'vue';
-const lang = computed<Language>(() => props.language ?? 'nl');
-const c = computed(() => copy[lang.value]);
 </script>
 
 <template>
@@ -167,9 +210,23 @@ const c = computed(() => copy[lang.value]);
         <h2 class="paywall-title">{{ c.title }}</h2>
         <p class="paywall-subtitle">{{ c.subtitle }}</p>
 
-        <div class="paywall-price-row">
-          <span class="paywall-price">{{ c.price }}</span>
-          <span class="paywall-price-note">{{ c.priceNote }}</span>
+        <div class="paywall-plans" role="radiogroup" :aria-label="c.title">
+          <button
+            v-for="plan in plans"
+            :key="plan.id"
+            type="button"
+            class="paywall-plan"
+            :class="{ selected: selectedPlanId === plan.id, popular: plan.popular }"
+            :aria-pressed="selectedPlanId === plan.id"
+            :disabled="loading"
+            @click="selectPlan(plan.id)"
+          >
+            <span v-if="plan.popular" class="paywall-plan-badge">{{ c.popular }}</span>
+            <span class="paywall-plan-credits">{{ c.reports(plan.credits) }}</span>
+            <span class="paywall-plan-price">{{ plan.priceLabel }}</span>
+            <span class="paywall-plan-per">{{ plan.perReportLabel }} {{ c.perReport }}</span>
+            <span v-if="plan.savingsLabel" class="paywall-plan-save">{{ c.save(plan.savingsLabel) }}</span>
+          </button>
         </div>
 
         <ul class="paywall-features">
@@ -186,10 +243,10 @@ const c = computed(() => copy[lang.value]);
 
         <button class="paywall-cta" type="button" :disabled="loading" @click="startCheckout">
           <span v-if="loading">{{ c.ctaLoading }}</span>
-          <span v-else>{{ c.cta }}</span>
+          <span v-else>{{ c.cta }} ({{ selectedPlan.priceLabel }})</span>
         </button>
 
-        <p class="paywall-stripe-note">Veilig betalen via Stripe · Visa, Mastercard, iDEAL, Bancontact</p>
+        <p class="paywall-stripe-note">{{ c.stripeNote }}</p>
       </div>
     </div>
   </Teleport>
@@ -211,7 +268,7 @@ const c = computed(() => copy[lang.value]);
 .paywall-panel {
   position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 560px;
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: 16px;
@@ -267,23 +324,83 @@ const c = computed(() => copy[lang.value]);
   line-height: 1.55;
 }
 
-.paywall-price-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 18px;
+.paywall-plans {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.paywall-price {
-  font-size: 2.4rem;
+.paywall-plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 10px 14px;
+  border: 2px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.paywall-plan:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--line-strong));
+}
+
+.paywall-plan.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.paywall-plan:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.paywall-plan-badge {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gradient);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.paywall-plan-credits {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+.paywall-plan-price {
+  font-size: 1.5rem;
   font-weight: 900;
   color: var(--ink);
-  line-height: 1;
+  line-height: 1.1;
 }
 
-.paywall-price-note {
-  font-size: 0.82rem;
+.paywall-plan-per {
+  font-size: 0.72rem;
   color: var(--muted);
+}
+
+.paywall-plan-save {
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--success);
 }
 
 .paywall-features {
@@ -347,5 +464,39 @@ const c = computed(() => copy[lang.value]);
   text-align: center;
   font-size: 0.75rem;
   color: var(--muted-dim);
+}
+
+@media (max-width: 520px) {
+  .paywall-plans {
+    grid-template-columns: 1fr;
+  }
+
+  .paywall-plan {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+    padding: 14px 16px;
+  }
+
+  .paywall-plan-badge {
+    position: static;
+    transform: none;
+    order: -1;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .paywall-plan-credits {
+    margin-top: 0;
+    flex: 1 1 100%;
+  }
+
+  .paywall-plan-per,
+  .paywall-plan-save {
+    margin-left: auto;
+  }
 }
 </style>

@@ -51,7 +51,8 @@ export const handler: Handler = async (event) => {
   // Step 2: grant the credit in Firestore (via Firebase Admin)
   try {
     const db = getDb();
-    const credits = await grantCreditOnce(db, session.id, uid);
+    const creditsToGrant = Math.max(1, parseInt(session.metadata?.credits ?? '1', 10) || 1);
+    const credits = await grantCreditOnce(db, session.id, uid, creditsToGrant);
     return { statusCode: 200, headers: jsonHeaders, body: JSON.stringify({ paid: true, credits }) };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

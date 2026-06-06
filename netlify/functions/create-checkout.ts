@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
+import { getCreditPlan } from './lib/plans';
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -16,18 +17,26 @@ export const handler: Handler = async (event) => {
 
   let uid: string;
   let email: string | undefined;
+  let planId: string;
   try {
-    const body = JSON.parse(event.body ?? '{}') as { uid?: string; email?: string };
+    const body = JSON.parse(event.body ?? '{}') as { uid?: string; email?: string; planId?: string };
     if (!body.uid) throw new Error('Missing uid');
     uid = body.uid;
     email = body.email;
+    planId = body.planId ?? 'single';
   } catch {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) };
+  }
+
+  const plan = getCreditPlan(planId);
+  if (!plan) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid plan' }) };
   }
 
   const origin = event.headers.origin ?? 'https://growthkit.jcode.be';
 
   try {
+    const reportLabel = plan.credits === 1 ? '1 growth report' : `${plan.credits} growth reports`;
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card', 'bancontact', 'ideal'],
@@ -35,10 +44,10 @@ export const handler: Handler = async (event) => {
         {
           price_data: {
             currency: 'eur',
-            unit_amount: 500,
+            unit_amount: plan.priceCents,
             product_data: {
               name: 'Entrepreneur Growth Kit',
-              description: 'Eenmalige toegang — onbeperkt rapporten genereren',
+              description: reportLabel,
             },
           },
           quantity: 1,
@@ -46,6 +55,10 @@ export const handler: Handler = async (event) => {
       ],
       client_reference_id: uid,
       customer_email: email,
+      metadata: {
+        credits: String(plan.credits),
+        planId: plan.id,
+      },
       success_url: `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
     });

@@ -47,7 +47,8 @@ export const handler: Handler = async (event) => {
 
     try {
       const db = getDb();
-      await grantCreditOnce(db, session.id, uid);
+      const creditsToGrant = Math.max(1, parseInt(session.metadata?.credits ?? '1', 10) || 1);
+      await grantCreditOnce(db, session.id, uid, creditsToGrant);
       console.log('[stripe-webhook] Credit ensured for uid:', uid);
     } catch (err) {
       console.error('[stripe-webhook] Firestore write failed:', err);
