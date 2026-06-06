@@ -18,6 +18,7 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocFromServer,
   getDocs,
   deleteDoc,
   updateDoc,
@@ -179,23 +180,69 @@ export async function signOut(): Promise<void> {
   await firebaseSignOut(auth);
 }
 
-export async function getUserCredits(uid: string): Promise<number> {
+export async function getUserCredits(uid: string, opts?: { server?: boolean }): Promise<number> {
+  const startedAt = Date.now();
+  const currentUid = auth.currentUser?.uid ?? null;
+  let hasToken = false;
   try {
-    const snap = await getDoc(doc(db, "users", uid));
-    if (!snap.exists()) return 0;
-    const val = snap.data()?.credits;
-    return typeof val === "number" ? Math.max(0, val) : 0;
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      hasToken = token.length > 0;
+    }
+  } catch {
+    hasToken = false;
+  }
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'pre-fix-2',hypothesisId:'B',location:'firebase.ts:getUserCredits:entry',message:'getUserCredits pre-read',data:{uid,currentUid,uidMatch:currentUid===uid,hasToken,projectId:firebaseConfig.projectId},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  try {
+    const snap = opts?.server
+      ? await getDocFromServer(doc(db, "users", uid))
+      : await getDoc(doc(db, "users", uid));
+    const credits = !snap.exists()
+      ? 0
+      : (() => {
+          const val = snap.data()?.credits;
+          return typeof val === "number" ? Math.max(0, val) : 0;
+        })();
+    // #region agent log
+    fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'D',location:'firebase.ts:getUserCredits:success',message:'getUserCredits ok',data:{uid,exists:snap.exists(),credits,fromCache:snap.metadata.fromCache,hasPendingWrites:snap.metadata.hasPendingWrites,elapsedMs:Date.now()-startedAt},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return credits;
   } catch (e) {
     // A denied read (e.g. Firestore rules not deployed) must not crash the app
     console.error("[getUserCredits] read failed — check Firestore rules for /users", e);
+    // #region agent log
+    fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'pre-fix-2',hypothesisId:'A',location:'firebase.ts:getUserCredits:error',message:'getUserCredits failed',data:{uid,currentUid,hasToken,elapsedMs:Date.now()-startedAt,errorCode:(e as {code?:string})?.code,errorMessage:(e as Error)?.message},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return 0;
   }
 }
 
-export async function decrementCredits(uid: string): Promise<void> {
+export async function decrementCredits(uid: string): Promise<boolean> {
+  let beforeCredits: number | null = null;
+  try {
+    const before = await getDoc(doc(db, "users", uid));
+    beforeCredits = before.exists()
+      ? (typeof before.data()?.credits === "number" ? before.data()!.credits : 0)
+      : null;
+  } catch {
+    beforeCredits = null;
+  }
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'A',location:'firebase.ts:decrementCredits:entry',message:'decrementCredits start',data:{uid,beforeCredits,docExists:beforeCredits!==null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   try {
     await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
+    // #region agent log
+    fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'A',location:'firebase.ts:decrementCredits:success',message:'decrementCredits ok',data:{uid,beforeCredits},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return true;
   } catch (e) {
     console.error("[decrementCredits] update failed — check Firestore rules for /users", e);
+    // #region agent log
+    fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'A',location:'firebase.ts:decrementCredits:error',message:'decrementCredits failed',data:{uid,beforeCredits,errorCode:(e as {code?:string})?.code,errorMessage:(e as Error)?.message},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return false;
   }
 }

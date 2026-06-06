@@ -15,7 +15,7 @@ onAuthStateChange(async (u) => {
 export function useAuth() {
   async function refreshPayment() {
     if (!user.value) return;
-    credits.value = await getUserCredits(user.value.uid);
+    credits.value = await getUserCredits(user.value.uid, { server: true });
   }
 
   // Trust an authoritative credit count (e.g. returned by the verify-checkout

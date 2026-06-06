@@ -44,8 +44,11 @@ const currentYear = new Date().getFullYear();
 // during the brief window after a page load where the initial read hasn't
 // resolved yet (user is set, but credits are still being fetched).
 async function ensureCredits(): Promise<boolean> {
-  if (credits.value > 0) return true;
+  const cachedCredits = credits.value;
   await refreshPayment();
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'B',location:'HomeView.vue:ensureCredits:refreshed',message:'ensureCredits after server refresh',data:{cachedCredits,credits:credits.value},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   return credits.value > 0;
 }
 
@@ -79,14 +82,37 @@ async function openWizard() {
 }
 
 async function handleGenerate() {
+  if (!user.value) return;
+
+  const creditsBefore = credits.value;
+  await refreshPayment();
+  if (credits.value <= 0) {
+    showPaywallModal.value = true;
+    return;
+  }
+
+  const deducted = await decrementCredits(user.value.uid);
+  await refreshPayment();
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'C',location:'HomeView.vue:handleGenerate:afterDeduct',message:'deduct before generate',data:{deducted,creditsBefore,creditsAfter:credits.value},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  if (!deducted || credits.value > 0) {
+    showNotification(
+      ui.value.validationErrorTitle,
+      siteLanguage.value === 'nl'
+        ? 'Je credit kon niet worden afgetrokken. Probeer opnieuw of neem contact op.'
+        : 'Your credit could not be deducted. Please try again or contact support.',
+      'error',
+    );
+    return;
+  }
+
   const success = await generateBusinessKit();
-  if (success && user.value) {
-    // Deduct the credit now that the report is generated
-    await decrementCredits(user.value.uid);
-    await refreshPayment();
-    if (currentPlan.value) {
-      await doSaveReport(currentPlan.value);
-    }
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'C',location:'HomeView.vue:handleGenerate:afterGenerate',message:'generate finished',data:{success,creditsAfter:credits.value},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  if (success && currentPlan.value) {
+    await doSaveReport(currentPlan.value);
   }
 }
 
