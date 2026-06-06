@@ -91,8 +91,8 @@ function generateAndClose() {
     );
     return;
   }
-  closeWizard();
   emit('generate');
+  closeWizard();
 }
 
 function useTone(tone: string) {

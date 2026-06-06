@@ -21,7 +21,7 @@ import NotificationToast from '../components/NotificationToast.vue';
 const router = useRouter();
 const route = useRoute();
 const { ui, siteLanguage, initializeLanguage } = useLanguage();
-const { status, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
+const { status, beginGeneration, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
   useReportGeneration();
 const { savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
   useReportManagement();
@@ -118,6 +118,15 @@ async function openWizard() {
 
 async function handleGenerate() {
   if (!user.value) return;
+
+  // Show the generating screen immediately — credit checks run on top of the loader,
+  // not on the homepage (wizard closes before this handler's first await).
+  beginGeneration();
+  wizardOpen.value = false;
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'gen-ux',hypothesisId:'G1',location:'HomeView.vue:handleGenerate:loading',message:'loading screen shown before credit checks',data:{status:status.value},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
   if (activatingPayment.value) {
     await waitForPaymentActivation();
   }
@@ -125,6 +134,7 @@ async function handleGenerate() {
   const creditsBefore = credits.value;
   await refreshPayment();
   if (credits.value <= 0) {
+    dismissError();
     showPaywallModal.value = true;
     return;
   }
@@ -135,6 +145,8 @@ async function handleGenerate() {
   fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'credits-debug',hypothesisId:'C',location:'HomeView.vue:handleGenerate:afterDeduct',message:'deduct before generate',data:{deducted,creditsBefore,creditsAfter:credits.value},timestamp:Date.now()})}).catch(()=>{});
   // #endregion
   if (!deducted || credits.value > 0) {
+    dismissError();
+    wizardOpen.value = true;
     showNotification(
       ui.value.validationErrorTitle,
       siteLanguage.value === 'nl'

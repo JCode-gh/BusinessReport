@@ -137,18 +137,23 @@ export function useReportGeneration() {
     reportHtml.value = '';
   }
 
-  async function generateBusinessKit() {
-    if (!canGenerate.value) {
-      return false;
-    }
-
+  function beginGeneration() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     status.value = 'loading';
     errorMessage.value = '';
-
     showResultScreen.value = false;
     apiCharsReceived.value = 0;
     revokeReportUrl();
+  }
+
+  async function generateBusinessKit() {
+    if (!isBriefComplete.value) {
+      return false;
+    }
+
+    if (status.value !== 'loading') {
+      beginGeneration();
+    }
 
     try {
       await wait(650);
@@ -229,6 +234,7 @@ export function useReportGeneration() {
     canGenerate,
     loadingProgress,
     waitingCountdownPercent,
+    beginGeneration,
     generateBusinessKit,
     resetBriefForm,
     dismissError,
