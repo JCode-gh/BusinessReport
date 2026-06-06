@@ -188,7 +188,6 @@ export function useReportGeneration() {
       status.value = 'success';
       currentPlan.value = kit;
       currentHtml.value = htmlText;
-      showResultScreen.value = true;
       return true;
     } catch (error) {
       status.value = 'error';

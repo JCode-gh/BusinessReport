@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { AlertCircle, CheckCircle2, FileText, LogIn, Sparkles } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
 import { useReportGeneration } from '../composables/useReportGeneration';
+import { useReportManagement } from '../composables/useReportManagement';
 import { useAuth } from '../useAuth';
 
 const emit = defineEmits<{
@@ -17,12 +18,11 @@ const { ui, selectedLanguageLabel } = useLanguage();
 const { status, errorMessage, currentPlan, fileName, lastGeneratedAt, pdfDownloading, reportHtml } =
   useReportGeneration();
 const { user } = useAuth();
+const { savedReportId } = useReportManagement();
 
 const resultDescription = computed(() => {
   return ui.value.resultDescription.replace('{language}', selectedLanguageLabel.value);
 });
-
-const savedReportId = computed(() => currentPlan.value ? 'temp-id' : null); // This will be managed by parent
 </script>
 
 <template>

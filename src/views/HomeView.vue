@@ -23,7 +23,7 @@ const route = useRoute();
 const { ui, siteLanguage, initializeLanguage } = useLanguage();
 const { status, beginGeneration, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
   useReportGeneration();
-const { savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
+const { savedReportId, savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
   useReportManagement();
 const { showNotification } = useNotification();
 const { user, credits, refreshPayment, setCredits, waitForAuthReady } = useAuth();
@@ -131,19 +131,7 @@ async function handleGenerate() {
   const creditsBefore = credits.value;
   const deducted = await decrementCredits(user.value.uid);
   await refreshPayment();
-  const deductFailed = !deducted || credits.value >= creditsBefore;
-  // #region agent log
-  console.info('[GK-CREDITS]', {
-    hypothesisId: 'A',
-    location: 'HomeView.vue:handleGenerate:afterDeduct',
-    deducted,
-    creditsBefore,
-    creditsAfter: credits.value,
-    deductFailed,
-    oldCheckWouldFail: !deducted || credits.value > 0,
-  });
-  // #endregion
-  if (deductFailed) {
+  if (!deducted || credits.value >= creditsBefore) {
     dismissError();
     wizardOpen.value = true;
     showNotification(
@@ -158,13 +146,29 @@ async function handleGenerate() {
 
   const success = await generateBusinessKit();
   if (success && currentPlan.value) {
+    status.value = 'loading';
     await doSaveReport(currentPlan.value);
+    status.value = 'success';
+    showResultScreen.value = true;
   }
 }
 
-function handleOpenReport() {
-  showResultScreen.value = false;
-  window.scrollTo({ top: 0, behavior: 'instant' });
+async function handleOpenReport() {
+  let id = savedReportId.value;
+  if (!id && currentPlan.value) {
+    id = await doSaveReport(currentPlan.value);
+  }
+  if (!id) {
+    showNotification(ui.value.accessDenied, ui.value.reportNotFound, 'error');
+    return;
+  }
+  const report = await openSavedReport(id);
+  if (report) {
+    showResultScreen.value = false;
+    router.push({ name: 'report', params: { id } });
+  } else {
+    showNotification(ui.value.accessDenied, ui.value.reportNotFound, 'error');
+  }
 }
 
 function handleDownloadPdf() {

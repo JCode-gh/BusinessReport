@@ -200,29 +200,11 @@ export async function getUserCredits(uid: string, opts?: { server?: boolean }): 
 }
 
 export async function decrementCredits(uid: string): Promise<boolean> {
-  let beforeCredits: number | null = null;
-  try {
-    const before = await getDoc(doc(db, "users", uid));
-    beforeCredits = before.exists()
-      ? (typeof before.data()?.credits === "number" ? before.data()!.credits : 0)
-      : null;
-  } catch {
-    beforeCredits = null;
-  }
   try {
     await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
     return true;
   } catch (e) {
     console.error("[decrementCredits] update failed — check Firestore rules for /users", e);
-    // #region agent log
-    console.info('[GK-CREDITS]', {
-      hypothesisId: 'B',
-      location: 'firebase.ts:decrementCredits:error',
-      beforeCredits,
-      errorCode: (e as { code?: string })?.code,
-      errorMessage: (e as Error)?.message,
-    });
-    // #endregion
     return false;
   }
 }
