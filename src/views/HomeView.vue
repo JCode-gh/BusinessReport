@@ -39,11 +39,42 @@ const renamingReportId = ref<string | null>(null);
 const renameHomepageValue = ref('');
 const currentYear = new Date().getFullYear();
 
+// Stripe redirect: detect and react before onMounted so the wizard opens immediately
+// and Generate clicks don't flash the paywall while verify-checkout runs.
+const isPaymentReturn = route.query.payment === 'success';
+const paymentSessionId =
+  typeof route.query.session_id === 'string' ? route.query.session_id : null;
+const activatingPayment = ref(isPaymentReturn);
+const paymentActivationStartedAt = isPaymentReturn ? Date.now() : 0;
+
+if (isPaymentReturn) {
+  router.replace({ query: {} });
+  wizardOpen.value = true;
+  // #region agent log
+  fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'payment-ux',hypothesisId:'P1',location:'HomeView.vue:paymentReturn:immediate',message:'wizard opened immediately on payment return',data:{hasSessionId:!!paymentSessionId},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+}
+
+function waitForPaymentActivation(): Promise<void> {
+  if (!activatingPayment.value) return Promise.resolve();
+  return new Promise((resolve) => {
+    const stop = watch(activatingPayment, (active) => {
+      if (!active) {
+        stop();
+        resolve();
+      }
+    });
+  });
+}
+
 // Returns true if the user has at least one credit. If the local count is 0,
 // it re-reads from Firestore first — this avoids falsely showing the paywall
 // during the brief window after a page load where the initial read hasn't
 // resolved yet (user is set, but credits are still being fetched).
 async function ensureCredits(): Promise<boolean> {
+  if (activatingPayment.value) {
+    await waitForPaymentActivation();
+  }
   const cachedCredits = credits.value;
   await refreshPayment();
   // #region agent log
@@ -67,6 +98,10 @@ watch(user, async (u) => {
 });
 
 async function openWizard() {
+  if (activatingPayment.value) {
+    wizardOpen.value = true;
+    return;
+  }
   await waitForAuthReady();
   if (!user.value) {
     pendingGenerate.value = true;
@@ -83,6 +118,9 @@ async function openWizard() {
 
 async function handleGenerate() {
   if (!user.value) return;
+  if (activatingPayment.value) {
+    await waitForPaymentActivation();
+  }
 
   const creditsBefore = credits.value;
   await refreshPayment();
@@ -197,76 +235,83 @@ async function activatePaymentOnReturn(sessionId: string | null) {
   const lang = siteLanguage.value as string;
   const c = paymentSuccessCopy[lang] ?? paymentSuccessCopy.nl;
 
-  // After the Stripe redirect the page reloaded — wait for Firebase auth to restore
-  await waitForAuthReady();
+  try {
+    // After the Stripe redirect the page reloaded — wait for Firebase auth to restore
+    await waitForAuthReady();
 
-  if (!user.value) {
-    showNotification(
-      c.title,
-      lang === 'nl'
-        ? 'Betaling geslaagd. Meld je aan om je rapport te genereren.'
-        : 'Payment successful. Sign in to generate your report.',
-      'success',
-    );
-    showAuthModal.value = true;
-    return;
-  }
-
-  // Primary path: verify the session with Stripe and grant the credit synchronously.
-  // We TRUST the credit count returned by the function — no client Firestore read needed.
-  if (sessionId) {
-    try {
-      const res = await fetch('/.netlify/functions/verify-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, uid: user.value.uid }),
-      });
-      const data = (await res.json()) as { paid?: boolean; credits?: number; error?: string };
-
-      if (res.ok && data.paid) {
-        const serverCredits = typeof data.credits === 'number' ? data.credits : 0;
-        setCredits(serverCredits);
-        showNotification(c.title, c.message, 'success');
-        if (serverCredits > 0) {
-          wizardOpen.value = true;
-        } else {
-          // Payment confirmed but this session's credit was already used (e.g. revisited link)
-          showNotification(
-            c.title,
-            lang === 'nl'
-              ? 'Deze betaling is al gebruikt voor een rapport.'
-              : 'This payment has already been used for a report.',
-            'success',
-          );
-        }
-        return;
-      }
-
-      // Server reachable but returned an error or not-paid — log the reason for diagnosis
-      console.error('[payment] verify-checkout did not confirm payment:', res.status, data.error ?? data);
-    } catch (err) {
-      console.error('[payment] verify-checkout request failed', err);
+    if (!user.value) {
+      wizardOpen.value = false;
+      showNotification(
+        c.title,
+        lang === 'nl'
+          ? 'Betaling geslaagd. Meld je aan om je rapport te genereren.'
+          : 'Payment successful. Sign in to generate your report.',
+        'success',
+      );
+      showAuthModal.value = true;
+      return;
     }
-  }
 
-  // Fallback: poll Firestore in case the webhook is the one writing the credit.
-  // (getUserCredits is hardened to never throw, so this loop is safe.)
-  showNotification(c.title, c.message, 'success');
-  for (let i = 0; i < 10; i++) {
-    await new Promise((r) => setTimeout(r, i < 3 ? 800 : 1500));
-    await refreshPayment();
-    if (credits.value > 0) break;
-  }
-  if (credits.value > 0) {
-    wizardOpen.value = true;
-  } else {
-    showNotification(
-      lang === 'nl' ? 'Betaling ontvangen' : 'Payment received',
-      lang === 'nl'
-        ? 'Betaling gelukt, maar activatie is nog niet rond. Controleer de Netlify-functielogs (verify-checkout) — meestal ontbreken de Firebase Admin env-variabelen.'
-        : 'Payment succeeded but activation did not complete. Check the Netlify function logs (verify-checkout) — usually the Firebase Admin env vars are missing.',
-      'error',
-    );
+    // Primary path: verify the session with Stripe and grant the credit synchronously.
+    // We TRUST the credit count returned by the function — no client Firestore read needed.
+    if (sessionId) {
+      try {
+        const res = await fetch('/.netlify/functions/verify-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, uid: user.value.uid }),
+        });
+        const data = (await res.json()) as { paid?: boolean; credits?: number; error?: string };
+
+        if (res.ok && data.paid) {
+          const serverCredits = typeof data.credits === 'number' ? data.credits : 0;
+          setCredits(serverCredits);
+          showNotification(c.title, c.message, 'success');
+          if (serverCredits > 0) {
+            wizardOpen.value = true;
+          } else {
+            wizardOpen.value = false;
+            showNotification(
+              c.title,
+              lang === 'nl'
+                ? 'Deze betaling is al gebruikt voor een rapport.'
+                : 'This payment has already been used for a report.',
+              'success',
+            );
+          }
+          return;
+        }
+
+        console.error('[payment] verify-checkout did not confirm payment:', res.status, data.error ?? data);
+      } catch (err) {
+        console.error('[payment] verify-checkout request failed', err);
+      }
+    }
+
+    // Fallback: poll Firestore in case the webhook is the one writing the credit.
+    showNotification(c.title, c.message, 'success');
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, i < 3 ? 800 : 1500));
+      await refreshPayment();
+      if (credits.value > 0) break;
+    }
+    if (credits.value > 0) {
+      wizardOpen.value = true;
+    } else {
+      wizardOpen.value = false;
+      showNotification(
+        lang === 'nl' ? 'Betaling ontvangen' : 'Payment received',
+        lang === 'nl'
+          ? 'Betaling gelukt, maar activatie is nog niet rond. Controleer de Netlify-functielogs (verify-checkout) — meestal ontbreken de Firebase Admin env-variabelen.'
+          : 'Payment succeeded but activation did not complete. Check the Netlify function logs (verify-checkout) — usually the Firebase Admin env vars are missing.',
+        'error',
+      );
+    }
+  } finally {
+    activatingPayment.value = false;
+    // #region agent log
+    fetch('http://127.0.0.1:7362/ingest/6132344f-acf6-4aed-b5d7-5279ae9876bd',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5e5f62'},body:JSON.stringify({sessionId:'5e5f62',runId:'payment-ux',hypothesisId:'P1',location:'HomeView.vue:activatePaymentOnReturn:done',message:'payment activation finished',data:{elapsedMs:paymentActivationStartedAt?Date.now()-paymentActivationStartedAt:0,wizardOpen:wizardOpen.value,credits:credits.value},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   }
 }
 
@@ -274,17 +319,16 @@ onMounted(async () => {
   localStorage.removeItem('business-kit-draft');
   initializeLanguage();
 
-  try {
-    await completeGoogleRedirectSignIn();
-  } catch (e) {
+  const googleSignIn = completeGoogleRedirectSignIn().catch((e) => {
     showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');
-  }
+  });
 
-  // Handle Stripe redirect back
-  if (route.query.payment === 'success') {
-    const sessionId = typeof route.query.session_id === 'string' ? route.query.session_id : null;
-    router.replace({ query: {} });
-    await activatePaymentOnReturn(sessionId);
+  // Payment return is handled first — don't block on Google redirect recovery.
+  if (isPaymentReturn) {
+    await activatePaymentOnReturn(paymentSessionId);
+    await googleSignIn;
+  } else {
+    await googleSignIn;
   }
 
   // Auto-open wizard if pending generate after auth
@@ -322,7 +366,7 @@ onMounted(async () => {
           <p class="hero-copy">{{ ui.heroCopy }}</p>
 
           <div class="hero-actions">
-            <button class="primary-link" type="button" @click="openWizard">
+            <button class="primary-link" type="button" :disabled="activatingPayment" @click="openWizard">
               <Sparkles :size="19" />
               {{ ui.heroPrimary }}
               <ArrowRight :size="18" />
@@ -376,7 +420,7 @@ onMounted(async () => {
         <p v-if="savedReportsLoading" class="saved-reports-empty">{{ ui.savedReportsLoading }}</p>
         <div v-else-if="!savedReports.length" class="saved-reports-empty">
           <p>{{ ui.savedReportsEmpty }}</p>
-          <button class="primary-link" type="button" @click="openWizard">
+          <button class="primary-link" type="button" :disabled="activatingPayment" @click="openWizard">
             <Sparkles :size="19" />
             {{ ui.heroPrimary }}
             <ArrowRight :size="18" />
