@@ -216,6 +216,19 @@ export function useReportGeneration() {
     form.reportTheme = reportTheme;
   }
 
+  function fillTestData() {
+    form.businessName = 'Digit Studio';
+    form.region = 'België (Vlaanderen), Nederlandstalige KMO-markt';
+    form.businessType = 'Freelance webdesign- en developmentstudio — op maat gemaakte websites, webshops en landingspagina\'s voor lokale dienstverlenende bedrijven';
+    form.offer = 'Maatwerk websites (€1.500–€3.500), WooCommerce/Shopify webshops (€2.500–€5.000) en maandelijkse care plans voor onderhoud en hosting (€99/maand)';
+    form.audience = 'Belgische KMO\'s in dienstverlenende sectoren (accountants, coaches, therapeuten, aannemers) met 1–10 medewerkers die weten dat ze een betere website nodig hebben maar de investering blijven uitstellen';
+    form.problem = 'Projecten verliezen aan goedkopere concurrenten en DIY-tools zoals Wix en Squarespace — klanten zien het verschil niet tussen een template van €500 en een maatwerkopdracht van €2.500, waardoor prijs de enige beslissingsfactor wordt';
+    form.goal = '3 nieuwe projecten binnenhalen van €2.500+ binnen 30 dagen en de gemiddelde projectwaarde verhogen van €1.800 naar €3.000';
+    form.channels = 'Mond-tot-mond en doorverwijzingen, LinkedIn (sporadisch), af en toe lokale netwerkevenementen';
+    form.pricePoint = 'Huidig: €800–€2.500 per project, doel: €2.500–€5.000 per project';
+    form.tone = 'Direct, zelfverzekerd, premium maar toegankelijk — niet corporate';
+  }
+
   function dismissError() {
     status.value = 'idle';
     errorMessage.value = '';
@@ -246,6 +259,7 @@ export function useReportGeneration() {
     beginGeneration,
     generateBusinessKit,
     resetBriefForm,
+    fillTestData,
     dismissError,
     goHome,
     setReportHtml,

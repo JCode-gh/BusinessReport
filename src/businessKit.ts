@@ -1,5 +1,5 @@
 import { jsonrepair } from "jsonrepair";
-import { POLLINATIONS_API_KEY, POLLINATIONS_MAX_TOKENS, POLLINATIONS_MODEL } from "./pollinationsConfig";
+import { POLLINATIONS_API_KEY, POLLINATIONS_MODEL } from "./pollinationsConfig";
 
 export type BusinessKitLanguage = "en" | "nl" | "fr" | "de";
 
@@ -15,6 +15,19 @@ export type BusinessKitRequest = {
   region?: string;
   tone?: string;
   language: BusinessKitLanguage;
+};
+
+type ExecChips = {
+  lever: string;
+  blocker: string;
+  action: string;
+};
+
+type UpsellIdea = {
+  title: string;
+  price: string;
+  scope: string;
+  trigger: string;
 };
 
 type BusinessScore = {
@@ -144,6 +157,7 @@ export type BusinessKitPlan = {
   title: string;
   subtitle: string;
   executiveSummary: string;
+  executiveSummaryChips?: ExecChips;
   positioning: string;
   coreOfferRewrite: string;
   idealCustomerProfile: string;
@@ -156,7 +170,7 @@ export type BusinessKitPlan = {
   templates: BusinessTemplate[];
   contentIdeas: ContentIdea[];
   metrics: BusinessMetric[];
-  upsellIdeas: string[];
+  upsellIdeas: UpsellIdea[];
   assumptions: string[];
   disclaimer: string;
 };
@@ -214,6 +228,12 @@ type ReportLabels = {
   copied: string;
   readingTime: string;
   jumpToSection: string;
+  execLever: string;
+  execBlocker: string;
+  execAction: string;
+  upsellPrice: string;
+  upsellScope: string;
+  upsellTrigger: string;
 };
 
 const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
@@ -270,6 +290,12 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     competitor: "Competitor",
     competitorWeakness: "Weakness",
     competitorAdvantage: "Our Advantage",
+    execLever: "Growth Lever",
+    execBlocker: "Blocker",
+    execAction: "30-Day Shift",
+    upsellPrice: "Price range",
+    upsellScope: "What they get",
+    upsellTrigger: "When to pitch",
   },
   nl: {
     htmlLang: "nl",
@@ -324,6 +350,12 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     competitor: "Concurrent",
     competitorWeakness: "Zwakke punt",
     competitorAdvantage: "Ons voordeel",
+    execLever: "Groeihefboom",
+    execBlocker: "Blokkade",
+    execAction: "Aanpak in 30 dagen",
+    upsellPrice: "Prijsrange",
+    upsellScope: "Wat ze krijgen",
+    upsellTrigger: "Wanneer pitchen",
   },
   fr: {
     htmlLang: "fr",
@@ -378,6 +410,12 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     competitor: "Concurrent",
     competitorWeakness: "Point faible",
     competitorAdvantage: "Notre avantage",
+    execLever: "Levier de croissance",
+    execBlocker: "Obstacle",
+    execAction: "Virage en 30 jours",
+    upsellPrice: "Fourchette de prix",
+    upsellScope: "Ce qu'ils reçoivent",
+    upsellTrigger: "Quand proposer",
   },
   de: {
     htmlLang: "de",
@@ -432,6 +470,12 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     competitor: "Wettbewerber",
     competitorWeakness: "Schwachpunkt",
     competitorAdvantage: "Unser Vorteil",
+    execLever: "Wachstumshebel",
+    execBlocker: "Hindernis",
+    execAction: "Kurs in 30 Tagen",
+    upsellPrice: "Preisbereich",
+    upsellScope: "Was sie erhalten",
+    upsellTrigger: "Wann pitchen",
   },
 };
 
@@ -448,7 +492,7 @@ export type RetryInfo = {
   retryAfterSeconds: number;
 };
 
-export const ESTIMATED_RESPONSE_CHARS = 12_000;
+export const ESTIMATED_RESPONSE_CHARS = 22_000;
 
 export async function createBusinessKit(
   request: BusinessKitRequest,
@@ -540,7 +584,7 @@ Report tone: ${request.tone || "Clear, direct, premium, practical"}
 
 COMPETITIVE CONTEXT
 ===================
-Based on businessType "${request.businessType || "Not provided"}" and region "${request.region || "Not provided"}", identify 2–3 specific competitors or alternatives the target customer (${request.audience || "Not provided"}) is most likely comparing right now. Name real companies, platforms, or approaches (e.g. "Fiverr freelancers", "Wix website builders", "local marketing agencies") — not vague categories. For each: name the competitor, identify one specific weakness from the buyer's perspective, and state a concrete advantage the business above has over them. Include this as the "competitorAnalysis" field in the JSON.
+Name 2–3 real, specific competitors or alternatives that ${request.audience || "the target customer"} is actually comparing RIGHT NOW when considering "${request.businessName || "this business"}" (${request.businessType || "Not provided"}) in "${request.region || "Not provided"}". These must be specific to THIS business type and region — research the actual competitive landscape, do not fall back on generic names. Use the real platform, company, or service category name (e.g. for a Belgian HR consultant: "SD Worx HR outsourcing", "Local interim bureaus", "Officient HR software" — completely different from what you would name for a restaurant or a SaaS product). For each competitor: one specific weakness from the buyer's perspective, and one concrete advantage this business has over them. Include as "competitorAnalysis" in the JSON.
 
 Build a full entrepreneur growth kit for this business. Every section must be specific to the brief above — never use placeholder text or generic advice that could apply to any business.
 
@@ -597,9 +641,9 @@ QUALITY RULES (never break these):
 
 EXAMPLES OF GOOD VS BAD OUTPUT (follow the GOOD examples exactly):
 
-executiveSummary:
-BAD: "This business has potential for growth. The key is to improve marketing and sales. Focus on the right customers and you will see results in 30 days."
-GOOD: "Northstar Studio's single biggest lever is repositioning from 'web design agency' to 'revenue-focused digital system for service businesses' — pricing is currently 40% below market for the value delivered. The blocker is weak outbound: referrals are the only active channel, creating feast-or-famine cycles. The shift needed in 30 days: launch systematic LinkedIn outreach targeting Benelux service businesses with 5–30 staff, combined with a proposal that anchors on ROI rather than deliverables."
+executiveSummaryChips:
+BAD: { "lever": "This business has potential.", "blocker": "Marketing needs work.", "action": "Focus on customers." }
+GOOD: { "lever": "Northstar Studio's biggest lever is repositioning from 'web design agency' to 'revenue-focused digital system for service businesses' — pricing is 40% below market for the value delivered.", "blocker": "Referrals are the only active channel, creating feast-or-famine cycles with no repeatable outbound system.", "action": "Launch systematic LinkedIn outreach targeting Benelux service businesses with 5–30 staff and rewrite proposals to anchor on ROI, not deliverables." }
 
 actionPlan (single item):
 BAD: { "day": "Day 1", "task": "Work on positioning", "outcome": "Better positioning" }
@@ -611,7 +655,7 @@ GOOD: { "title": "Cold email — website ROI pitch", "channel": "Email", "body":
 
 SECTION-BY-SECTION INSTRUCTIONS:
 
-executiveSummary (3–4 sentences): Open with the single biggest growth lever this business has RIGHT NOW. Then name the one thing blocking that lever. Close with the key strategic shift needed in the next 30 days. Be direct — no preamble.
+executiveSummaryChips (3 fields, each 1–2 sentences): lever = the single biggest growth lever this business has RIGHT NOW; blocker = the one thing preventing that lever from working; action = the precise strategic shift needed in the next 30 days. Be direct — no preamble, no filler.
 
 positioning (3–4 sentences): Diagnose how this business is currently perceived versus how it SHOULD be positioned. Name the positioning gap. Prescribe the exact repositioning move: what to lead with, what to stop saying, what proof point anchors the claim.
 
@@ -631,13 +675,13 @@ competitorAnalysis (2–3 items): Name real competitors or alternatives the targ
 
 actionPlan (12 items, mandatory): Day 1, Day 2, Day 3, Day 4-5, Day 6-7, Week 2 (part 1), Week 2 (part 2), Week 3 (part 1), Week 3 (part 2), Week 4 (part 1), Week 4 (part 2), Day 30 Review. Each task must start with an action verb. Each task must be a single concrete deliverable. Outcome must be the measurable result of completing that task.
 
-templates (5–6 items): Must include ALL of: cold outreach opener, follow-up after no reply (3 days), discovery call confirmation, proposal follow-up after 3 days silence, LinkedIn connection request (300 chars max), and optionally a WhatsApp/SMS follow-up (short). Each template must be SEND-READY copy someone can paste today — not a description of what to write. Email templates need "Subject:" / "Onderwerp:" plus full body (minimum 5 sentences, multiple paragraphs). Only placeholders: [Naam]/[Name] and [Bedrijf]/[Company]. NEVER insert untranslated brief text. NEVER use label placeholders like "de ideale doelklant" or "het kernaanbod". Rewrite brief facts as natural sentences in the output language.
+templates (5–6 items): Must include ALL of: cold outreach opener, follow-up after no reply (3 days), discovery call confirmation, proposal follow-up after 3 days silence, LinkedIn connection request (300 chars max), and optionally a WhatsApp/SMS follow-up (short). Each template must be SEND-READY copy someone can paste today — not a description of what to write. Email templates need "Subject:" / "Onderwerp:" plus full body (minimum 5 sentences, multiple paragraphs). Only placeholders matching the output language — EN: [Name] & [Company]; NL: [Naam] & [Bedrijf]; FR: [Nom] & [Société]; DE: [Name] & [Unternehmen]. NEVER insert untranslated brief text. NEVER use label placeholders like "de ideale doelklant" or "het kernaanbod". Rewrite brief facts as natural sentences in the output language.
 
 contentIdeas (6–8 items): Mix of LinkedIn posts, email subjects, and short-form video hooks. Each must target a specific buyer pain or objection. The hook must be a complete opening sentence someone could use today.
 
 metrics (6–8 items): Include leading and lagging indicators. Each metric needs a specific numeric or percentage target grounded in the business's price point and sales cycle. The "why" must explain what goes wrong if this metric is ignored.
 
-upsellIdeas (4–5 items): Logical next offers after the first sale — priced and scoped, not just named. Explain what triggers the upsell conversation.
+upsellIdeas (4–5 items): Logical next offers after the first sale. Each must have: a short offer title; a specific price range (e.g. "€500–€1,500/month" or "$2,000 flat"); a 1-sentence scope (exactly what the client gets); and a 1-sentence trigger (the buyer behaviour or milestone that opens the upsell conversation naturally).
 
 assumptions (3–5 items): List the assumptions you made where the brief was silent. Format as "We assume [X] because [Y]. If this is wrong, adjust [Z]."
 
@@ -647,7 +691,7 @@ REQUIRED JSON SHAPE (all keys required):
 {
   "title": string,
   "subtitle": string,
-  "executiveSummary": string,
+  "executiveSummaryChips": { "lever": string, "blocker": string, "action": string },
   "positioning": string,
   "coreOfferRewrite": string,
   "idealCustomerProfile": string,
@@ -660,7 +704,7 @@ REQUIRED JSON SHAPE (all keys required):
   "templates": [{ "title": string, "channel": string, "body": string }],
   "contentIdeas": [{ "title": string, "angle": string, "hook": string }],
   "metrics": [{ "metric": string, "target": string, "why": string }],
-  "upsellIdeas": string[],
+  "upsellIdeas": [{ "title": string, "price": string, "scope": string, "trigger": string }],
   "assumptions": string[],
   "disclaimer": string
 }
@@ -681,7 +725,6 @@ async function callPollinationsApi(
   const body: Record<string, unknown> = {
     model: POLLINATIONS_MODEL,
     temperature: 0.6,
-    max_tokens: POLLINATIONS_MAX_TOKENS,
     stream: useStream,
     messages: [
       { role: "system", content: apiSystemPrompt(mode, language) },
@@ -697,7 +740,7 @@ async function callPollinationsApi(
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => controller.abort(), 90_000);
+    const timeoutId = window.setTimeout(() => controller.abort(), 150_000);
 
     let response: Response;
     try {
@@ -871,10 +914,21 @@ function hasMixedLanguage(text: string, reportLang: BusinessKitLanguage): boolea
   if (!text.trim() || reportLang === "en") return false;
 
   const lower = text.toLowerCase();
-  const dutchHits = (lower.match(/\b(de|het|een|van|voor|met|zijn|naar|die|dat)\b/g) ?? []).length;
   const englishHits = (lower.match(/\b(the|and|with|for|that|this|your|more|within|from|have|will)\b/g) ?? []).length;
+  if (englishHits < 4) return false;
 
-  if (reportLang === "nl" && dutchHits >= 2 && englishHits >= 4) return true;
+  if (reportLang === "nl") {
+    const hits = (lower.match(/\b(de|het|een|van|voor|met|zijn|naar|die|dat)\b/g) ?? []).length;
+    return hits >= 2;
+  }
+  if (reportLang === "fr") {
+    const hits = (lower.match(/\b(le|la|les|de|du|des|est|sont|pour|avec|dans|une|qui|que)\b/g) ?? []).length;
+    return hits >= 2;
+  }
+  if (reportLang === "de") {
+    const hits = (lower.match(/\b(der|die|das|den|dem|von|mit|ist|sind|für|ein|eine)\b/g) ?? []).length;
+    return hits >= 2;
+  }
   return false;
 }
 
@@ -926,11 +980,15 @@ function normalizeApiPlan(
   raw: Record<string, unknown>,
   request: BusinessKitRequest,
 ): BusinessKitPlan | null {
+  const chips = normalizeExecChips(raw.executiveSummaryChips);
   const plan: BusinessKitPlan = {
     language: request.language,
     title: strOr(raw.title, defaultPlanTitle(request)),
     subtitle: strOr(raw.subtitle, ""),
-    executiveSummary: strOr(raw.executiveSummary, ""),
+    executiveSummary: chips
+      ? `${chips.lever} ${chips.blocker} ${chips.action}`
+      : strOr(raw.executiveSummary, ""),
+    executiveSummaryChips: chips ?? undefined,
     positioning: strOr(raw.positioning, ""),
     coreOfferRewrite: strOr(raw.coreOfferRewrite, ""),
     idealCustomerProfile: strOr(raw.idealCustomerProfile, ""),
@@ -943,7 +1001,7 @@ function normalizeApiPlan(
     templates: normalizeTemplates(raw.templates),
     contentIdeas: normalizeContentIdeas(raw.contentIdeas),
     metrics: normalizeMetrics(raw.metrics),
-    upsellIdeas: strArray(raw.upsellIdeas, 8),
+    upsellIdeas: normalizeUpsellIdeas(raw.upsellIdeas),
     assumptions: strArray(raw.assumptions, 8),
     disclaimer: strOr(raw.disclaimer, defaultDisclaimer(request.language)),
   };
@@ -953,8 +1011,17 @@ function normalizeApiPlan(
     return null;
   }
 
-  if (request.language !== "en" && hasMixedLanguage(plan.executiveSummary, request.language)) {
-    console.warn("[BusinessKit] Possible mixed language in AI output for", request.language);
+  if (request.language !== "en") {
+    const fieldsToCheck = [
+      plan.executiveSummary,
+      plan.positioning,
+      plan.coreOfferRewrite,
+      plan.idealCustomerProfile,
+      ...plan.actionPlan.map((a) => a.task),
+    ];
+    if (fieldsToCheck.some((f) => hasMixedLanguage(f, request.language))) {
+      console.warn("[BusinessKit] Possible mixed language in AI output for", request.language);
+    }
   }
 
   return plan;
@@ -1056,6 +1123,30 @@ function normalizeMetrics(value: unknown): BusinessKitPlan["metrics"] {
     .slice(0, 10);
 }
 
+function normalizeExecChips(value: unknown): ExecChips | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  const lever = strOr(v.lever);
+  const blocker = strOr(v.blocker);
+  const action = strOr(v.action);
+  if (!lever || !blocker || !action) return null;
+  return { lever, blocker, action };
+}
+
+function normalizeUpsellIdeas(value: unknown): UpsellIdea[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v))
+    .map((v) => ({
+      title: strOr(v.title),
+      price: strOr(v.price),
+      scope: strOr(v.scope),
+      trigger: strOr(v.trigger),
+    }))
+    .filter((v) => v.title && v.scope)
+    .slice(0, 6);
+}
+
 function normalizeCompetitorAnalysis(value: unknown): CompetitorItem[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -1090,7 +1181,7 @@ function estimateReadingMinutes(plan: BusinessKitPlan): number {
     plan.templates.map((t) => t.body).join(" "),
     plan.contentIdeas.map((c) => c.angle + " " + c.hook).join(" "),
     plan.metrics.map((m) => m.why).join(" "),
-    plan.upsellIdeas.join(" "),
+    plan.upsellIdeas.map((u) => `${u.title} ${u.scope} ${u.trigger}`).join(" "),
     plan.assumptions.join(" "),
   ].join(" ");
   return Math.max(1, Math.ceil(text.split(/\s+/).filter(Boolean).length / 200));
@@ -1260,7 +1351,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       transition: width 0.3s ease;
     }
 
-    .workspace-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .workspace-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 
     .workspace-stat { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 
@@ -1395,7 +1486,61 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       white-space: nowrap;
     }
 
-    /* Executive summary */
+    /* Report toolbar */
+    .report-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-btn {
+      height: 32px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--accent-dark);
+      font: 600 0.82rem/1 inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .toolbar-btn:hover { background: var(--surface); }
+
+    /* Executive summary chips */
+    .exec-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+    .exec-chip {
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .ec-lever   { background: var(--mint); border: 1px solid rgba(111,106,207,0.2); }
+    .ec-blocker { background: #fff1f2; border: 1px solid #fecdd3; }
+    .ec-action  { background: var(--amber); border: 1px solid #fde68a; }
+
+    .exec-chip-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .ec-lever   .exec-chip-label { color: var(--accent-dark); }
+    .ec-blocker .exec-chip-label { color: #be123c; }
+    .ec-action  .exec-chip-label { color: #92400e; }
+
+    .exec-chip-text { font-size: 1rem; line-height: 1.65; margin: 0; color: #1f2937; }
+
+    /* Executive summary fallback paragraph */
     .exec-lead {
       font-size: 1.18rem;
       line-height: 1.75;
@@ -1405,6 +1550,26 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       padding-left: 20px;
       border-left: 4px solid var(--accent);
     }
+
+    /* Quick win effort badges */
+    .effort-badge {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 5px;
+      font-size: 0.67rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-right: 6px;
+      vertical-align: text-bottom;
+      flex-shrink: 0;
+    }
+
+    .effort-low  { background: #dcfce7; color: #166534; }
+    .effort-med  { background: #fef3c7; color: #92400e; }
+    .effort-high { background: #fee2e2; color: #be123c; }
 
     /* Insight blocks */
     .insight-stack { display: grid; gap: 12px; }
@@ -1466,6 +1631,36 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     }
 
     .win-text { font-size: 1.02rem; line-height: 1.55; padding-top: 4px; }
+
+    /* Biggest Risks */
+    .risk-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+
+    .risk-item {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 18px 14px 14px;
+      border: 1px solid #fecdd3;
+      border-radius: 10px;
+      background: #fff1f2;
+    }
+
+    .risk-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #fecdd3;
+      color: #be123c;
+      font-size: 0.76rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .risk-text { font-size: 1.02rem; line-height: 1.55; padding-top: 4px; }
 
     /* Scorecard */
     .scorecard-list {
@@ -1529,7 +1724,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     }
 
     .scorecard-track {
-      height: 3px;
+      height: 5px;
       border-radius: 999px;
       background: var(--line);
       overflow: hidden;
@@ -1756,7 +1951,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     .template-body { padding: 20px; font-size: 1rem; line-height: 1.75; white-space: pre-wrap; color: #374151; }
 
     /* Content ideas */
-    .content-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    .content-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 
     .content-card {
       border: 1px solid var(--line);
@@ -1830,6 +2025,24 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
     .tagged-item::before { content: "·"; position: absolute; left: 0; color: var(--subtle); font-size: 1.2rem; line-height: 1.1; }
 
+    /* Upsell cards */
+    .upsell-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+    .upsell-card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: grid;
+      gap: 4px;
+      background: var(--surface);
+    }
+
+    .upsell-card-title { font-size: 1.02rem; font-weight: 700; margin: 0; color: var(--ink); }
+    .upsell-card-price { font-size: 1rem; font-weight: 800; color: var(--accent-dark); margin: 0 0 6px; }
+
+    .upsell-card-row { font-size: 0.9rem; line-height: 1.55; color: var(--muted); margin: 0; }
+    .upsell-card-row strong { color: var(--ink); font-weight: 600; }
+
     /* Footer */
     .report-footer {
       margin-top: 48px;
@@ -1844,7 +2057,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
     @media (max-width: 860px) {
       .cover, .content { padding: 36px 28px; }
       .workspace { margin: -24px 20px 0; padding: 18px; grid-template-columns: 1fr; }
-      .bottom-grid, .content-grid { grid-template-columns: 1fr; }
+      .bottom-grid, .content-grid, .upsell-grid, .exec-chips { grid-template-columns: 1fr; }
       .scorecard-row { grid-template-columns: 48px 1fr; }
     }
 
@@ -1870,7 +2083,6 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         gap: 14px;
       }
 
-      .workspace-stats { grid-template-columns: repeat(3, 1fr); }
       .workspace-actions { flex-direction: column; align-items: flex-start; gap: 8px; }
       .text-button { white-space: nowrap; }
       .focus-card { min-height: 0; }
@@ -1907,7 +2119,6 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       .cover { padding: 20px 14px 24px; }
       .content { padding: 20px 14px 32px; }
       .workspace { margin: -16px 8px 0; padding: 12px; }
-      .workspace-stats { grid-template-columns: 1fr 1fr; }
     }
 
     /* Jump-to-section navigation */
@@ -2008,7 +2219,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         -webkit-print-color-adjust: exact !important;
       }
 
-      .section-jump-nav, .workspace, .template-copy-btn { display: none !important; }
+      .report-toolbar, .section-jump-nav, .workspace, .template-copy-btn { display: none !important; }
 
       body { background: #fff; }
 
@@ -2044,6 +2255,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       /* Individual content units: never split across pages */
       .insight-block,
       .win-item,
+      .risk-item,
       .scorecard-row,
       .strategy-card,
       .action-card,
@@ -2081,13 +2293,14 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       <a href="#sec-1" onclick="event.preventDefault();scrollToAnchor('sec-1')">1. ${escapeHtml(labels.executiveSummary)}</a>
       <a href="#sec-2" onclick="event.preventDefault();scrollToAnchor('sec-2')">2. ${escapeHtml(labels.positioning)}</a>
       <a href="#sec-3" onclick="event.preventDefault();scrollToAnchor('sec-3')">3. ${escapeHtml(labels.fastestQuickWins)}</a>
-      <a href="#sec-4" onclick="event.preventDefault();scrollToAnchor('sec-4')">4. ${escapeHtml(labels.growthScorecard)}</a>
-      ${hasCompetitors ? `<a href="#sec-5" onclick="event.preventDefault();scrollToAnchor('sec-5')">5. ${escapeHtml(labels.competitorAnalysis)}</a>` : ""}
-      <a href="#sec-${hasCompetitors ? 6 : 5}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 6 : 5}')">${hasCompetitors ? 6 : 5}. ${escapeHtml(labels.strategicMoves)}</a>
-      <a href="#sec-${hasCompetitors ? 7 : 6}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 7 : 6}')">${hasCompetitors ? 7 : 6}. ${escapeHtml(labels.actionPlan)}</a>
-      <a href="#sec-${hasCompetitors ? 8 : 7}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 8 : 7}')">${hasCompetitors ? 8 : 7}. ${escapeHtml(labels.salesTemplates)}</a>
-      <a href="#sec-${hasCompetitors ? 9 : 8}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 9 : 8}')">${hasCompetitors ? 9 : 8}. ${escapeHtml(labels.contentIdeas)}</a>
-      <a href="#sec-${hasCompetitors ? 10 : 9}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 10 : 9}')">${hasCompetitors ? 10 : 9}. ${escapeHtml(labels.metricsToTrack)}</a>
+      <a href="#sec-4" onclick="event.preventDefault();scrollToAnchor('sec-4')">4. ${escapeHtml(labels.biggestRisks)}</a>
+      <a href="#sec-5" onclick="event.preventDefault();scrollToAnchor('sec-5')">5. ${escapeHtml(labels.growthScorecard)}</a>
+      ${hasCompetitors ? `<a href="#sec-6" onclick="event.preventDefault();scrollToAnchor('sec-6')">6. ${escapeHtml(labels.competitorAnalysis)}</a>` : ""}
+      <a href="#sec-${hasCompetitors ? 7 : 6}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 7 : 6}')">${hasCompetitors ? 7 : 6}. ${escapeHtml(labels.strategicMoves)}</a>
+      <a href="#sec-${hasCompetitors ? 8 : 7}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 8 : 7}')">${hasCompetitors ? 8 : 7}. ${escapeHtml(labels.actionPlan)}</a>
+      <a href="#sec-${hasCompetitors ? 9 : 8}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 9 : 8}')">${hasCompetitors ? 9 : 8}. ${escapeHtml(labels.salesTemplates)}</a>
+      <a href="#sec-${hasCompetitors ? 10 : 9}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 10 : 9}')">${hasCompetitors ? 10 : 9}. ${escapeHtml(labels.contentIdeas)}</a>
+      <a href="#sec-${hasCompetitors ? 11 : 10}" onclick="event.preventDefault();scrollToAnchor('sec-${hasCompetitors ? 11 : 10}')">${hasCompetitors ? 11 : 10}. ${escapeHtml(labels.metricsToTrack)}</a>
     </div>
   </nav>
 
@@ -2113,7 +2326,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
           <span class="section-num">1</span>
           <h2 class="section-title">${escapeHtml(labels.executiveSummary)}</h2>
         </div>
-        <p class="exec-lead">${escapeHtml(plan.executiveSummary)}</p>
+        ${plan.executiveSummaryChips
+          ? execChipsHtml(plan.executiveSummaryChips, labels)
+          : `<p class="exec-lead">${escapeHtml(plan.executiveSummary)}</p>`}
       </div>
 
       <div class="report-section" id="sec-2">
@@ -2134,15 +2349,26 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
           <h2 class="section-title">${escapeHtml(labels.fastestQuickWins)}</h2>
         </div>
         <ol class="win-list">
-          ${plan.quickWins.map((win, i) => `<li class="win-item"><span class="win-num">${i + 1}</span><span class="win-text">${escapeHtml(win)}</span></li>`).join("")}
+          ${plan.quickWins.map((win, i) => quickWinItem(win, i)).join("")}
         </ol>
       </div>
 
       <div class="report-section" id="sec-4">
         <div class="section-header">
           <span class="section-num">4</span>
+          <h2 class="section-title">${escapeHtml(labels.biggestRisks)}</h2>
+        </div>
+        <ol class="risk-list">
+          ${plan.biggestRisks.map((risk, i) => `<li class="risk-item"><span class="risk-num">${i + 1}</span><span class="risk-text">${escapeHtml(risk)}</span></li>`).join("")}
+        </ol>
+      </div>
+
+      <div class="report-section" id="sec-5">
+        <div class="section-header">
+          <span class="section-num">5</span>
           <h2 class="section-title">${escapeHtml(labels.growthScorecard)}</h2>
         </div>
+        ${scorecardRadar(plan.scorecard)}
         <div class="scorecard-list">
           ${plan.scorecard.map((item) => scorecardRow(item, labels)).join("")}
         </div>
@@ -2150,9 +2376,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
       ${hasCompetitors ? competitorSection(plan, labels) : ""}
 
-      <div class="report-section" id="sec-${hasCompetitors ? 6 : 5}">
+      <div class="report-section" id="sec-${hasCompetitors ? 7 : 6}">
         <div class="section-header">
-          <span class="section-num">${hasCompetitors ? 6 : 5}</span>
+          <span class="section-num">${hasCompetitors ? 7 : 6}</span>
           <h2 class="section-title">${escapeHtml(labels.strategicMoves)}</h2>
         </div>
         <div class="strategy-list">
@@ -2160,10 +2386,10 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section" id="sec-${hasCompetitors ? 7 : 6}">
+      <div class="report-section" id="sec-${hasCompetitors ? 8 : 7}">
         <div class="action-header-row">
           <div class="section-header" style="margin-bottom:0;flex:1">
-            <span class="section-num">${hasCompetitors ? 7 : 6}</span>
+            <span class="section-num">${hasCompetitors ? 8 : 7}</span>
             <h2 class="section-title">${escapeHtml(labels.actionPlan)}</h2>
           </div>
           <span class="section-badge" data-action-summary>0/${escapeHtml(String(plan.actionPlan.length))} ${escapeHtml(labels.completed)}</span>
@@ -2173,9 +2399,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section" id="sec-${hasCompetitors ? 8 : 7}">
+      <div class="report-section" id="sec-${hasCompetitors ? 9 : 8}">
         <div class="section-header">
-          <span class="section-num">${hasCompetitors ? 8 : 7}</span>
+          <span class="section-num">${hasCompetitors ? 9 : 8}</span>
           <h2 class="section-title">${escapeHtml(labels.salesTemplates)}</h2>
         </div>
         <div class="template-list">
@@ -2183,9 +2409,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section" id="sec-${hasCompetitors ? 9 : 8}">
+      <div class="report-section" id="sec-${hasCompetitors ? 10 : 9}">
         <div class="section-header">
-          <span class="section-num">${hasCompetitors ? 9 : 8}</span>
+          <span class="section-num">${hasCompetitors ? 10 : 9}</span>
           <h2 class="section-title">${escapeHtml(labels.contentIdeas)}</h2>
         </div>
         <div class="content-grid">
@@ -2193,9 +2419,9 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <div class="report-section" id="sec-${hasCompetitors ? 10 : 9}">
+      <div class="report-section" id="sec-${hasCompetitors ? 11 : 10}">
         <div class="section-header">
-          <span class="section-num">${hasCompetitors ? 10 : 9}</span>
+          <span class="section-num">${hasCompetitors ? 11 : 10}</span>
           <h2 class="section-title">${escapeHtml(labels.metricsToTrack)}</h2>
         </div>
         <div class="metrics-table-wrap">
@@ -2215,9 +2441,16 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       </div>
 
       <div class="report-section">
+        <div class="section-header" style="margin-bottom:20px">
+          <h2 class="section-title" style="font-size:1.3rem">${escapeHtml(labels.upsellIdeas)}</h2>
+        </div>
+        <div class="upsell-grid">
+          ${plan.upsellIdeas.map((idea) => upsellCardHtml(idea, labels)).join("")}
+        </div>
+      </div>
+
+      <div class="report-section">
         <div class="bottom-grid">
-          ${taggedPanel(labels.biggestRisks, plan.biggestRisks, "risk")}
-          ${taggedPanel(labels.upsellIdeas, plan.upsellIdeas, "upsell")}
           ${taggedPanel(labels.assumptions, plan.assumptions, "assumptions")}
         </div>
       </div>
@@ -2241,6 +2474,7 @@ function workspacePanel(plan: BusinessKitPlan, labels: ReportLabels): string {
       <div class="workspace-stats">
         <div class="workspace-stat"><strong data-progress-text>0%</strong><span>${escapeHtml(labels.progressComplete)}</span></div>
         <div class="workspace-stat"><strong data-completed-count>0</strong><span>${escapeHtml(labels.completed)}</span></div>
+        <div class="workspace-stat"><strong data-inprogress-count>0</strong><span>${escapeHtml(labels.inProgress)}</span></div>
         <div class="workspace-stat"><strong data-remaining-count>${escapeHtml(String(plan.actionPlan.length))}</strong><span>${escapeHtml(labels.remaining)}</span></div>
       </div>
       <div class="workspace-actions">
@@ -2254,6 +2488,102 @@ function workspacePanel(plan: BusinessKitPlan, labels: ReportLabels): string {
       <p class="focus-outcome" data-next-detail>${escapeHtml(plan.actionPlan[0]?.outcome ?? "")}</p>
     </aside>
   </section>`;
+}
+
+function execChipsHtml(chips: ExecChips, labels: ReportLabels): string {
+  return `<div class="exec-chips">
+    <div class="exec-chip ec-lever">
+      <p class="exec-chip-label">${escapeHtml(labels.execLever)}</p>
+      <p class="exec-chip-text">${escapeHtml(chips.lever)}</p>
+    </div>
+    <div class="exec-chip ec-blocker">
+      <p class="exec-chip-label">${escapeHtml(labels.execBlocker)}</p>
+      <p class="exec-chip-text">${escapeHtml(chips.blocker)}</p>
+    </div>
+    <div class="exec-chip ec-action">
+      <p class="exec-chip-label">${escapeHtml(labels.execAction)}</p>
+      <p class="exec-chip-text">${escapeHtml(chips.action)}</p>
+    </div>
+  </div>`;
+}
+
+function quickWinItem(win: string, i: number): string {
+  const match = win.match(/^\[(HIGH|MED|LOW)\s+effort\]\s*/i);
+  const effort = match ? match[1].toUpperCase() as "HIGH" | "MED" | "LOW" : null;
+  const rest = match ? win.slice(match[0].length) : win;
+  const badge = effort
+    ? `<span class="effort-badge effort-${effort.toLowerCase()}">${effort === "HIGH" ? "High" : effort === "MED" ? "Med" : "Low"} effort</span>`
+    : "";
+  return `<li class="win-item"><span class="win-num">${i + 1}</span><span class="win-text">${badge}${escapeHtml(rest)}</span></li>`;
+}
+
+function scorecardRadar(scorecard: BusinessScore[]): string {
+  const n = scorecard.length;
+  if (n < 3) return "";
+
+  const cx = 150, cy = 155, r = 100;
+
+  function ptXY(i: number, ratio: number): [number, number] {
+    const angle = -Math.PI / 2 + (2 * Math.PI / n) * i;
+    return [cx + r * ratio * Math.cos(angle), cy + r * ratio * Math.sin(angle)];
+  }
+
+  function pts(ratio: number): string {
+    return Array.from({ length: n }, (_, i) => {
+      const [x, y] = ptXY(i, ratio);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+  }
+
+  const rings = [0.25, 0.5, 0.75, 1].map((ratio) =>
+    `<polygon points="${pts(ratio)}" fill="none" stroke="#e5e7eb" stroke-width="${ratio === 1 ? 1.5 : 1}"/>`
+  ).join("");
+
+  const spokes = Array.from({ length: n }, (_, i) => {
+    const [x, y] = ptXY(i, 1);
+    return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e5e7eb" stroke-width="1"/>`;
+  }).join("");
+
+  const scorePts = scorecard.map((item, i) => {
+    const [x, y] = ptXY(i, item.score / 100);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+
+  const labels = scorecard.map((item, i) => {
+    const [x, y] = ptXY(i, 1.32);
+    const words = item.label.split(" ");
+    const lines = words.length > 2
+      ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")]
+      : [item.label];
+    const tspans = lines.map((line, li) =>
+      `<tspan x="${x.toFixed(1)}" dy="${li === 0 ? 0 : 13}">${escapeHtml(line)}</tspan>`
+    ).join("");
+    const baseY = y - (lines.length - 1) * 6.5;
+    return `<text x="${x.toFixed(1)}" y="${baseY.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="#6b7280" font-family="-apple-system,Inter,Helvetica Neue,Arial,sans-serif">${tspans}</text>`;
+  }).join("");
+
+  const dots = scorecard.map((item, i) => {
+    const [x, y] = ptXY(i, item.score / 100);
+    const color = item.score >= 70 ? "var(--accent)" : item.score >= 45 ? "var(--gold)" : "var(--coral)";
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="${color}" stroke="white" stroke-width="2"/>`;
+  }).join("");
+
+  return `<div style="display:flex;justify-content:center;margin-bottom:28px">
+    <svg viewBox="-10 -10 320 330" width="260" height="260" style="overflow:visible;display:block">
+      ${rings}${spokes}
+      <polygon points="${scorePts}" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+      ${labels}${dots}
+    </svg>
+  </div>`;
+}
+
+function upsellCardHtml(idea: UpsellIdea, labels: ReportLabels): string {
+  return `<div class="upsell-card">
+    <p class="upsell-card-title">${escapeHtml(idea.title)}</p>
+    <p class="upsell-card-price">${escapeHtml(idea.price)}</p>
+    <p class="upsell-card-row"><strong>${escapeHtml(labels.upsellScope)}:</strong> ${escapeHtml(idea.scope)}</p>
+    <p class="upsell-card-row"><strong>${escapeHtml(labels.upsellTrigger)}:</strong> ${escapeHtml(idea.trigger)}</p>
+  </div>`;
 }
 
 function insightBlock(label: string, text: string, variant: "a" | "g" | "n"): string {
@@ -2330,7 +2660,7 @@ function templateCard(item: BusinessTemplate, labels: ReportLabels): string {
       <h3 class="template-title">${escapeHtml(item.title)}</h3>
       <div style="display:flex;align-items:center;gap:8px">
         <span class="template-channel">${escapeHtml(item.channel)}</span>
-        <button type="button" class="template-copy-btn" onclick="(function(btn){var t=btn.closest('.template-card').querySelector('.template-body');navigator.clipboard.writeText(${bodyJson}).then(function(){btn.textContent=${copiedLabel};btn.classList.add('is-copied');setTimeout(function(){btn.textContent=${copyLabel};btn.classList.remove('is-copied')},2000)}).catch(function(){});})(this)">${escapeHtml(labels.copyToClipboard)}</button>
+        <button type="button" class="template-copy-btn" onclick="(function(btn){navigator.clipboard.writeText(${bodyJson}).then(function(){btn.textContent=${copiedLabel};btn.classList.add('is-copied');setTimeout(function(){btn.textContent=${copyLabel};btn.classList.remove('is-copied')},2000)}).catch(function(){});})(this)">${escapeHtml(labels.copyToClipboard)}</button>
       </div>
     </div>
     <div class="template-body">${escapeHtml(item.body)}</div>
@@ -2346,9 +2676,9 @@ function contentCard(item: ContentIdea): string {
 }
 
 function competitorSection(plan: BusinessKitPlan, labels: ReportLabels): string {
-  return `<div class="report-section" id="sec-5">
+  return `<div class="report-section" id="sec-6">
     <div class="section-header">
-      <span class="section-num">5</span>
+      <span class="section-num">6</span>
       <h2 class="section-title">${escapeHtml(labels.competitorAnalysis)}</h2>
     </div>
     <table class="competitor-table">
@@ -2398,6 +2728,7 @@ function interactiveReportScript(reportId: string, labels: ReportLabels): string
       var progressBar = document.querySelector("[data-progress-bar]");
       var progressText = document.querySelector("[data-progress-text]");
       var completedCount = document.querySelector("[data-completed-count]");
+      var inProgressCount = document.querySelector("[data-inprogress-count]");
       var remainingCount = document.querySelector("[data-remaining-count]");
       var nextFocus = document.querySelector("[data-next-focus]");
       var nextDetail = document.querySelector("[data-next-detail]");
@@ -2461,6 +2792,12 @@ function interactiveReportScript(reportId: string, labels: ReportLabels): string
           var id = card.getAttribute("data-action-id");
           return Boolean(id && state.done[id]);
         }).length;
+        var inProgressVal = cards.filter(function (card) {
+          var id = card.getAttribute("data-action-id");
+          var isDone = Boolean(id && state.done[id]);
+          var note = card.querySelector("[data-action-note]");
+          return !isDone && Boolean(note && note.value.trim());
+        }).length;
         var remaining = Math.max(total - doneCount, 0);
         var percent = total ? Math.round(doneCount / total * 100) : 100;
         var currentCard = cards.find(function (card) {
@@ -2482,6 +2819,10 @@ function interactiveReportScript(reportId: string, labels: ReportLabels): string
 
         if (completedCount) {
           completedCount.textContent = String(doneCount);
+        }
+
+        if (inProgressCount) {
+          inProgressCount.textContent = String(inProgressVal);
         }
 
         if (remainingCount) {
@@ -2584,13 +2925,6 @@ export function businessKitFileName(plan: BusinessKitPlan): string {
   return `${slugify(plan.title)}.html`;
 }
 
-function splitChannels(value: string): string[] {
-  return value
-    .split(/[,;\n]+/g)
-    .map((item) => clean(item))
-    .filter(Boolean);
-}
-
 function clean(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
@@ -2602,10 +2936,6 @@ function localeFor(language: BusinessKitLanguage): string {
     fr: "fr-FR",
     de: "de-DE",
   }[language];
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(Math.round(value), min), max);
 }
 
 function hashString(value: string): string {

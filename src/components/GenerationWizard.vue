@@ -22,7 +22,7 @@ const emit = defineEmits<{
 }>();
 
 const { ui } = useLanguage();
-const { canGenerate, resetBriefForm } = useReportGeneration();
+const { canGenerate, resetBriefForm, fillTestData } = useReportGeneration();
 const { showNotification } = useNotification();
 
 const currentStep = ref(0);
@@ -155,6 +155,13 @@ function generateAndClose() {
   }
   emit('generate');
   closeWizard();
+}
+
+function fillAndJump() {
+  fillTestData();
+  invalidFields.value = new Set();
+  wizardForward.value = true;
+  currentStep.value = WIZARD_STEP_COUNT - 1;
 }
 
 function useTone(tone: string) {
@@ -460,6 +467,9 @@ watch(
       <div class="wizard-footer">
         <button v-if="currentStep > 0" class="wizard-back" type="button" @click="goPrev">
           ← {{ ui.backToBrief.split(' ')[0] }}
+        </button>
+        <button v-else class="wizard-autofill" type="button" @click="fillAndJump">
+          Autofill
         </button>
         <div class="wizard-footer-right">
           <button
