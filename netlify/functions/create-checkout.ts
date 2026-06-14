@@ -34,12 +34,16 @@ export const handler: Handler = async (event) => {
   }
 
   const origin = event.headers.origin ?? 'https://growthkit.jcode.be';
+  const paymentMethodTypes = (process.env.STRIPE_PAYMENT_METHODS ?? 'card,bancontact')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   try {
     const reportLabel = plan.credits === 1 ? '1 growth report' : `${plan.credits} growth reports`;
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      payment_method_types: ['card', 'bancontact', 'ideal'],
+      payment_method_types: paymentMethodTypes as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
       line_items: [
         {
           price_data: {
