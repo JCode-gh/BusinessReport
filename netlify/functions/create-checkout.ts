@@ -41,9 +41,12 @@ export const handler: Handler = async (event) => {
 
   try {
     const reportLabel = plan.credits === 1 ? '1 growth report' : `${plan.credits} growth reports`;
-    const session = await stripe.checkout.sessions.create({
+    // wallet_options.link.display requires API 2025-04-30.basil (not yet in stripe SDK types).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionParams: any = {
       mode: 'payment',
-      payment_method_types: paymentMethodTypes as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
+      payment_method_types: paymentMethodTypes,
+      wallet_options: { link: { display: 'never' } },
       line_items: [
         {
           price_data: {
@@ -65,7 +68,8 @@ export const handler: Handler = async (event) => {
       },
       success_url: `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
-    });
+    };
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     return {
       statusCode: 200,
