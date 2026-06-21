@@ -20,6 +20,7 @@ import PaywallModal from '../components/PaywallModal.vue';
 import AuthModal from '../AuthModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
 import ExampleReportShowcase from '../components/ExampleReportShowcase.vue';
+import SiteFooter from '../components/SiteFooter.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -36,7 +37,6 @@ const showAuthModal = ref(false);
 const showPaywallModal = ref(false);
 const authModalPurpose = ref<'save' | 'generate' | undefined>();
 const pendingGenerate = ref(false);
-const currentYear = new Date().getFullYear();
 
 // Stripe redirect: detect and react before onMounted so the wizard opens immediately
 // and Generate clicks don't flash the paywall while verify-checkout runs.
@@ -412,13 +412,7 @@ onMounted(async () => {
       </article>
     </section>
 
-    <footer v-if="!showResultScreen && status !== 'loading'" class="site-footer">
-      <p>
-        © {{ currentYear }} · {{ ui.footerByline }}
-        <a href="https://jcode.be" target="_blank" rel="noopener noreferrer">jcode.be</a>
-        · <router-link to="/terms">{{ ui.termsLink }}</router-link>
-      </p>
-    </footer>
+    <SiteFooter v-if="!showResultScreen && status !== 'loading'" />
 
     <GenerationWizard v-model="wizardOpen" @generate="handleGenerate" />
     <PaywallModal v-model="showPaywallModal" :language="siteLanguage" />
