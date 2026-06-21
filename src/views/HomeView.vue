@@ -386,6 +386,9 @@ onMounted(async () => {
               {{ ui.heroPrimary }}
               <ArrowRight :size="18" />
             </button>
+            <router-link class="secondary-link hero-example-link" to="/example">
+              {{ ui.heroExample }}
+            </router-link>
             <p class="hero-free-badge">
               <Gift :size="15" />
               {{ ui.heroFreeBadge }}

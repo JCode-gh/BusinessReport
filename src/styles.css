@@ -413,8 +413,13 @@ select {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 12px;
   margin-top: 28px;
+}
+
+.hero-example-link {
+  font-size: 0.92rem;
 }
 
 .hero-free-badge {

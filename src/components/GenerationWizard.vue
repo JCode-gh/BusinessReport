@@ -21,7 +21,7 @@ const emit = defineEmits<{
   (e: 'generate'): void;
 }>();
 
-const { ui } = useLanguage();
+const { ui, siteLanguage } = useLanguage();
 const { canGenerate, resetBriefForm, fillTestData } = useReportGeneration();
 const { showNotification } = useNotification();
 
@@ -179,6 +179,7 @@ watch(
   (open) => {
     if (open) {
       resetBriefForm();
+      form.language = siteLanguage.value;
       currentStep.value = 0;
       wizardForward.value = true;
       invalidFields.value = new Set();

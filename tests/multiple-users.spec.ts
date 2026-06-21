@@ -50,7 +50,7 @@ test("multiple users can generate isolated reports through the live API at the s
 });
 
 async function generateReportAsUser(browser: Browser, user: UserScenario) {
-  const context = await browser.newContext();
+  const context = await browser.newContext({ locale: "nl-BE" });
   const page = await context.newPage();
 
   try {

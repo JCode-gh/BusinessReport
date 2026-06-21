@@ -154,6 +154,8 @@ export const REPORT_THEMES: Record<ReportThemeKey, ReportTheme> = {
 export type BusinessKitPlan = {
   language: BusinessKitLanguage;
   theme?: ReportThemeKey;
+  /** When true (default), exported reports include a GrowthKit referral footer. */
+  showBranding?: boolean;
   title: string;
   subtitle: string;
   executiveSummary: string;
@@ -234,6 +236,7 @@ type ReportLabels = {
   upsellPrice: string;
   upsellScope: string;
   upsellTrigger: string;
+  madeWith: string;
 };
 
 const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
@@ -296,6 +299,7 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     upsellPrice: "Price range",
     upsellScope: "What they get",
     upsellTrigger: "When to pitch",
+    madeWith: "Made with GrowthKit — get your free growth report",
   },
   nl: {
     htmlLang: "nl",
@@ -356,6 +360,7 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     upsellPrice: "Prijsrange",
     upsellScope: "Wat ze krijgen",
     upsellTrigger: "Wanneer pitchen",
+    madeWith: "Gemaakt met GrowthKit — genereer je gratis groeirapport",
   },
   fr: {
     htmlLang: "fr",
@@ -416,6 +421,7 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     upsellPrice: "Fourchette de prix",
     upsellScope: "Ce qu'ils reçoivent",
     upsellTrigger: "Quand proposer",
+    madeWith: "Créé avec GrowthKit — obtenez votre rapport de croissance gratuit",
   },
   de: {
     htmlLang: "de",
@@ -476,8 +482,11 @@ const reportLabels: Record<BusinessKitLanguage, ReportLabels> = {
     upsellPrice: "Preisbereich",
     upsellScope: "Was sie erhalten",
     upsellTrigger: "Wann pitchen",
+    madeWith: "Erstellt mit GrowthKit — holen Sie sich Ihren kostenlosen Wachstumsbericht",
   },
 };
+
+const GROWTHKIT_SITE = "https://growthkit.jcode.be/?ref=report";
 
 export class RateLimitError extends Error {
   constructor(message: string) {
@@ -2053,6 +2062,26 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       line-height: 1.6;
     }
 
+    .growthkit-branding {
+      margin-top: 20px;
+      padding: 14px 18px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 35%, var(--line));
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+      text-align: center;
+    }
+
+    .growthkit-branding a {
+      color: var(--accent-dark);
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .growthkit-branding a:hover {
+      text-decoration: underline;
+    }
+
     /* Responsive */
     @media (max-width: 860px) {
       .cover, .content { padding: 36px 28px; }
@@ -2220,6 +2249,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
       }
 
       .report-toolbar, .section-jump-nav, .workspace, .template-copy-btn { display: none !important; }
+      .growthkit-branding { break-inside: avoid; page-break-inside: avoid; }
 
       body { background: #fff; }
 
@@ -2455,13 +2485,22 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
         </div>
       </div>
 
-      <footer class="report-footer">${escapeHtml(plan.disclaimer)}</footer>
+      <footer class="report-footer">
+        ${escapeHtml(plan.disclaimer)}
+        ${plan.showBranding !== false ? brandingFooter(labels) : ""}
+      </footer>
     </main>
   </article>
 
   ${interactiveReportScript(reportId, labels)}
 </body>
 </html>`;
+}
+
+function brandingFooter(labels: ReportLabels): string {
+  return `<aside class="growthkit-branding">
+    <a href="${escapeHtml(GROWTHKIT_SITE)}" target="_blank" rel="noopener noreferrer">${escapeHtml(labels.madeWith)} →</a>
+  </aside>`;
 }
 
 function workspacePanel(plan: BusinessKitPlan, labels: ReportLabels): string {

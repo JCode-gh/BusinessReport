@@ -1,25 +1,26 @@
 # GrowthKit Studio
 
-> GrowthKit Studio is a free, browser-based tool that turns a short business brief into a polished, AI-generated growth report for entrepreneurs and small business owners.
+> GrowthKit turns a short business brief into a consultant-grade growth report for solo founders, freelancers (ZZP), and small B2B service businesses in Belgium and the Netherlands.
 
-GrowthKit Studio (product name: Entrepreneur Growth Kit) builds a consultant-style growth report from a few inputs about a business. The report is generated in the visitor's browser and delivered as a styled HTML document with one-click PDF export.
+GrowthKit (Entrepreneur Growth Kit) generates a structured growth report from a few inputs about a business. Reports include positioning audit, offer rewrite, ideal customer profile, growth scorecard, 30-day action plan, sales templates, content ideas, and metrics to track.
 
 - What it does: turns a business brief (offer, audience, market, problem, goal, channels, pricing, tone) into a structured growth report.
 - Report contents: positioning audit, offer rewrite, ideal customer profile, growth scorecard, 30-day action plan, sales and follow-up templates, content ideas, and metrics to track.
 - Output: styled HTML report with PDF export.
 - Languages: Dutch, English, French, and German, for both the report and the interface.
-- Accounts: optional sign-in with Google or email (via Firebase) to save reports and re-open them later. Saved reports are private to their owner and are not publicly listed.
-- Pricing: free to use.
+- Accounts: sign-in with Google or email (via Firebase) to save reports and re-open them later.
+- Pricing: first report free (no card required). Additional reports from €5 (1 report), €20 (5 reports), or €35 (10 reports) via Stripe.
 - Made by: jcode.be.
 
 ## Key pages
 
-- [GrowthKit Studio home](https://growthkit.jcode.be/): Landing page and starting point for generating a growth report.
-- [Start a report brief](https://growthkit.jcode.be/brief): Opens the guided brief wizard used to generate a new growth report.
+- [GrowthKit home](https://growthkit.jcode.be/): Landing page and starting point for generating a growth report.
+- [Sample growth report](https://growthkit.jcode.be/example/): Public example report showing full output quality — indexable and shareable.
+- [Terms of service](https://growthkit.jcode.be/terms): Usage terms.
 
 ## Company facts
 
-- [jcode.be](https://jcode.be): Independent studio behind GrowthKit Studio. Contact runs through this site.
+- [jcode.be](https://jcode.be): Independent studio behind GrowthKit. Contact runs through this site.
 
 ## Optional
 

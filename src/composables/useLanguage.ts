@@ -29,16 +29,22 @@ const OG_LOCALES: Record<ReportLanguage, string> = {
   de: 'de_DE',
 };
 
-const defaultLanguage: ReportLanguage = 'nl';
+const FALLBACK_LANGUAGE: ReportLanguage = 'en';
 const languagePreferenceStorageKey = 'business-kit-language';
+const languageExplicitStorageKey = 'business-kit-language-explicit';
 
-const siteLanguage = ref<ReportLanguage>(defaultLanguage);
+const siteLanguage = ref<ReportLanguage>(FALLBACK_LANGUAGE);
 
 function normalizeLanguage(value: unknown): ReportLanguage {
   if (value === 'en' || value === 'nl' || value === 'fr' || value === 'de') {
     return value;
   }
-  return 'nl';
+  return FALLBACK_LANGUAGE;
+}
+
+function readExplicitLanguagePreference(): ReportLanguage | null {
+  if (localStorage.getItem(languageExplicitStorageKey) !== '1') return null;
+  return readLanguagePreference();
 }
 
 function readLanguagePreference(): ReportLanguage | null {
@@ -52,11 +58,12 @@ function detectBrowserLanguage(): ReportLanguage {
     const code = raw.toLowerCase().split('-')[0];
     if (code === 'nl' || code === 'en' || code === 'fr' || code === 'de') return code;
   }
-  return defaultLanguage;
+  return FALLBACK_LANGUAGE;
 }
 
 function persistLanguagePreference(language: ReportLanguage) {
   localStorage.setItem(languagePreferenceStorageKey, language);
+  localStorage.setItem(languageExplicitStorageKey, '1');
 }
 
 function upsertHeadTag(selector: string, create: () => HTMLElement, attr: string, value: string) {
@@ -158,7 +165,9 @@ function updateSeoHead(language: ReportLanguage, explicit: boolean) {
 function setSiteLanguage(language: ReportLanguage, explicit = false) {
   siteLanguage.value = language;
   document.documentElement.lang = language;
-  persistLanguagePreference(language);
+  if (explicit) {
+    persistLanguagePreference(language);
+  }
   updateSeoHead(language, explicit);
 }
 
@@ -172,16 +181,27 @@ function getLangParam(): ReportLanguage | null {
 
 export function initializeLanguage(): ReportLanguage {
   const langParam = getLangParam();
-  const savedLanguage = readLanguagePreference();
-  setSiteLanguage(langParam ?? savedLanguage ?? detectBrowserLanguage(), langParam !== null);
-  return siteLanguage.value;
+  if (langParam) {
+    setSiteLanguage(langParam, true);
+    return langParam;
+  }
+
+  const explicitSaved = readExplicitLanguagePreference();
+  if (explicitSaved) {
+    setSiteLanguage(explicitSaved, false);
+    return explicitSaved;
+  }
+
+  const detected = detectBrowserLanguage();
+  setSiteLanguage(detected, false);
+  return detected;
 }
 
 export function useLanguage() {
   const ui = computed(() => translations[siteLanguage.value]);
 
   const selectedLanguageLabel = computed(() => {
-    return languageOptions.find((lang) => lang.value === siteLanguage.value)?.label ?? 'Nederlands';
+    return languageOptions.find((lang) => lang.value === siteLanguage.value)?.label ?? 'English';
   });
 
   return {

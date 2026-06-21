@@ -12,7 +12,7 @@ type GenerateStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export const WIZARD_STEP_COUNT = 8;
 
-const defaultLanguage: ReportLanguage = 'nl';
+const defaultLanguage: ReportLanguage = 'en';
 
 function fieldFilled(value: string): boolean {
   return value.trim().length > 0;
