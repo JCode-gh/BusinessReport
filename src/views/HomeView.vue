@@ -339,22 +339,22 @@ onMounted(async () => {
           <p class="hero-copy">{{ ui.heroCopy }}</p>
 
           <div class="hero-actions">
-            <p v-if="showFreeOffer" class="hero-free-badge">
-              <Gift :size="15" />
-              {{ ui.heroFreeBadge }}
-            </p>
-            <div v-else class="hero-actions-paid">
+            <div class="hero-actions-paid">
               <button class="primary-link hero-generate-btn" type="button" @click="openWizard">
                 <Sparkles :size="18" />
                 {{ generateLabel }}
                 <ArrowRight :size="17" />
               </button>
-              <p class="hero-credit-cost">{{ creditCostLabel }}</p>
+              <p v-if="showFreeOffer" class="hero-free-badge">
+                <Gift :size="15" />
+                {{ ui.heroFreeBadge }}
+              </p>
+              <p v-else class="hero-credit-cost">{{ creditCostLabel }}</p>
             </div>
           </div>
 
           <div id="example" class="hero-product" :aria-label="ui.exampleShowcaseAria">
-            <ExampleReportShowcase variant="hero" :hide-generate="!showFreeOffer" @generate="openWizard" />
+            <ExampleReportShowcase variant="hero" hide-generate @generate="openWizard" />
           </div>
 
           <dl class="hero-stats" :aria-label="ui.productHighlights">
@@ -380,7 +380,7 @@ onMounted(async () => {
       class="example-section"
       aria-labelledby="example-section-title"
     >
-      <ExampleReportShowcase variant="section" :hide-generate="!showFreeOffer" @generate="openWizard" />
+      <ExampleReportShowcase variant="section" hide-generate @generate="openWizard" />
     </section>
 
     <section v-if="!showResultScreen && status !== 'loading'" id="output" class="proof-section" :aria-label="ui.proofAria">
