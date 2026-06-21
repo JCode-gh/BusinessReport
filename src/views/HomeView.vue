@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Sparkles, ArrowRight, TrendingUp, MessageSquareText, ShieldCheck, Pencil, Trash2, Gift } from 'lucide-vue-next';
+import { TrendingUp, MessageSquareText, ShieldCheck, Gift, Sparkles, ArrowRight } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
+import { useGenerateCTA } from '../composables/useGenerateCTA';
 import { useReportGeneration } from '../composables/useReportGeneration';
 import { useReportManagement } from '../composables/useReportManagement';
 import { useNotification } from '../composables/useNotification';
@@ -16,16 +17,16 @@ import GenerationLoader from '../components/GenerationLoader.vue';
 import ResultScreen from '../components/ResultScreen.vue';
 import PaywallModal from '../components/PaywallModal.vue';
 import AuthModal from '../AuthModal.vue';
-import ConfirmModal from '../ConfirmModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
+import ExampleReportShowcase from '../components/ExampleReportShowcase.vue';
 
 const router = useRouter();
 const route = useRoute();
 const { ui, siteLanguage } = useLanguage();
+const { showFreeOffer, generateLabel, creditCostLabel } = useGenerateCTA();
 const { status, beginGeneration, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
   useReportGeneration();
-const { savedReportId, savedReports, savedReportsLoading, doSaveReport, openSavedReport, deleteReportById, updateReportTitle } =
-  useReportManagement();
+const { savedReportId, doSaveReport, openSavedReport } = useReportManagement();
 const { showNotification } = useNotification();
 const { user, credits, refreshPayment, setCredits, waitForAuthReady } = useAuth();
 
@@ -34,10 +35,6 @@ const showAuthModal = ref(false);
 const showPaywallModal = ref(false);
 const authModalPurpose = ref<'save' | 'generate' | undefined>();
 const pendingGenerate = ref(false);
-const showConfirmDelete = ref(false);
-const pendingDeleteId = ref<string | null>(null);
-const renamingReportId = ref<string | null>(null);
-const renameHomepageValue = ref('');
 const currentYear = new Date().getFullYear();
 
 // Stripe redirect: detect and react before onMounted so the wizard opens immediately
@@ -200,45 +197,6 @@ function handleRetry() {
   openWizard();
 }
 
-async function handleOpenSavedReport(id: string) {
-  const report = await openSavedReport(id);
-  if (report) {
-    router.push({ name: 'report', params: { id } });
-  } else {
-    showNotification(ui.value.accessDenied, ui.value.reportNotFound, 'error');
-  }
-}
-
-function askDeleteReport(id: string) {
-  pendingDeleteId.value = id;
-  showConfirmDelete.value = true;
-}
-
-async function confirmDeleteReport() {
-  const id = pendingDeleteId.value;
-  if (!id) return;
-  pendingDeleteId.value = null;
-  await deleteReportById(id);
-}
-
-function startRenameHomepage(r: any) {
-  renamingReportId.value = r.id;
-  renameHomepageValue.value = r.title;
-}
-
-async function confirmRenameHomepage(r: any) {
-  if (renamingReportId.value !== r.id) return;
-  renamingReportId.value = null;
-  const newTitle = renameHomepageValue.value.trim();
-  if (!newTitle || newTitle === r.title) return;
-  r.title = newTitle;
-  await updateReportTitle(r.id, newTitle);
-}
-
-function cancelRenameHomepage() {
-  renamingReportId.value = null;
-}
-
 const paymentSuccessCopy: Record<string, { title: string; message: string }> = {
   nl: { title: 'Betaling geslaagd!', message: 'Je rapport-credit is klaar. De wizard opent zo meteen.' },
   en: { title: 'Payment successful!', message: 'Your report credit is ready. Opening the wizard now.' },
@@ -381,18 +339,22 @@ onMounted(async () => {
           <p class="hero-copy">{{ ui.heroCopy }}</p>
 
           <div class="hero-actions">
-            <button class="primary-link" type="button" :disabled="activatingPayment" @click="openWizard">
-              <Sparkles :size="19" />
-              {{ ui.heroPrimary }}
-              <ArrowRight :size="18" />
-            </button>
-            <router-link class="secondary-link hero-example-link" to="/example">
-              {{ ui.heroExample }}
-            </router-link>
-            <p class="hero-free-badge">
+            <p v-if="showFreeOffer" class="hero-free-badge">
               <Gift :size="15" />
               {{ ui.heroFreeBadge }}
             </p>
+            <div v-else class="hero-actions-paid">
+              <button class="primary-link hero-generate-btn" type="button" @click="openWizard">
+                <Sparkles :size="18" />
+                {{ generateLabel }}
+                <ArrowRight :size="17" />
+              </button>
+              <p class="hero-credit-cost">{{ creditCostLabel }}</p>
+            </div>
+          </div>
+
+          <div id="example" class="hero-product" :aria-label="ui.exampleShowcaseAria">
+            <ExampleReportShowcase variant="hero" :hide-generate="!showFreeOffer" @generate="openWizard" />
           </div>
 
           <dl class="hero-stats" :aria-label="ui.productHighlights">
@@ -409,84 +371,16 @@ onMounted(async () => {
               <dd>{{ ui.statsPdf }}</dd>
             </div>
           </dl>
-
-          <div class="hero-product" aria-hidden="true">
-            <div class="report-preview">
-              <div class="preview-topline">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <div class="preview-title"></div>
-              <div class="preview-subtitle"></div>
-              <div class="preview-grid">
-                <div class="preview-column tall"></div>
-                <div class="preview-column medium"></div>
-                <div class="preview-column short"></div>
-              </div>
-              <div class="preview-row"></div>
-              <div class="preview-row small"></div>
-              <div class="preview-score">
-                <span>83</span>
-                <strong>{{ ui.growthScore }}</strong>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
 
-    <section v-if="user && !showResultScreen && status !== 'loading'" class="saved-reports-section">
-      <div class="saved-reports-inner">
-        <h2 class="saved-reports-title">{{ ui.savedReportsTitle }}</h2>
-        <p v-if="savedReportsLoading" class="saved-reports-empty">{{ ui.savedReportsLoading }}</p>
-        <div v-else-if="!savedReports.length" class="saved-reports-empty">
-          <p>{{ ui.savedReportsEmpty }}</p>
-          <button class="primary-link" type="button" :disabled="activatingPayment" @click="openWizard">
-            <Sparkles :size="19" />
-            {{ ui.heroPrimary }}
-            <ArrowRight :size="18" />
-          </button>
-        </div>
-        <ul v-else class="saved-reports-list">
-          <li v-for="r in savedReports" :key="r.id" class="saved-report-item">
-            <input
-              v-if="renamingReportId === r.id"
-              :ref="
-                (el) => {
-                  if (el) (el as HTMLInputElement).select();
-                }
-              "
-              v-model="renameHomepageValue"
-              class="saved-report-rename-input"
-              type="text"
-              maxlength="120"
-              :placeholder="ui.renamePlaceholder"
-              @keydown.enter.prevent="confirmRenameHomepage(r)"
-              @keydown.escape="cancelRenameHomepage"
-              @blur="confirmRenameHomepage(r)"
-            />
-            <button v-else class="saved-report-title" type="button" @click="startRenameHomepage(r)">
-              <span class="saved-report-title-text">{{ r.title }}</span>
-              <Pencil :size="11" class="saved-report-rename-icon" />
-            </button>
-            <span class="saved-report-date">{{
-              r.createdAt ? new Date(r.createdAt).toLocaleDateString() : ''
-            }}</span>
-            <button class="saved-report-open" type="button" @click="handleOpenSavedReport(r.id)">
-              {{ ui.savedReportOpen }}
-            </button>
-            <button
-              class="saved-report-delete"
-              type="button"
-              :title="ui.deleteReport"
-              @click="askDeleteReport(r.id)"
-            >
-              <Trash2 :size="14" />
-            </button>
-          </li>
-        </ul>
-      </div>
+    <section
+      v-if="!showResultScreen && status !== 'loading'"
+      class="example-section"
+      aria-labelledby="example-section-title"
+    >
+      <ExampleReportShowcase variant="section" :hide-generate="!showFreeOffer" @generate="openWizard" />
     </section>
 
     <section v-if="!showResultScreen && status !== 'loading'" id="output" class="proof-section" :aria-label="ui.proofAria">
@@ -518,14 +412,6 @@ onMounted(async () => {
     <GenerationWizard v-model="wizardOpen" @generate="handleGenerate" />
     <PaywallModal v-model="showPaywallModal" :language="siteLanguage" />
     <AuthModal v-model="showAuthModal" :purpose="authModalPurpose" :language="siteLanguage" />
-    <ConfirmModal
-      v-model="showConfirmDelete"
-      :title="ui.deleteReport"
-      :message="ui.deleteReportConfirm"
-      :confirm-label="ui.deleteReport"
-      :cancel-label="ui.cancel"
-      @confirm="confirmDeleteReport"
-    />
     <NotificationToast />
   </div>
 </template>

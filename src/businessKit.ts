@@ -2499,7 +2499,7 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
 
 function brandingFooter(labels: ReportLabels): string {
   return `<aside class="growthkit-branding">
-    <a href="${escapeHtml(GROWTHKIT_SITE)}" target="_blank" rel="noopener noreferrer">${escapeHtml(labels.madeWith)} →</a>
+    <a href="${escapeHtml(GROWTHKIT_SITE)}" target="_top" rel="noopener noreferrer">${escapeHtml(labels.madeWith)} →</a>
   </aside>`;
 }
 
