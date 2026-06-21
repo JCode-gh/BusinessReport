@@ -8,7 +8,7 @@ import {
   signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInAnonymously as firebaseSignInAnonymously,
+  sendEmailVerification,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
@@ -168,12 +168,18 @@ export async function signInWithEmail(email: string, password: string): Promise<
   await signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function signUpWithEmail(email: string, password: string): Promise<void> {
-  await createUserWithEmailAndPassword(auth, email, password);
-}
-
-export async function signInAnonymously(): Promise<void> {
-  await firebaseSignInAnonymously(auth);
+// Returns true when a verification email was sent (email/password accounts must
+// verify before they qualify for the free report — Google accounts are already
+// verified and skip this entirely).
+export async function signUpWithEmail(email: string, password: string): Promise<boolean> {
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  try {
+    await sendEmailVerification(cred.user);
+    return true;
+  } catch (e) {
+    console.error("[signUpWithEmail] verification email failed", e);
+    return false;
+  }
 }
 
 export async function signOut(): Promise<void> {
@@ -215,6 +221,10 @@ export async function decrementCredits(uid: string): Promise<boolean> {
 // harmless; a per-device localStorage flag just avoids redundant requests.
 // Returns the new credit balance, or null if nothing was claimed.
 export async function claimFreeCredit(user: User): Promise<number | null> {
+  // Anonymous guests don't qualify for the free report (that would be the easiest
+  // farming vector); they'd be rejected server-side anyway, so skip the round-trip.
+  if (user.isAnonymous) return null;
+
   const guardKey = `gk_free_claimed_${user.uid}`;
   try {
     if (localStorage.getItem(guardKey)) return null;
@@ -230,13 +240,21 @@ export async function claimFreeCredit(user: User): Promise<number | null> {
       body: JSON.stringify({ token }),
     });
     if (!res.ok) return null;
-    const data = (await res.json()) as { credits?: number; granted?: boolean };
-    try {
-      localStorage.setItem(guardKey, "1");
-    } catch {
-      // ignore — best-effort cache only
+    const data = (await res.json()) as { credits?: number; granted?: boolean; reason?: string };
+
+    // A numeric balance means the server reached a final decision for this account
+    // (granted, or already-claimed). Cache it so we don't re-ask on every load.
+    // Soft denials (unverified email, etc.) omit `credits` — do NOT cache those,
+    // so the user can still claim once they verify.
+    if (typeof data.credits === "number") {
+      try {
+        localStorage.setItem(guardKey, "1");
+      } catch {
+        // ignore — best-effort cache only
+      }
+      return data.credits;
     }
-    return typeof data.credits === "number" ? data.credits : null;
+    return null;
   } catch (e) {
     console.error("[claimFreeCredit] request failed", e);
     return null;

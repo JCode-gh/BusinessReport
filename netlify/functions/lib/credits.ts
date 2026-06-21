@@ -62,35 +62,50 @@ export async function grantCreditOnce(
   });
 }
 
+export type FreeCreditResult = { credits: number; granted: boolean; reason?: string };
+
 /**
  * Grants a one-time free trial credit so a new user can generate their first
- * report before paying. Idempotent: the `freeCreditGranted` flag guarantees a
- * user can only ever receive the free credit once, no matter how often this runs.
- * Returns the user's credit balance after the operation.
+ * report before paying. Two layers of idempotency / anti-farming:
+ *  - per-account: the `freeCreditGranted` flag stops a second grant on the same uid.
+ *  - per-identity: a `freeCreditClaims/{emailKey}` ledger stops the SAME email
+ *    (after normalization) from claiming again under a freshly created account.
+ * Returns the balance after the operation and whether a credit was actually added.
  */
 export async function grantFreeCreditOnce(
   db: Firestore,
   uid: string,
+  emailKey: string,
   amount = 1,
-): Promise<number> {
+): Promise<FreeCreditResult> {
   const creditsToGrant = Math.max(1, Math.floor(amount));
   const userRef = db.collection('users').doc(uid);
+  const claimRef = db.collection('freeCreditClaims').doc(emailKey);
 
   return db.runTransaction(async (tx) => {
-    const userDoc = await tx.get(userRef);
+    // All reads must precede all writes in a Firestore transaction.
+    const [userDoc, claimDoc] = await Promise.all([tx.get(userRef), tx.get(claimRef)]);
     const data = userDoc.data();
     const currentCredits = typeof data?.credits === 'number' ? data.credits : 0;
 
     if (data?.freeCreditGranted) {
-      return currentCredits;
+      return { credits: currentCredits, granted: false, reason: 'already_granted' };
+    }
+
+    // Same person, different account → deny but mark the account so we stop re-checking.
+    if (claimDoc.exists) {
+      tx.set(
+        userRef,
+        { freeCreditGranted: true, freeCreditDenied: 'email_already_claimed' },
+        { merge: true },
+      );
+      return { credits: currentCredits, granted: false, reason: 'email_already_claimed' };
     }
 
     const newCredits = currentCredits + creditsToGrant;
-    tx.set(
-      userRef,
-      { credits: newCredits, freeCreditGranted: true, freeCreditAt: new Date().toISOString() },
-      { merge: true },
-    );
-    return newCredits;
+    const now = new Date().toISOString();
+    tx.set(userRef, { credits: newCredits, freeCreditGranted: true, freeCreditAt: now }, { merge: true });
+    tx.set(claimRef, { uid, claimedAt: now });
+    return { credits: newCredits, granted: true, reason: 'granted' };
   });
 }

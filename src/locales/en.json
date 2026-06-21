@@ -6,12 +6,12 @@
   "loadingAria": "Report is being generated",
   "generatingReport": "Generating report in",
   "generationProgress": "Generation progress",
-  "waitingRoomTitle": "Rate limit - retrying automatically",
+  "waitingRoomTitle": "Busy right now — retrying automatically",
   "waitingRoomUnit": "sec",
-  "waitingRoomNote": "The free API tier is temporarily busy. No action needed: the report will continue as soon as a model slot opens.",
+  "waitingRoomNote": "We're getting a lot of requests right now. You don't need to do anything — your report will continue automatically in a moment.",
   "resultEyebrow": "Report complete",
   "resultTitle": "Your Growth Kit is ready.",
-  "resultDescription": "The report has been generated in your browser, localised for {language}, and prepared as a styled HTML report with PDF export.",
+  "resultDescription": "Your report is ready in {language}, fully formatted and ready to download as a PDF.",
   "openReport": "Go to report ↓",
   "printReport": "Print / PDF",
   "downloadPdf": "Download PDF",
@@ -24,11 +24,11 @@
   "generatedReportDetails": "Generated report details",
   "ready": "Ready",
   "language": "Language",
-  "output": "Output",
-  "outputFormat": "HTML + PDF",
+  "output": "Format",
+  "outputFormat": "Web page + PDF",
   "includes": "Includes",
   "includesText": "Scorecard, templates, action plan",
-  "heroEyebrow": "Browser strategy report builder",
+  "heroEyebrow": "AI growth strategy in minutes",
   "heroTitle": "Entrepreneur Growth Kit",
   "heroCopy": "Turn a rough business brief into a polished consultant-style growth report with positioning, offers, scorecards, outreach templates, and a practical action plan. Your first report is free.",
   "heroPrimary": "Generate your free report",
@@ -39,7 +39,7 @@
   "productHighlights": "Product highlights",
   "statsLanguages": "Languages",
   "statsPlan": "Day plan",
-  "statsPdf": "Ready export",
+  "statsPdf": "Download",
   "proofAria": "Report output",
   "proofCards": [
     {
@@ -51,13 +51,13 @@
       "body": "Email, sales, and content prompts shaped around the business context."
     },
     {
-      "title": "Static Netlify flow",
-      "body": "Browser-only generation with styled HTML output and one-click PDF export."
+      "title": "30-day action plan",
+      "body": "A prioritized, week-by-week plan with checkboxes — export the full report to PDF in one click."
     }
   ],
-  "briefEyebrow": "Strategy brief",
-  "briefTitle": "Give the strategy engine the business context that matters.",
-  "briefCopy": "The report is generated locally from the brief below, then opened in a new tab only after the result is ready.",
+  "briefEyebrow": "About your business",
+  "briefTitle": "Tell us a bit about your business.",
+  "briefCopy": "Fill in a few details below and your full growth report is ready in a couple of minutes.",
   "businessName": "Business name",
   "businessNamePlaceholder": "Northstar Studio",
   "market": "Market",
@@ -101,8 +101,8 @@
     "Sales templates",
     "Printable PDF report"
   ],
-  "loadingLine": "Generation is running locally. The report tab opens after the browser finishes the HTML.",
-  "readyLine": "Ready at {time}. If the tab did not appear, open the report again here.",
+  "loadingLine": "Your report is being created. It will be ready in a moment.",
+  "readyLine": "Ready at {time}. Open your report below.",
   "popupError": "Could not open the report in a new tab. Your browser may be blocking popups.",
   "printError": "Could not open the print dialog. Allow popups for this site and try again.",
   "signIn": "Sign in",
@@ -153,25 +153,25 @@
       "detail": "Creating follow-up templates, content ideas, and practical next-step copy."
     },
     {
-      "title": "Localising the report",
-      "detail": "Checking the selected language across titles, tables, templates, and recommendations."
+      "title": "Setting your language",
+      "detail": "Checking the chosen language across titles, tables, templates, and recommendations."
     },
     {
       "title": "Polishing the final report",
-      "detail": "Rendering the browser-ready HTML report and preparing PDF export actions."
+      "detail": "Formatting your final report and getting the PDF download ready."
     }
   ],
   "termsLink": "Terms & Conditions",
   "termsPageTitle": "Terms & Conditions",
   "termsBackHome": "Back to home",
-  "termsLastUpdated": "Last updated: 30 May 2026",
+  "termsLastUpdated": "Last updated: 21 June 2026",
   "termsIntro": "These Terms & Conditions (\"Terms\") govern your access to and use of GrowthKit Studio (the \"Service\"), operated by jcode.be. By using the Service, you agree to these Terms. If you do not agree, do not use the Service.",
   "termsSections": [
     {
       "title": "1. About the Service",
       "paragraphs": [
-        "GrowthKit Studio (also referred to as Entrepreneur Growth Kit) is a browser-based tool that turns business briefs into styled growth reports, including positioning analysis, offer suggestions, scorecards, templates, and action plans.",
-        "The Service is provided at https://growthkit.jcode.be. It runs primarily in your browser and may use third-party AI and cloud services to generate and store content."
+        "GrowthKit (also referred to as Entrepreneur Growth Kit) is an online tool that turns a short business brief into a detailed growth report, including positioning analysis, offer suggestions, scorecards, templates, and action plans.",
+        "The Service is available at https://growthkit.jcode.be and uses third-party AI and cloud services to generate and store your reports."
       ]
     },
     {
@@ -230,13 +230,15 @@
       "title": "9. Availability and Changes",
       "paragraphs": [
         "We aim to keep the Service available but do not guarantee uninterrupted or error-free operation. Features may change, be limited, or be withdrawn at any time.",
-        "Free or shared API tiers may impose rate limits, queues, or temporary delays. We are not liable for delays caused by such limits or by maintenance."
+        "At busy times, report generation may be queued or temporarily delayed. We are not liable for delays caused by high demand or by maintenance."
       ]
     },
     {
       "title": "10. Fees",
       "paragraphs": [
-        "Unless we expressly state otherwise, the Service is currently offered without charge. If paid features are introduced, we will present applicable pricing and payment terms before you are charged."
+        "GrowthKit is a paid service. Generating a report requires a report credit, bought through a one-time payment — there is no subscription. The current price is always shown before you pay, and new users may receive one free credit to try the service first.",
+        "Payments are processed securely by our payment provider, Stripe; we never see or store your full card details. Prices are shown in euros, and any applicable taxes are indicated at checkout. Purchased credits remain available in your account and do not expire.",
+        "Because each report is generated and delivered to you immediately, purchases are generally non-refundable once the report has been generated, except where a refund is required by applicable consumer law. If a payment fails or a report does not generate correctly, contact us via https://jcode.be and we will put it right."
       ]
     },
     {
