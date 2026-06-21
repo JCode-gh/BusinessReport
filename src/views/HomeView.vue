@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { TrendingUp, MessageSquareText, ShieldCheck, Gift, Sparkles, ArrowRight } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
 import { useGenerateCTA } from '../composables/useGenerateCTA';
+import { clearGenerateLaunchQuery, wantsGenerateLaunch } from '../composables/useGenerateNavigation';
 import { useReportGeneration } from '../composables/useReportGeneration';
 import { useReportManagement } from '../composables/useReportManagement';
 import { useNotification } from '../composables/useNotification';
@@ -107,6 +108,16 @@ async function openWizard() {
   track('wizard_opened');
   wizardOpen.value = true;
 }
+
+watch(
+  () => route.query.generate,
+  async (value) => {
+    if (value !== '1') return;
+    clearGenerateLaunchQuery(router, route);
+    await openWizard();
+  },
+  { immediate: true },
+);
 
 async function handleGenerate() {
   if (!user.value) return;

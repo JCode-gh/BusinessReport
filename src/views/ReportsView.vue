@@ -9,6 +9,7 @@ import ConfirmModal from '../ConfirmModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
 import { useLanguage } from '../composables/useLanguage';
 import { useGenerateCTA } from '../composables/useGenerateCTA';
+import { navigateToGenerate } from '../composables/useGenerateNavigation';
 import { useReportManagement } from '../composables/useReportManagement';
 import { useNotification } from '../composables/useNotification';
 import { useAuth } from '../useAuth';
@@ -99,7 +100,7 @@ function cancelRename() {
 }
 
 function goGenerate() {
-  router.push({ path: '/', hash: '#brief' });
+  navigateToGenerate(router);
 }
 </script>
 

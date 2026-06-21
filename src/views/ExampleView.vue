@@ -9,6 +9,7 @@ import NotificationToast from '../components/NotificationToast.vue';
 import ExampleReportShowcase from '../components/ExampleReportShowcase.vue';
 import { useLanguage } from '../composables/useLanguage';
 import { getExampleReportSeo } from '../exampleReports';
+import { navigateToGenerate } from '../composables/useGenerateNavigation';
 import { track } from '../analytics';
 
 const router = useRouter();
@@ -18,7 +19,7 @@ const showPaywallModal = ref(false);
 const currentYear = new Date().getFullYear();
 
 function goGenerate() {
-  router.push({ path: '/', hash: '#brief' });
+  navigateToGenerate(router);
 }
 
 function updateExampleSeo() {
