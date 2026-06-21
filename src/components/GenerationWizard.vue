@@ -2,6 +2,7 @@
 import { ref, computed, nextTick, watch } from 'vue';
 import { X, ArrowRight, Sparkles } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
+import { useGenerateCTA } from '../composables/useGenerateCTA';
 import {
   form,
   useReportGeneration,
@@ -21,7 +22,8 @@ const emit = defineEmits<{
   (e: 'generate'): void;
 }>();
 
-const { ui } = useLanguage();
+const { ui, siteLanguage } = useLanguage();
+const { showFreeOffer, creditCostLabel } = useGenerateCTA();
 const { canGenerate, resetBriefForm, fillTestData } = useReportGeneration();
 const { showNotification } = useNotification();
 
@@ -32,6 +34,12 @@ const invalidFields = ref<Set<WizardFieldKey>>(new Set());
 
 const wizardProgress = computed(() =>
   Math.round(((currentStep.value + 1) / WIZARD_STEP_COUNT) * 100)
+);
+
+const wizardGenerateLabel = computed(() =>
+  showFreeOffer.value
+    ? ui.value.actionGenerate
+    : `${ui.value.actionGenerate} · ${creditCostLabel.value}`,
 );
 
 const tonePresets = computed(() => ui.value.tonePresets);
@@ -179,6 +187,7 @@ watch(
   (open) => {
     if (open) {
       resetBriefForm();
+      form.language = siteLanguage.value;
       currentStep.value = 0;
       wizardForward.value = true;
       invalidFields.value = new Set();
@@ -488,7 +497,7 @@ watch(
             :disabled="!canGenerate"
           >
             <Sparkles :size="18" />
-            {{ ui.actionGenerate }}
+            {{ wizardGenerateLabel }}
           </button>
         </div>
       </div>

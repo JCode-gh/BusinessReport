@@ -51,7 +51,8 @@ export type AnalyticsEvent =
   | "report_generated"
   | "paywall_shown"
   | "checkout_started"
-  | "payment_success";
+  | "payment_success"
+  | "example_viewed";
 
 export function track(event: AnalyticsEvent, props?: EventProps): void {
   try {

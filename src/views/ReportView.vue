@@ -152,7 +152,7 @@ onMounted(async () => {
       <iframe
         ref="iframeRef"
         :srcdoc="inlineReportHtml"
-        sandbox="allow-scripts allow-same-origin allow-modals"
+        sandbox="allow-scripts allow-same-origin allow-modals allow-top-navigation-by-user-activation allow-popups"
         class="inline-report-frame"
         :title="ui.reportViewerTitle"
       />

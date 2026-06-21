@@ -1,7 +1,20 @@
 <!doctype html>
-<html lang="nl">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function () {
+        var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+        var supported = { nl: 1, en: 1, fr: 1, de: 1 };
+        for (var i = 0; i < list.length; i++) {
+          var code = String(list[i]).toLowerCase().split('-')[0];
+          if (supported[code]) {
+            document.documentElement.lang = code;
+            break;
+          }
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#100d28" />
     <meta name="color-scheme" content="dark light" />
@@ -30,10 +43,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "GrowthKit",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://growthkit.jcode.be/",
+      "description": "Turn a short business brief into a consultant-grade AI growth report with positioning, scorecards, action plan and sales templates. First report free.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR",
+        "description": "First growth report free; additional reports from €5"
+      },
+      "inLanguage": ["nl", "en", "fr", "de"],
+      "author": {
+        "@type": "Organization",
+        "name": "jcode.be",
+        "url": "https://jcode.be"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="app"></div>
-    <noscript>This app requires JavaScript to work. Please enable JavaScript and reload.</noscript>
+    <noscript>
+      <main style="max-width:720px;margin:40px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6">
+        <h1>GrowthKit — Gratis AI-groeirapport voor ondernemers</h1>
+        <p>Zet je businessbrief om in een professioneel groeirapport: positionering, scorecards, 30-dagen actieplan, sales-templates en concurrentieanalyse. Je eerste rapport is gratis.</p>
+        <p><a href="/example/">Bekijk een voorbeeldrapport</a> · <a href="/">Start gratis rapport</a></p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

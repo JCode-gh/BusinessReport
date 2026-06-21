@@ -215,6 +215,14 @@ export async function decrementCredits(uid: string): Promise<boolean> {
   }
 }
 
+export function hasClaimedFreeCredit(uid: string): boolean {
+  try {
+    return localStorage.getItem(`gk_free_claimed_${uid}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
 // Claims the one-time free trial credit for a new user. The grant happens
 // server-side (Firebase Admin) because Firestore rules forbid the client from
 // increasing its own credits. Idempotent on the server, so calling it again is
