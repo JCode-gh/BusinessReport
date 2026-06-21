@@ -138,6 +138,8 @@
   "savedReportsEmpty": "Aucun rapport sauvegardé pour l'instant.",
   "savedReportOpen": "Ouvrir",
   "navAccountMenu": "Menu du compte",
+  "navOpenMenu": "Ouvrir le menu",
+  "navCloseMenu": "Fermer le menu",
   "navMyReports": "Mes rapports",
   "reportsPageTitle": "Vos rapports",
   "reportsPageLead": "Tous les rapports de croissance générés et enregistrés sur votre compte.",

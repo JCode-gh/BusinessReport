@@ -138,6 +138,8 @@
   "savedReportsEmpty": "Noch keine gespeicherten Reports.",
   "savedReportOpen": "Öffnen",
   "navAccountMenu": "Kontomenü",
+  "navOpenMenu": "Menü öffnen",
+  "navCloseMenu": "Menü schließen",
   "navMyReports": "Meine Berichte",
   "reportsPageTitle": "Deine Berichte",
   "reportsPageLead": "Alle Wachstumsberichte, die du generiert und in deinem Konto gespeichert hast.",

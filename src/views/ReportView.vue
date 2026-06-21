@@ -6,8 +6,8 @@ import { useLanguage } from '../composables/useLanguage';
 import { useReportManagement } from '../composables/useReportManagement';
 import { useAuth } from '../useAuth';
 import { useNotification } from '../composables/useNotification';
-import { buildBusinessKitHtml, businessKitFileName } from '../businessKit';
-import { patchHtmlForEditing } from '../patchHtmlForEditing';
+import { businessKitFileName } from '../businessKit';
+import { prepareReportHtmlForViewer } from '../patchHtmlForEditing';
 import type { BusinessKitPlan } from '../businessKit';
 import NotificationToast from '../components/NotificationToast.vue';
 
@@ -47,7 +47,7 @@ async function confirmRename() {
   const newTitle = renameValue.value.trim();
   if (!newTitle || !currentPlan.value || newTitle === currentPlan.value.title) return;
   currentPlan.value = { ...currentPlan.value, title: newTitle };
-  const newHtml = patchHtmlForEditing(buildBusinessKitHtml(currentPlan.value));
+  const newHtml = prepareReportHtmlForViewer(currentPlan.value);
   inlineReportHtml.value = newHtml;
   if (reportId.value) {
     await patchReportHtml(reportId.value, newHtml);
@@ -79,8 +79,7 @@ onMounted(async () => {
   }
 
   currentPlan.value = report.plan;
-  const html = report.editedHtml ?? buildBusinessKitHtml(report.plan);
-  inlineReportHtml.value = patchHtmlForEditing(html);
+  inlineReportHtml.value = prepareReportHtmlForViewer(report.plan, report.editedHtml);
 
   // Handle iframe postMessage
   window.addEventListener('message', async (e) => {

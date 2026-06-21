@@ -138,6 +138,8 @@
   "savedReportsEmpty": "No saved reports yet.",
   "savedReportOpen": "Open",
   "navAccountMenu": "Account menu",
+  "navOpenMenu": "Open menu",
+  "navCloseMenu": "Close menu",
   "navMyReports": "My reports",
   "reportsPageTitle": "Your reports",
   "reportsPageLead": "All growth reports you generated and saved to your account.",
