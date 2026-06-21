@@ -6,12 +6,12 @@
   "loadingAria": "Rapport wordt gegenereerd",
   "generatingReport": "Genereert rapport in",
   "generationProgress": "Voortgang van generatie",
-  "waitingRoomTitle": "Limiet bereikt - probeert automatisch opnieuw",
+  "waitingRoomTitle": "Even druk — we proberen automatisch opnieuw",
   "waitingRoomUnit": "sec",
-  "waitingRoomNote": "De gratis API-laag is tijdelijk druk. Je hoeft niets te doen: het rapport gaat verder zodra er modelcapaciteit vrijkomt.",
+  "waitingRoomNote": "Er zijn op dit moment veel aanvragen. Je hoeft niets te doen — je rapport gaat zo automatisch verder.",
   "resultEyebrow": "Rapport voltooid",
   "resultTitle": "Je Growth Kit is klaar.",
-  "resultDescription": "Het rapport is in je browser gegenereerd, gelokaliseerd voor {language}, en voorbereid als stijlvol HTML-rapport met PDF-export.",
+  "resultDescription": "Je rapport is klaar in {language}, volledig opgemaakt en klaar om te downloaden als PDF.",
   "openReport": "Naar rapport ↓",
   "printReport": "Afdrukken / PDF",
   "downloadPdf": "PDF downloaden",
@@ -24,11 +24,11 @@
   "generatedReportDetails": "Details van gegenereerd rapport",
   "ready": "Klaar",
   "language": "Taal",
-  "output": "Output",
-  "outputFormat": "HTML + PDF",
+  "output": "Formaat",
+  "outputFormat": "Webpagina + PDF",
   "includes": "Bevat",
   "includesText": "Scorecard, templates, actieplan",
-  "heroEyebrow": "Browserbouwer voor strategierapporten",
+  "heroEyebrow": "AI-groeistrategie in minuten",
   "heroTitle": "Ondernemers Groeikit",
   "heroCopy": "Zet een ruwe businessbrief om in een gepolijst consultant-rapport met positionering, aanbod, scorecards, outreach-templates en een praktisch actieplan. Je eerste rapport is gratis.",
   "heroPrimary": "Genereer je gratis rapport",
@@ -39,7 +39,7 @@
   "productHighlights": "Producthighlights",
   "statsLanguages": "Talen",
   "statsPlan": "Dagenplan",
-  "statsPdf": "Exportklaar",
+  "statsPdf": "Download",
   "proofAria": "Rapportoutput",
   "proofCards": [
     {
@@ -51,13 +51,13 @@
       "body": "E-mail-, sales- en contentprompts rond de businesscontext."
     },
     {
-      "title": "Statische Netlify-flow",
-      "body": "Generatie in de browser met stijlvolle HTML-output en PDF-export met één klik."
+      "title": "30-dagen actieplan",
+      "body": "Een week-voor-week plan met checkboxes — exporteer het volledige rapport met één klik naar PDF."
     }
   ],
-  "briefEyebrow": "Strategiebrief",
-  "briefTitle": "Geef de strategie-engine de businesscontext die telt.",
-  "briefCopy": "Het rapport wordt lokaal vanuit de brief hieronder gegenereerd en pas geopend in een nieuw tabblad wanneer het resultaat klaar is.",
+  "briefEyebrow": "Over je bedrijf",
+  "briefTitle": "Vertel ons iets over je bedrijf.",
+  "briefCopy": "Vul hieronder een paar gegevens in en je volledige groeirapport is klaar in een paar minuten.",
   "businessName": "Bedrijfsnaam",
   "businessNamePlaceholder": "Northstar Studio",
   "market": "Markt",
@@ -101,8 +101,8 @@
     "Sales-templates",
     "Printbaar PDF-rapport"
   ],
-  "loadingLine": "Generatie draait lokaal. Het rapporttabblad opent zodra de browser de HTML afrondt.",
-  "readyLine": "Klaar om {time}. Als het tabblad niet verscheen, open je het rapport hier opnieuw.",
+  "loadingLine": "Je rapport wordt gemaakt. Het is zo klaar.",
+  "readyLine": "Klaar om {time}. Open je rapport hieronder.",
   "popupError": "Kon het rapport niet in een nieuw tabblad openen. Je browser blokkeert mogelijk pop-ups.",
   "printError": "Kon het printvenster niet openen. Sta pop-ups toe voor deze site en probeer opnieuw.",
   "signIn": "Aanmelden",
@@ -153,25 +153,25 @@
       "detail": "Follow-up templates, contentideeën en praktische next-step copy maken."
     },
     {
-      "title": "Het rapport lokaliseren",
+      "title": "Je taal instellen",
       "detail": "De gekozen taal controleren in titels, tabellen, templates en aanbevelingen."
     },
     {
       "title": "Het eindrapport polijsten",
-      "detail": "Het browserklare HTML-rapport renderen en PDF-export voorbereiden."
+      "detail": "Je eindrapport opmaken en de PDF-download klaarzetten."
     }
   ],
   "termsLink": "Algemene voorwaarden",
   "termsPageTitle": "Algemene voorwaarden",
   "termsBackHome": "Terug naar home",
-  "termsLastUpdated": "Laatst bijgewerkt: 30 mei 2026",
+  "termsLastUpdated": "Laatst bijgewerkt: 21 juni 2026",
   "termsIntro": "Deze algemene voorwaarden (\"Voorwaarden\") regelen uw toegang tot en gebruik van GrowthKit Studio (de \"Dienst\"), beheerd door jcode.be. Door de Dienst te gebruiken, gaat u akkoord met deze Voorwaarden. Als u niet akkoord gaat, gebruik de Dienst dan niet.",
   "termsSections": [
     {
       "title": "1. Over de Dienst",
       "paragraphs": [
-        "GrowthKit Studio (ook wel Entrepreneur Growth Kit genoemd) is een browsergebaseerde tool die zakelijke briefings omzet in gestileerde groeirapporten, waaronder positioneringsanalyse, offer-suggesties, scorecards, templates en actieplannen.",
-        "De Dienst wordt aangeboden op https://growthkit.jcode.be. Ze draait voornamelijk in uw browser en kan gebruikmaken van AI- en clouddiensten van derden om content te genereren en op te slaan."
+        "GrowthKit (ook wel Entrepreneur Growth Kit genoemd) is een online tool die een korte zakelijke briefing omzet in een uitgebreid groeirapport, met onder meer positioneringsanalyse, aanbod-suggesties, scorecards, templates en actieplannen.",
+        "De Dienst is beschikbaar op https://growthkit.jcode.be en maakt gebruik van AI- en clouddiensten van derden om uw rapporten te genereren en op te slaan."
       ]
     },
     {
@@ -230,13 +230,15 @@
       "title": "9. Beschikbaarheid en wijzigingen",
       "paragraphs": [
         "Wij streven ernaar de Dienst beschikbaar te houden, maar garanderen geen ononderbroken of foutloze werking. Functies kunnen op elk moment worden gewijzigd, beperkt of ingetrokken.",
-        "Gratis of gedeelde API-tiers kunnen rate limits, wachtrijen of tijdelijke vertragingen opleggen. Wij zijn niet aansprakelijk voor vertragingen door dergelijke limieten of onderhoud."
+        "Op drukke momenten kan het genereren van een rapport in de wachtrij komen of tijdelijk vertraagd zijn. Wij zijn niet aansprakelijk voor vertragingen door grote drukte of onderhoud."
       ]
     },
     {
       "title": "10. Kosten",
       "paragraphs": [
-        "Tenzij wij uitdrukkelijk anders vermelden, wordt de Dienst momenteel kosteloos aangeboden. Als betaalde functies worden geïntroduceerd, presenteren wij de toepasselijke prijzen en betalingsvoorwaarden voordat u wordt gefactureerd."
+        "GrowthKit is een betaalde dienst. Voor het genereren van een rapport heeft u een rapport-credit nodig, die u koopt met een eenmalige betaling — er is geen abonnement. De actuele prijs wordt altijd getoond voordat u betaalt, en nieuwe gebruikers kunnen één gratis credit ontvangen om de dienst eerst te proberen.",
+        "Betalingen worden veilig verwerkt door onze betaalprovider Stripe; wij zien of bewaren uw volledige kaartgegevens nooit. Prijzen worden in euro weergegeven en eventuele toepasselijke belastingen worden bij het afrekenen vermeld. Gekochte credits blijven beschikbaar op uw account en vervallen niet.",
+        "Omdat elk rapport onmiddellijk wordt gegenereerd en aan u geleverd, zijn aankopen doorgaans niet-restitueerbaar zodra het rapport is gegenereerd, behalve waar restitutie wettelijk verplicht is. Als een betaling mislukt of een rapport niet correct wordt gegenereerd, neem dan contact op via https://jcode.be en wij lossen het op."
       ]
     },
     {

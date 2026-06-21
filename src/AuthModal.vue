@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { X } from "lucide-vue-next";
-import { signInWithGoogle, signInWithEmail, signUpWithEmail, signInAnonymously } from "./firebase";
+import { signInWithGoogle, signInWithEmail, signUpWithEmail } from "./firebase";
 import { getAuthErrorMessage } from "./authErrors";
+import { useNotification } from "./composables/useNotification";
+
+const { showNotification } = useNotification();
 
 type Language = "en" | "nl" | "fr" | "de";
 
@@ -33,9 +36,6 @@ type AuthCopy = {
   or: string;
   signInWithEmail: string;
   createAccount: string;
-  continueAsGuest: string;
-  continuing: string;
-  guestHint: string;
   email: string;
   password: string;
   passwordMin: string;
@@ -50,6 +50,8 @@ type AuthCopy = {
   close: string;
   fillEmailPassword: string;
   passwordMinLength: string;
+  verifyEmailTitle: string;
+  verifyEmailBody: string;
 };
 
 const authCopyMap: Record<Language, AuthCopy> = {
@@ -58,15 +60,12 @@ const authCopyMap: Record<Language, AuthCopy> = {
     titleGenerate: "Aanmelden om je rapport te genereren",
     titleSave: "Aanmelden om rapporten op te slaan",
     subtitleSignup: "Je rapporten worden opgeslagen en toegankelijk via een permanente link.",
-    subtitleGenerate: "Maak een account aan, meld je aan of ga verder als gast om je rapport te genereren.",
+    subtitleGenerate: "Maak een account aan of meld je aan om je rapport te genereren.",
     subtitleSave: "Sla rapporten op en krijg er altijd toegang toe via een permanente link.",
     continueWithGoogle: "Doorgaan met Google",
     or: "of",
     signInWithEmail: "Aanmelden met e-mail",
     createAccount: "Account aanmaken",
-    continueAsGuest: "Doorgaan als gast",
-    continuing: "Doorgaan…",
-    guestHint: "Geen e-mail vereist — je rapport is gekoppeld aan deze browsersessie.",
     email: "E-mail",
     password: "Wachtwoord",
     passwordMin: "min. 6 tekens",
@@ -81,21 +80,20 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Sluiten",
     fillEmailPassword: "Vul je e-mail en wachtwoord in.",
     passwordMinLength: "Wachtwoord moet minimaal 6 tekens bevatten.",
+    verifyEmailTitle: "Bevestig je e-mail",
+    verifyEmailBody: "We hebben je een verificatielink gestuurd. Bevestig je e-mail en meld je opnieuw aan om je gratis rapport te ontgrendelen.",
   },
   en: {
     titleSignup: "Create an account",
     titleGenerate: "Sign in to generate your report",
     titleSave: "Sign in to save reports",
     subtitleSignup: "Your reports will be saved and accessible via a permanent link.",
-    subtitleGenerate: "Create an account, sign in, or continue as a guest to generate your report.",
+    subtitleGenerate: "Create an account or sign in to generate your report.",
     subtitleSave: "Save reports and access them anytime via a permanent link.",
     continueWithGoogle: "Continue with Google",
     or: "or",
     signInWithEmail: "Sign in with email",
     createAccount: "Create an account",
-    continueAsGuest: "Continue as guest",
-    continuing: "Continuing…",
-    guestHint: "No email required — your report is tied to this browser session.",
     email: "Email",
     password: "Password",
     passwordMin: "min. 6 characters",
@@ -110,21 +108,20 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Close",
     fillEmailPassword: "Fill in your email and password.",
     passwordMinLength: "Password must be at least 6 characters.",
+    verifyEmailTitle: "Verify your email",
+    verifyEmailBody: "We sent you a verification link. Verify your email and sign in again to unlock your free report.",
   },
   fr: {
     titleSignup: "Créer un compte",
     titleGenerate: "Se connecter pour générer votre rapport",
     titleSave: "Se connecter pour sauvegarder les rapports",
     subtitleSignup: "Vos rapports seront sauvegardés et accessibles via un lien permanent.",
-    subtitleGenerate: "Créez un compte, connectez-vous ou continuez en tant qu'invité pour générer votre rapport.",
+    subtitleGenerate: "Créez un compte ou connectez-vous pour générer votre rapport.",
     subtitleSave: "Sauvegardez les rapports et accédez-y à tout moment via un lien permanent.",
     continueWithGoogle: "Continuer avec Google",
     or: "ou",
     signInWithEmail: "Se connecter avec e-mail",
     createAccount: "Créer un compte",
-    continueAsGuest: "Continuer en tant qu'invité",
-    continuing: "Continuation…",
-    guestHint: "Aucun e-mail requis — votre rapport est lié à cette session de navigateur.",
     email: "E-mail",
     password: "Mot de passe",
     passwordMin: "min. 6 caractères",
@@ -139,21 +136,20 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Fermer",
     fillEmailPassword: "Remplissez votre e-mail et votre mot de passe.",
     passwordMinLength: "Le mot de passe doit contenir au moins 6 caractères.",
+    verifyEmailTitle: "Vérifiez votre e-mail",
+    verifyEmailBody: "Nous vous avons envoyé un lien de vérification. Vérifiez votre e-mail et reconnectez-vous pour débloquer votre rapport gratuit.",
   },
   de: {
     titleSignup: "Konto erstellen",
     titleGenerate: "Anmelden, um Ihren Bericht zu generieren",
     titleSave: "Anmelden, um Berichte zu speichern",
     subtitleSignup: "Ihre Berichte werden gespeichert und über einen permanenten Link zugänglich sein.",
-    subtitleGenerate: "Erstellen Sie ein Konto, melden Sie sich an oder fahren Sie als Gast fort, um Ihren Bericht zu generieren.",
+    subtitleGenerate: "Erstellen Sie ein Konto oder melden Sie sich an, um Ihren Bericht zu generieren.",
     subtitleSave: "Speichern Sie Berichte und greifen Sie jederzeit über einen permanenten Link darauf zu.",
     continueWithGoogle: "Mit Google fortfahren",
     or: "oder",
     signInWithEmail: "Mit E-Mail anmelden",
     createAccount: "Konto erstellen",
-    continueAsGuest: "Als Gast fortfahren",
-    continuing: "Fortfahren…",
-    guestHint: "Keine E-Mail erforderlich — Ihr Bericht ist an diese Browsersitzung gebunden.",
     email: "E-Mail",
     password: "Passwort",
     passwordMin: "mind. 6 Zeichen",
@@ -168,6 +164,8 @@ const authCopyMap: Record<Language, AuthCopy> = {
     close: "Schließen",
     fillEmailPassword: "Geben Sie Ihre E-Mail und Ihr Passwort ein.",
     passwordMinLength: "Passwort muss mindestens 6 Zeichen lang sein.",
+    verifyEmailTitle: "E-Mail bestätigen",
+    verifyEmailBody: "Wir haben Ihnen einen Bestätigungslink geschickt. Bestätigen Sie Ihre E-Mail und melden Sie sich erneut an, um Ihren kostenlosen Bericht freizuschalten.",
   },
 };
 
@@ -238,19 +236,6 @@ async function handleGoogle() {
   }
 }
 
-async function handleAnonymous() {
-  loading.value = true;
-  errorMsg.value = "";
-  try {
-    await signInAnonymously();
-    close();
-  } catch (e) {
-    errorMsg.value = friendlyError(e);
-  } finally {
-    loading.value = false;
-  }
-}
-
 async function handleSignIn() {
   if (!email.value || !password.value) {
     errorMsg.value = copy.value.fillEmailPassword;
@@ -282,6 +267,8 @@ async function handleSignUp() {
   try {
     await signUpWithEmail(email.value, password.value);
     close();
+    // Email/password accounts must verify before the free report unlocks — tell them.
+    showNotification(copy.value.verifyEmailTitle, copy.value.verifyEmailBody, "success");
   } catch (e) {
     errorMsg.value = friendlyError(e);
   } finally {
@@ -324,13 +311,6 @@ async function handleSignUp() {
           <button class="auth-email-btn auth-email-btn--secondary" type="button" :disabled="loading" @click="switchTo('signup')">
             {{ copy.createAccount }}
           </button>
-
-          <div class="auth-divider"><span>{{ copy.or }}</span></div>
-
-          <button class="auth-guest-btn" type="button" :disabled="loading" @click="handleAnonymous">
-            {{ loading ? copy.continuing : copy.continueAsGuest }}
-          </button>
-          <p class="auth-guest-hint">{{ copy.guestHint }}</p>
 
           <p v-if="errorMsg" class="auth-error">{{ errorMsg }}</p>
         </div>
@@ -631,36 +611,5 @@ async function handleSignUp() {
 
 .auth-switch-link:hover {
   color: #3d2fa0;
-}
-
-.auth-guest-btn {
-  height: 44px;
-  border: 1.5px dashed #d1d5db;
-  border-radius: 10px;
-  background: #fafafa;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #4b5563;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.auth-guest-btn:hover:not(:disabled) {
-  border-color: #9ca3af;
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.auth-guest-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.auth-guest-hint {
-  font-size: 0.75rem;
-  color: #9ca3af;
-  margin: -4px 0 0;
-  text-align: center;
-  line-height: 1.4;
 }
 </style>

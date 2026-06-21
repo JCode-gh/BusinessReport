@@ -6,12 +6,12 @@
   "loadingAria": "Rapport en cours de génération",
   "generatingReport": "Génération du rapport en",
   "generationProgress": "Progression de la génération",
-  "waitingRoomTitle": "Limite atteinte - nouvelle tentative automatique",
+  "waitingRoomTitle": "Forte affluence — nouvelle tentative automatique",
   "waitingRoomUnit": "s",
-  "waitingRoomNote": "Le niveau gratuit de l'API est temporairement chargé. Aucune action requise: le rapport continuera dès qu'un créneau modèle sera disponible.",
+  "waitingRoomNote": "Nous recevons beaucoup de demandes en ce moment. Vous n'avez rien à faire — votre rapport continuera automatiquement dans un instant.",
   "resultEyebrow": "Rapport terminé",
   "resultTitle": "Votre Growth Kit est prêt.",
-  "resultDescription": "Le rapport a été généré dans votre navigateur, localisé en {language}, et préparé comme rapport HTML stylé avec export PDF.",
+  "resultDescription": "Votre rapport est prêt en {language}, entièrement mis en forme et prêt à télécharger en PDF.",
   "openReport": "Voir le rapport ↓",
   "printReport": "Imprimer / PDF",
   "downloadPdf": "Télécharger le PDF",
@@ -24,11 +24,11 @@
   "generatedReportDetails": "Détails du rapport généré",
   "ready": "Prêt",
   "language": "Langue",
-  "output": "Sortie",
-  "outputFormat": "HTML + PDF",
+  "output": "Format",
+  "outputFormat": "Page web + PDF",
   "includes": "Inclut",
   "includesText": "Scorecard, modèles, plan d'action",
-  "heroEyebrow": "Générateur de rapport stratégique dans le navigateur",
+  "heroEyebrow": "Stratégie de croissance IA en minutes",
   "heroTitle": "Kit de croissance entrepreneur",
   "heroCopy": "Transformez un brief business brut en rapport de consultant soigné avec positionnement, offres, scorecards, modèles d'outreach et plan d'action pratique. Votre premier rapport est gratuit.",
   "heroPrimary": "Générez votre rapport gratuit",
@@ -39,7 +39,7 @@
   "productHighlights": "Points forts du produit",
   "statsLanguages": "Langues",
   "statsPlan": "Plan jours",
-  "statsPdf": "Export prêt",
+  "statsPdf": "Téléchargement",
   "proofAria": "Sortie du rapport",
   "proofCards": [
     {
@@ -51,13 +51,13 @@
       "body": "Prompts e-mail, vente et contenu façonnés autour du contexte business."
     },
     {
-      "title": "Flux Netlify statique",
-      "body": "Génération dans le navigateur avec sortie HTML stylée et export PDF en un clic."
+      "title": "Plan d'action 30 jours",
+      "body": "Un plan semaine par semaine avec cases à cocher — exportez le rapport complet en PDF en un clic."
     }
   ],
-  "briefEyebrow": "Brief stratégique",
-  "briefTitle": "Donnez au moteur stratégique le contexte business qui compte.",
-  "briefCopy": "Le rapport est généré localement à partir du brief ci-dessous, puis ouvert dans un nouvel onglet seulement quand le résultat est prêt.",
+  "briefEyebrow": "À propos de votre entreprise",
+  "briefTitle": "Parlez-nous un peu de votre entreprise.",
+  "briefCopy": "Renseignez quelques détails ci-dessous et votre rapport de croissance complet est prêt en quelques minutes.",
   "businessName": "Nom de l'entreprise",
   "businessNamePlaceholder": "Northstar Studio",
   "market": "Marché",
@@ -101,8 +101,8 @@
     "Modèles de vente",
     "Rapport PDF imprimable"
   ],
-  "loadingLine": "La génération tourne localement. L'onglet du rapport s'ouvre lorsque le navigateur termine le HTML.",
-  "readyLine": "Prêt à {time}. Si l'onglet n'est pas apparu, ouvrez à nouveau le rapport ici.",
+  "loadingLine": "Votre rapport est en cours de création. Il sera prêt dans un instant.",
+  "readyLine": "Prêt à {time}. Ouvrez votre rapport ci-dessous.",
   "popupError": "Impossible d'ouvrir le rapport dans un nouvel onglet. Votre navigateur bloque peut-être les pop-ups.",
   "printError": "Impossible d'ouvrir la boîte de dialogue d'impression. Autorisez les pop-ups pour ce site et réessayez.",
   "signIn": "Se connecter",
@@ -153,25 +153,25 @@
       "detail": "Créer les modèles de relance, idées de contenu et copy de prochaine étape."
     },
     {
-      "title": "Localisation du rapport",
+      "title": "Réglage de votre langue",
       "detail": "Vérifier la langue choisie dans les titres, tableaux, modèles et recommandations."
     },
     {
       "title": "Finition du rapport",
-      "detail": "Rendre le rapport HTML prêt pour le navigateur et préparer l'export PDF."
+      "detail": "Mise en forme de votre rapport final et préparation du téléchargement PDF."
     }
   ],
   "termsLink": "Conditions générales",
   "termsPageTitle": "Conditions générales",
   "termsBackHome": "Retour à l'accueil",
-  "termsLastUpdated": "Dernière mise à jour : 30 mai 2026",
+  "termsLastUpdated": "Dernière mise à jour : 21 juin 2026",
   "termsIntro": "Les présentes conditions générales (\"Conditions\") régissent votre accès et votre utilisation de GrowthKit Studio (le \"Service\"), exploité par jcode.be. En utilisant le Service, vous acceptez ces Conditions. Dans le cas contraire, n'utilisez pas le Service.",
   "termsSections": [
     {
       "title": "1. À propos du Service",
       "paragraphs": [
-        "GrowthKit Studio (également appelé Entrepreneur Growth Kit) est un outil basé sur navigateur qui transforme des briefs d'entreprise en rapports de croissance stylisés, incluant analyse de positionnement, suggestions d'offres, scorecards, modèles et plans d'action.",
-        "Le Service est disponible sur https://growthkit.jcode.be. Il s'exécute principalement dans votre navigateur et peut utiliser des services d'IA et cloud tiers pour générer et stocker du contenu."
+        "GrowthKit (également appelé Entrepreneur Growth Kit) est un outil en ligne qui transforme un bref résumé d'entreprise en un rapport de croissance détaillé, incluant analyse de positionnement, suggestions d'offres, scorecards, modèles et plans d'action.",
+        "Le Service est disponible sur https://growthkit.jcode.be et utilise des services d'IA et cloud tiers pour générer et stocker vos rapports."
       ]
     },
     {
@@ -230,13 +230,15 @@
       "title": "9. Disponibilité et modifications",
       "paragraphs": [
         "Nous visons à maintenir le Service disponible, sans garantir un fonctionnement ininterrompu ou sans erreur. Les fonctionnalités peuvent être modifiées, limitées ou retirées à tout moment.",
-        "Les niveaux API gratuits ou partagés peuvent imposer des limites, files d'attente ou retards temporaires. Nous ne sommes pas responsables des retards causés par ces limites ou par la maintenance."
+        "Aux heures de forte affluence, la génération d'un rapport peut être mise en file d'attente ou temporairement retardée. Nous ne sommes pas responsables des retards dus à une forte demande ou à la maintenance."
       ]
     },
     {
       "title": "10. Tarifs",
       "paragraphs": [
-        "Sauf indication contraire expresse, le Service est actuellement proposé gratuitement. Si des fonctionnalités payantes sont introduites, nous présenterons les tarifs et conditions de paiement applicables avant toute facturation."
+        "GrowthKit est un service payant. La génération d'un rapport nécessite un crédit de rapport, acheté via un paiement unique — il n'y a pas d'abonnement. Le prix actuel est toujours affiché avant le paiement, et les nouveaux utilisateurs peuvent recevoir un crédit gratuit pour essayer le service.",
+        "Les paiements sont traités en toute sécurité par notre prestataire de paiement, Stripe ; nous ne voyons ni ne stockons jamais vos coordonnées de carte complètes. Les prix sont indiqués en euros et les taxes éventuelles applicables sont indiquées au moment du paiement. Les crédits achetés restent disponibles sur votre compte et n'expirent pas.",
+        "Comme chaque rapport est généré et livré immédiatement, les achats sont généralement non remboursables une fois le rapport généré, sauf lorsqu'un remboursement est exigé par le droit de la consommation applicable. Si un paiement échoue ou qu'un rapport ne se génère pas correctement, contactez-nous via https://jcode.be et nous y remédierons."
       ]
     },
     {
