@@ -417,6 +417,22 @@ select {
   margin-top: 28px;
 }
 
+.hero-free-badge {
+  flex-basis: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.hero-free-badge svg {
+  flex-shrink: 0;
+}
+
 .primary-link,
 .secondary-link,
 .result-primary,

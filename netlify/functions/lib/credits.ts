@@ -61,3 +61,36 @@ export async function grantCreditOnce(
     return newCredits;
   });
 }
+
+/**
+ * Grants a one-time free trial credit so a new user can generate their first
+ * report before paying. Idempotent: the `freeCreditGranted` flag guarantees a
+ * user can only ever receive the free credit once, no matter how often this runs.
+ * Returns the user's credit balance after the operation.
+ */
+export async function grantFreeCreditOnce(
+  db: Firestore,
+  uid: string,
+  amount = 1,
+): Promise<number> {
+  const creditsToGrant = Math.max(1, Math.floor(amount));
+  const userRef = db.collection('users').doc(uid);
+
+  return db.runTransaction(async (tx) => {
+    const userDoc = await tx.get(userRef);
+    const data = userDoc.data();
+    const currentCredits = typeof data?.credits === 'number' ? data.credits : 0;
+
+    if (data?.freeCreditGranted) {
+      return currentCredits;
+    }
+
+    const newCredits = currentCredits + creditsToGrant;
+    tx.set(
+      userRef,
+      { credits: newCredits, freeCreditGranted: true, freeCreditAt: new Date().toISOString() },
+      { merge: true },
+    );
+    return newCredits;
+  });
+}

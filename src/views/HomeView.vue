@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Sparkles, ArrowRight, TrendingUp, MessageSquareText, ShieldCheck, Pencil, Trash2 } from 'lucide-vue-next';
+import { Sparkles, ArrowRight, TrendingUp, MessageSquareText, ShieldCheck, Pencil, Trash2, Gift } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
 import { useReportGeneration } from '../composables/useReportGeneration';
 import { useReportManagement } from '../composables/useReportManagement';
@@ -9,6 +9,7 @@ import { useNotification } from '../composables/useNotification';
 import { useAuth } from '../useAuth';
 import { completeGoogleRedirectSignIn, decrementCredits } from '../firebase';
 import { getAuthErrorMessage } from '../authErrors';
+import { track } from '../analytics';
 import SiteHeader from '../components/SiteHeader.vue';
 import GenerationWizard from '../components/GenerationWizard.vue';
 import GenerationLoader from '../components/GenerationLoader.vue';
@@ -106,6 +107,7 @@ async function openWizard() {
     showPaywallModal.value = true;
     return;
   }
+  track('wizard_opened');
   wizardOpen.value = true;
 }
 
@@ -146,6 +148,7 @@ async function handleGenerate() {
 
   const success = await generateBusinessKit();
   if (success && currentPlan.value) {
+    track('report_generated', { credits_left: credits.value });
     status.value = 'loading';
     await doSaveReport(currentPlan.value);
     status.value = 'success';
@@ -278,6 +281,7 @@ async function activatePaymentOnReturn(sessionId: string | null) {
         if (res.ok && data.paid) {
           const serverCredits = typeof data.credits === 'number' ? data.credits : 0;
           setCredits(serverCredits);
+          track('payment_success');
           showNotification(c.title, c.message, 'success');
           if (serverCredits > 0) {
             wizardOpen.value = true;
@@ -382,6 +386,10 @@ onMounted(async () => {
               {{ ui.heroPrimary }}
               <ArrowRight :size="18" />
             </button>
+            <p class="hero-free-badge">
+              <Gift :size="15" />
+              {{ ui.heroFreeBadge }}
+            </p>
           </div>
 
           <dl class="hero-stats" :aria-label="ui.productHighlights">

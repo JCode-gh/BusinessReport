@@ -14,7 +14,10 @@ export const CREDIT_PLANS: CreditPlan[] = [
   { id: 'bundle10', credits: 10, priceCents: 3500 },
 ];
 
-export const DEFAULT_CREDIT_PLAN_ID: CreditPlanId = 'bundle5';
+// Default to the lowest-risk single report. A skeptical first-time buyer should
+// see the smallest possible price pre-selected; the "popular" bundle is still
+// one tap away and badged to upsell.
+export const DEFAULT_CREDIT_PLAN_ID: CreditPlanId = 'single';
 
 export function getCreditPlan(planId: string): CreditPlan | undefined {
   return CREDIT_PLANS.find((p) => p.id === planId);

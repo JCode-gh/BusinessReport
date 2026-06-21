@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="GrowthKit — Gratis AI-groeirapport voor ondernemers">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#161033"/>
+      <stop offset="1" stop-color="#0d0b22"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d6a4e3"/>
+      <stop offset="1" stop-color="#6f6acf"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1040" cy="120" r="320" fill="url(#accent)" opacity="0.16"/>
+  <circle cx="170" cy="560" r="240" fill="url(#accent)" opacity="0.10"/>
+
+  <!-- logo mark -->
+  <g transform="translate(96,90)">
+    <rect width="72" height="72" rx="18" fill="url(#accent)"/>
+    <path d="M22 30h28v22a5 5 0 0 1-5 5H27a5 5 0 0 1-5-5V30zM29 28v-4a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v4"
+          fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="92" y="48" font-family="Montserrat, Arial, sans-serif" font-size="34" font-weight="800" fill="#ffffff">GrowthKit</text>
+  </g>
+
+  <!-- free badge -->
+  <g transform="translate(96,210)">
+    <rect width="252" height="48" rx="24" fill="url(#accent)"/>
+    <text x="126" y="32" text-anchor="middle" font-family="Montserrat, Arial, sans-serif" font-size="22" font-weight="800" fill="#16102f" letter-spacing="0.5">1e rapport gratis</text>
+  </g>
+
+  <text x="96" y="350" font-family="Montserrat, Arial, sans-serif" font-size="68" font-weight="900" fill="#ffffff">AI-groeirapport voor</text>
+  <text x="96" y="430" font-family="Montserrat, Arial, sans-serif" font-size="68" font-weight="900" fill="#ffffff">jouw onderneming</text>
+
+  <text x="96" y="500" font-family="Montserrat, Arial, sans-serif" font-size="30" font-weight="500" fill="#c9c4e8">Positionering · Scorecards · 30-dagen actieplan · Sales-templates</text>
+  <text x="96" y="556" font-family="Montserrat, Arial, sans-serif" font-size="26" font-weight="600" fill="#9b95cf">growthkit.jcode.be · NL · EN · FR · DE</text>
+</svg>

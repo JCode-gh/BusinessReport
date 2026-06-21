@@ -208,3 +208,37 @@ export async function decrementCredits(uid: string): Promise<boolean> {
     return false;
   }
 }
+
+// Claims the one-time free trial credit for a new user. The grant happens
+// server-side (Firebase Admin) because Firestore rules forbid the client from
+// increasing its own credits. Idempotent on the server, so calling it again is
+// harmless; a per-device localStorage flag just avoids redundant requests.
+// Returns the new credit balance, or null if nothing was claimed.
+export async function claimFreeCredit(user: User): Promise<number | null> {
+  const guardKey = `gk_free_claimed_${user.uid}`;
+  try {
+    if (localStorage.getItem(guardKey)) return null;
+  } catch {
+    // localStorage unavailable (private mode) — fall through and rely on the server flag
+  }
+
+  try {
+    const token = await user.getIdToken();
+    const res = await fetch("/.netlify/functions/grant-free-credit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { credits?: number; granted?: boolean };
+    try {
+      localStorage.setItem(guardKey, "1");
+    } catch {
+      // ignore — best-effort cache only
+    }
+    return typeof data.credits === "number" ? data.credits : null;
+  } catch (e) {
+    console.error("[claimFreeCredit] request failed", e);
+    return null;
+  }
+}

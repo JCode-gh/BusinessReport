@@ -1,5 +1,5 @@
 import { ref, readonly, watch } from "vue";
-import { onAuthStateChange, getUserCredits } from "./firebase";
+import { onAuthStateChange, getUserCredits, claimFreeCredit } from "./firebase";
 import type { User } from "firebase/auth";
 
 const user = ref<User | null>(null);
@@ -8,7 +8,17 @@ const credits = ref(0);
 
 onAuthStateChange(async (u) => {
   user.value = u;
-  credits.value = u ? await getUserCredits(u.uid) : 0;
+  if (u) {
+    credits.value = await getUserCredits(u.uid);
+    // New users have no credits yet — grant the one-time free report so they
+    // can experience the product before hitting the paywall.
+    if (credits.value === 0) {
+      const granted = await claimFreeCredit(u);
+      if (typeof granted === "number") credits.value = granted;
+    }
+  } else {
+    credits.value = 0;
+  }
   if (!authReady.value) authReady.value = true;
 });
 

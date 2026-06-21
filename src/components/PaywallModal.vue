@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { X, Sparkles, CheckCircle2, AlertCircle } from 'lucide-vue-next';
 import { useAuth } from '../useAuth';
+import { track } from '../analytics';
 import {
   CREDIT_PLANS,
   DEFAULT_CREDIT_PLAN_ID,
@@ -155,6 +156,14 @@ const plans = computed(() =>
 
 const selectedPlan = computed(() => plans.value.find((p) => p.id === selectedPlanId.value) ?? plans.value[0]);
 
+// Fire the funnel event whenever the paywall actually becomes visible.
+watch(
+  () => props.modelValue,
+  (open) => {
+    if (open) track('paywall_shown');
+  },
+);
+
 function close() {
   emit('update:modelValue', false);
 }
@@ -167,6 +176,7 @@ async function startCheckout() {
   if (!user.value || loading.value) return;
   loading.value = true;
   errorMsg.value = '';
+  track('checkout_started', { plan: selectedPlanId.value, price_cents: selectedPlan.value.priceCents });
 
   try {
     const res = await fetch('/.netlify/functions/create-checkout', {
