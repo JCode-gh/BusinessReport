@@ -4,14 +4,62 @@
     <meta charset="UTF-8" />
     <script>
       (function () {
-        var list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
         var supported = { nl: 1, en: 1, fr: 1, de: 1 };
+        var seo = {
+          nl: {
+            title: 'GrowthKit — Gratis AI-groeirapport voor ondernemers',
+            description:
+              'Zet je businessbrief om in een professioneel AI-groeirapport: positionering, scorecards, een 30-dagen actieplan, sales-templates en concurrentieanalyse. Je eerste rapport is gratis. Beschikbaar in het Nederlands, Engels, Frans en Duits.',
+          },
+          en: {
+            title: 'GrowthKit — Free AI growth report for entrepreneurs',
+            description:
+              'Turn a short business brief into a polished consultant-style growth report with positioning, scorecards, a 30-day action plan, sales templates, and competitor analysis. Your first report is free. Available in Dutch, English, French, and German.',
+          },
+          fr: {
+            title: 'GrowthKit — Rapport de croissance IA gratuit pour entrepreneurs',
+            description:
+              'Transformez un brief business en rapport de croissance professionnel : positionnement, scorecards, plan d\u2019action 30 jours, mod\u00e8les commerciaux et analyse concurrentielle. Votre premier rapport est gratuit. Disponible en n\u00e9erlandais, anglais, fran\u00e7ais et allemand.',
+          },
+          de: {
+            title: 'GrowthKit — Kostenloser KI-Wachstumsbericht für Unternehmer',
+            description:
+              'Verwandle ein kurzes Business-Briefing in einen professionellen KI-Wachstumsbericht: Positionierung, Scorecards, 30-Tage-Aktionsplan, Sales-Templates und Wettbewerbsanalyse. Dein erster Report ist gratis. Verf\u00fcgbar auf Niederl\u00e4ndisch, Englisch, Franz\u00f6sisch und Deutsch.',
+          },
+        };
+        var list =
+          navigator.languages && navigator.languages.length
+            ? navigator.languages
+            : [navigator.language || 'en'];
+        var detected = 'en';
         for (var i = 0; i < list.length; i++) {
           var code = String(list[i]).toLowerCase().split('-')[0];
           if (supported[code]) {
-            document.documentElement.lang = code;
+            detected = code;
             break;
           }
+        }
+        var copy = seo[detected] || seo.en;
+        document.documentElement.lang = detected;
+        document.title = copy.title;
+        var description = document.querySelector('meta[name="description"]');
+        if (description) description.setAttribute('content', copy.description);
+        var ogDescription = document.querySelector('meta[property="og:description"]');
+        if (ogDescription) ogDescription.setAttribute('content', copy.description);
+        var twitterDescription = document.querySelector('meta[name="twitter:description"]');
+        if (twitterDescription) twitterDescription.setAttribute('content', copy.description);
+        var ogLocale = document.querySelector('meta[property="og:locale"]');
+        if (ogLocale) {
+          ogLocale.setAttribute(
+            'content',
+            detected === 'nl'
+              ? 'nl_NL'
+              : detected === 'fr'
+                ? 'fr_FR'
+                : detected === 'de'
+                  ? 'de_DE'
+                  : 'en_US',
+          );
         }
       })();
     </script>
