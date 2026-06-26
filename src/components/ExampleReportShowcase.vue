@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ArrowRight, ExternalLink, Sparkles } from 'lucide-vue-next';
 import { buildBusinessKitHtml } from '../businessKit';
+import { patchHtmlForEditing } from '../patchHtmlForEditing';
 import { getExampleReportPlan } from '../exampleReports';
 import { useLanguage } from '../composables/useLanguage';
 import { useGenerateCTA } from '../composables/useGenerateCTA';
@@ -25,7 +26,9 @@ const { generateButtonLabel } = useGenerateCTA();
 
 const reportHtml = computed(() => {
   const plan = getExampleReportPlan(siteLanguage.value);
-  return buildBusinessKitHtml({ ...plan, showBranding: props.variant === 'page' });
+  return patchHtmlForEditing(
+    buildBusinessKitHtml({ ...plan, showBranding: props.variant === 'page' }),
+  );
 });
 
 function openFullExample() {
@@ -80,7 +83,6 @@ function onGenerate() {
           sandbox="allow-scripts allow-same-origin allow-top-navigation-by-user-activation allow-popups"
           loading="lazy"
         />
-        <div class="example-browser-fade" aria-hidden="true" />
       </div>
     </div>
 
@@ -152,13 +154,13 @@ function onGenerate() {
 }
 
 .example-browser {
-  border: 1px solid var(--line-strong);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   overflow: hidden;
-  background: #fff;
+  background: #100d28;
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.06),
-    0 24px 56px rgba(0, 0, 0, 0.18);
+    0 2px 8px rgba(0, 0, 0, 0.18),
+    0 24px 56px rgba(0, 0, 0, 0.28);
 }
 
 .example-showcase--section .example-browser,
@@ -242,14 +244,6 @@ function onGenerate() {
   pointer-events: auto;
 }
 
-.example-browser-fade {
-  position: absolute;
-  inset: auto 0 0;
-  height: 88px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.98));
-  pointer-events: none;
-}
-
 .example-showcase-actions {
   display: flex;
   flex-wrap: wrap;
@@ -289,6 +283,14 @@ function onGenerate() {
 
   .example-showcase--section .example-browser-viewport {
     height: min(72vh, 640px);
+  }
+
+  .example-showcase--page .example-browser-viewport {
+    height: min(68vh, 560px);
+  }
+
+  .example-showcase--page .example-showcase-header {
+    width: calc(100% - 32px);
   }
 }
 </style>

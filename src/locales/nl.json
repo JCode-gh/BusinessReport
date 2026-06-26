@@ -1,7 +1,9 @@
 {
   "brandHomeAria": "GrowthKit Studio startpagina",
+  "siteDocumentTitle": "GrowthKit — Gratis AI-groeirapport voor ondernemers",
   "brandSubtitle": "Rapportbouwer van jcode.be",
   "footerByline": "Een tool van",
+  "footerVat": "BTW BE0798514094",
   "languageSwitcherLabel": "Taal wijzigen",
   "loadingAria": "Rapport wordt gegenereerd",
   "generatingReport": "Genereert rapport in",
@@ -138,6 +140,8 @@
   "savedReportsEmpty": "Nog geen opgeslagen rapporten.",
   "savedReportOpen": "Openen",
   "navAccountMenu": "Accountmenu",
+  "navOpenMenu": "Menu openen",
+  "navCloseMenu": "Menu sluiten",
   "navMyReports": "Mijn rapporten",
   "reportsPageTitle": "Jouw rapporten",
   "reportsPageLead": "Alle groeirapporten die je hebt gegenereerd en op je account bewaard.",

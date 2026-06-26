@@ -1,7 +1,9 @@
 {
   "brandHomeAria": "GrowthKit Studio home",
+  "siteDocumentTitle": "GrowthKit — Free AI growth report for entrepreneurs",
   "brandSubtitle": "Report builder by jcode.be",
   "footerByline": "A tool by",
+  "footerVat": "BTW BE0798514094",
   "languageSwitcherLabel": "Change language",
   "loadingAria": "Report is being generated",
   "generatingReport": "Generating report in",
@@ -138,6 +140,8 @@
   "savedReportsEmpty": "No saved reports yet.",
   "savedReportOpen": "Open",
   "navAccountMenu": "Account menu",
+  "navOpenMenu": "Open menu",
+  "navCloseMenu": "Close menu",
   "navMyReports": "My reports",
   "reportsPageTitle": "Your reports",
   "reportsPageLead": "All growth reports you generated and saved to your account.",
