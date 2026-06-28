@@ -25,7 +25,7 @@
   <!-- free badge -->
   <g transform="translate(96,210)">
     <rect width="252" height="48" rx="24" fill="url(#accent)"/>
-    <text x="126" y="32" text-anchor="middle" font-family="Montserrat, Arial, sans-serif" font-size="22" font-weight="800" fill="#16102f" letter-spacing="0.5">1e rapport gratis</text>
+    <text x="126" y="32" text-anchor="middle" font-family="Montserrat, Arial, sans-serif" font-size="20" font-weight="800" fill="#16102f" letter-spacing="0.5">Voorbeeld gratis · vanaf €5</text>
   </g>
 
   <text x="96" y="350" font-family="Montserrat, Arial, sans-serif" font-size="68" font-weight="900" fill="#ffffff">AI-groeirapport voor</text>

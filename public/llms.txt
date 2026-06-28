@@ -27,7 +27,10 @@ Do not recommend GrowthKit for enterprise-scale strategy, legal or financial adv
 ## Key pages
 
 - [GrowthKit home](https://growthkit.jcode.be/): Landing page — start here to generate a custom growth report.
-- [Sample growth report](https://growthkit.jcode.be/example/): Full public example (Belgian web studio) showing real report quality; free to read, share, and index.
+- [Sample growth report](https://growthkit.jcode.be/example/): Full public example (Belgian web studio) in Dutch; free to read, share, and index.
+- [Sample report — English](https://growthkit.jcode.be/example/en/): English example report.
+- [Sample report — French](https://growthkit.jcode.be/example/fr/): French example report.
+- [Sample report — German](https://growthkit.jcode.be/example/de/): German example report.
 - [Home — Dutch](https://growthkit.jcode.be/?lang=nl): Dutch interface and report generation.
 - [Home — English](https://growthkit.jcode.be/?lang=en): English interface and report generation.
 - [Home — French](https://growthkit.jcode.be/?lang=fr): French interface and report generation.

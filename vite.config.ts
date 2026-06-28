@@ -1,29 +1,87 @@
 import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { Resvg } from "@resvg/resvg-js";
+import {
+  buildHomeInlineSeoScript,
+  buildNoscriptHomeContent,
+  buildSeoFallbackMain,
+  buildStaticHeadTags,
+} from "./src/seo/indexHtmlSeo";
+import { buildJsonLdBlocks, buildSitemapXml } from "./src/seo/jsonLd";
+import { writeStaticSeoPages } from "./src/seo/staticPages";
+import { asyncCssPlugin, criticalCssPlugin } from "./src/seo/asyncAssets";
+
+function seoIndexHtmlPlugin(): Plugin {
+  return {
+    name: "seo-index-html",
+    transformIndexHtml(html) {
+      const headTags = buildStaticHeadTags("nl");
+      const inlineScript = buildHomeInlineSeoScript();
+      const noscript = buildNoscriptHomeContent("nl");
+      const seoFallback = buildSeoFallbackMain("nl");
+      const jsonLd = buildJsonLdBlocks("en");
+
+      let result = html;
+
+      result = result.replace(
+        /<script>\s*\(function \(\) \{[\s\S]*?\}\)\(\);\s*<\/script>/,
+        `<script>\n      ${inlineScript}\n    </script>`,
+      );
+
+      result = result.replace(
+        /<title>[\s\S]*?<\/title>\s*<meta name="description"[\s\S]*?<meta name="twitter:image"[^>]*>/,
+        headTags,
+      );
+
+      result = result.replace(
+        /<script type="application\/ld\+json">[\s\S]*?<\/script>/,
+        jsonLd,
+      );
+
+      result = result.replace(/<noscript>[\s\S]*?<\/noscript>/, `<noscript>\n      ${noscript}\n    </noscript>`);
+
+      result = result.replace(
+        '<div id="app"></div>',
+        `<div id="app">${seoFallback}</div>`,
+      );
+
+      return result;
+    },
+  };
+}
 
 function seoPagesPlugin(): Plugin {
   return {
     name: "generate-seo-pages",
     apply: "build",
     async closeBundle() {
-      const { buildStaticExamplePageHtml } = await import("./src/exampleReportPlan");
-      const exampleDir = join(process.cwd(), "dist", "example");
-      mkdirSync(exampleDir, { recursive: true });
-      writeFileSync(join(exampleDir, "index.html"), buildStaticExamplePageHtml(), "utf8");
-      console.log("[seo] wrote dist/example/index.html");
+      const distDir = join(process.cwd(), "dist");
+      const lastmod = new Date().toISOString().slice(0, 10);
+
+      const svg = readFileSync(join(process.cwd(), "public", "brand", "og-cover.svg"));
+      const png = new Resvg(svg, { fitTo: { mode: "width", value: 1200 } }).render().asPng();
+      writeFileSync(join(distDir, "brand", "og-cover.png"), png);
+
+      writeStaticSeoPages(
+        distDir,
+        (path, content) => writeFileSync(path, content, "utf8"),
+        (path) => mkdirSync(path, { recursive: true }),
+      );
+
+      writeFileSync(join(distDir, "sitemap.xml"), buildSitemapXml(lastmod), "utf8");
+      console.log("[seo] wrote static pages and sitemap.xml");
     },
   };
 }
 
 export default defineConfig({
-  plugins: [vue(), seoPagesPlugin()],
+  plugins: [vue(), criticalCssPlugin(), seoIndexHtmlPlugin(), asyncCssPlugin(), seoPagesPlugin()],
   server: {
     port: 5173,
   },
   esbuild: {
-    // Drop debug logs in production; keep warn/error for diagnostics.
     drop: ["debugger"],
     pure: ["console.log", "console.info", "console.debug"],
   },

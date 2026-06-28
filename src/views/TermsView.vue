@@ -14,7 +14,6 @@ const showPaywallModal = ref(false);
 
 onMounted(() => {
   initializeLanguage();
-  document.title = `${ui.value.termsPageTitle} · GrowthKit Studio`;
 });
 </script>
 

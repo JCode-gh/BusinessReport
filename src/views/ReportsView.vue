@@ -36,8 +36,8 @@ const pendingDeleteId = ref<string | null>(null);
 const renamingReportId = ref<string | null>(null);
 const renameValue = ref('');
 
-onMounted(() => {
-  document.title = `${ui.value.reportsPageTitle} · GrowthKit Studio`;
+onMounted(async () => {
+  await waitForAuthReady();
 });
 
 watch(

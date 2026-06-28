@@ -1,67 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="nl">
   <head>
     <meta charset="UTF-8" />
+    <!-- SEO head injected by Vite (see src/seo/indexHtmlSeo.ts) -->
     <script>
-      (function () {
-        var supported = { nl: 1, en: 1, fr: 1, de: 1 };
-        var seo = {
-          nl: {
-            title: 'GrowthKit — AI-groeirapport voor ondernemers',
-            description:
-              'Zet je businessbrief om in een professioneel AI-groeirapport: positionering, scorecards, een 30-dagen actieplan, sales-templates en concurrentieanalyse. Bekijk het voorbeeld, koop een credit vanaf €5. Beschikbaar in NL, EN, FR en DE.',
-          },
-          en: {
-            title: 'GrowthKit — AI growth report for entrepreneurs',
-            description:
-              'Turn a short business brief into a polished consultant-style growth report with positioning, scorecards, a 30-day action plan, sales templates, and competitor analysis. See the sample, then buy a credit from €5. Available in Dutch, English, French, and German.',
-          },
-          fr: {
-            title: 'GrowthKit — Rapport de croissance IA pour entrepreneurs',
-            description:
-              'Transformez un brief business en rapport de croissance professionnel : positionnement, scorecards, plan d\u2019action 30 jours, mod\u00e8les commerciaux et analyse concurrentielle. Consultez l\u2019exemple, puis achetez un cr\u00e9dit d\u00e8s 5 \u20ac. Disponible en n\u00e9erlandais, anglais, fran\u00e7ais et allemand.',
-          },
-          de: {
-            title: 'GrowthKit — KI-Wachstumsbericht für Unternehmer',
-            description:
-              'Verwandle ein kurzes Business-Briefing in einen professionellen KI-Wachstumsbericht: Positionierung, Scorecards, 30-Tage-Aktionsplan, Sales-Templates und Wettbewerbsanalyse. Beispiel ansehen, dann Credit ab 5 \u20ac kaufen. Verf\u00fcgbar auf NL, EN, FR und DE.',
-          },
-        };
-        var list =
-          navigator.languages && navigator.languages.length
-            ? navigator.languages
-            : [navigator.language || 'en'];
-        var detected = 'en';
-        for (var i = 0; i < list.length; i++) {
-          var code = String(list[i]).toLowerCase().split('-')[0];
-          if (supported[code]) {
-            detected = code;
-            break;
-          }
-        }
-        var copy = seo[detected] || seo.en;
-        document.documentElement.lang = detected;
-        document.title = copy.title;
-        var description = document.querySelector('meta[name="description"]');
-        if (description) description.setAttribute('content', copy.description);
-        var ogDescription = document.querySelector('meta[property="og:description"]');
-        if (ogDescription) ogDescription.setAttribute('content', copy.description);
-        var twitterDescription = document.querySelector('meta[name="twitter:description"]');
-        if (twitterDescription) twitterDescription.setAttribute('content', copy.description);
-        var ogLocale = document.querySelector('meta[property="og:locale"]');
-        if (ogLocale) {
-          ogLocale.setAttribute(
-            'content',
-            detected === 'nl'
-              ? 'nl_NL'
-              : detected === 'fr'
-                ? 'fr_FR'
-                : detected === 'de'
-                  ? 'de_DE'
-                  : 'en_US',
-          );
-        }
-      })();
+      (function () {})();
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#100d28" />
@@ -76,53 +19,26 @@
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://growthkit.jcode.be/" />
-    <meta property="og:locale" content="nl_BE" />
+    <meta property="og:locale" content="nl_NL" />
     <meta property="og:title" content="GrowthKit — AI-groeirapport voor ondernemers" />
     <meta property="og:description" content="Zet je businessbrief om in een professioneel AI-groeirapport met positionering, scorecards, een 30-dagen actieplan en sales-templates. Bekijk het voorbeeld, koop een credit vanaf €5." />
     <meta property="og:site_name" content="GrowthKit" />
-    <meta property="og:image" content="https://growthkit.jcode.be/brand/og-cover.svg" />
+    <meta property="og:image" content="https://growthkit.jcode.be/brand/og-cover.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="GrowthKit — AI-groeirapport voor ondernemers" />
     <meta name="twitter:description" content="Zet je businessbrief om in een professioneel AI-groeirapport. Bekijk het voorbeeld, koop een credit vanaf €5. NL · EN · FR · DE." />
-    <meta name="twitter:image" content="https://growthkit.jcode.be/brand/og-cover.svg" />
+    <meta name="twitter:image" content="https://growthkit.jcode.be/brand/og-cover.png" />
 
-    <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
-    <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "GrowthKit",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "url": "https://growthkit.jcode.be/",
-      "description": "Turn a short business brief into a consultant-grade AI growth report with positioning, scorecards, action plan and sales templates. Sample report free; generate yours from €5.",
-      "offers": {
-        "@type": "Offer",
-        "price": "5",
-        "priceCurrency": "EUR",
-        "description": "Report credits from €5 (1 report), €20 (5 reports), or €35 (10 reports)"
-      },
-      "inLanguage": ["nl", "en", "fr", "de"],
-      "author": {
-        "@type": "Organization",
-        "name": "jcode.be",
-        "url": "https://jcode.be"
-      }
-    }
-    </script>
+    <script type="application/ld+json">{}</script>
   </head>
   <body>
     <div id="app"></div>
     <noscript>
       <main style="max-width:720px;margin:40px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6">
-        <h1>GrowthKit — Gratis AI-groeirapport voor ondernemers</h1>
-        <p>Zet je businessbrief om in een professioneel groeirapport: positionering, scorecards, 30-dagen actieplan, sales-templates en concurrentieanalyse. Je eerste rapport is gratis.</p>
-        <p><a href="/example/">Bekijk een voorbeeldrapport</a> · <a href="/">Start gratis rapport</a></p>
+        <h1>GrowthKit — AI-groeirapport voor ondernemers</h1>
+        <p>Zet je businessbrief om in een professioneel groeirapport. Bekijk het gratis voorbeeld op /example/, koop een credit vanaf €5.</p>
+        <p><a href="/example/">Bekijk een voorbeeldrapport</a> · <a href="/">Start rapport</a></p>
       </main>
     </noscript>
     <script type="module" src="/src/main.ts"></script>

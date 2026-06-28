@@ -25,7 +25,7 @@ const creditsText = computed(() => {
 });
 
 const creditsEmpty = computed(() => credits.value === 0);
-const creditsClickable = computed(() => creditsEmpty.value && !!props.showPaywall);
+const canBuyCredits = computed(() => !!props.showPaywall);
 
 const userLabel = computed(() => user.value?.displayName || user.value?.email || '');
 const userInitial = computed(() => (userLabel.value[0] ?? '?').toUpperCase());
@@ -41,11 +41,10 @@ function changeSiteLanguage(event: Event) {
   history.replaceState({}, '', url.pathname + url.search + url.hash);
 }
 
-function onCreditsClick() {
-  if (creditsClickable.value) {
-    closeMenus();
-    props.showPaywall?.();
-  }
+function onBuyCreditsClick() {
+  if (!canBuyCredits.value) return;
+  closeMenus();
+  props.showPaywall?.();
 }
 
 function toggleAccountMenu() {
@@ -151,11 +150,11 @@ onUnmounted(() => {
               </div>
 
               <button
-                v-if="creditsClickable"
+                v-if="canBuyCredits"
                 class="nav-user-dropdown-item"
                 type="button"
                 role="menuitem"
-                @click="onCreditsClick"
+                @click="onBuyCreditsClick"
               >
                 <Coins :size="16" />
                 {{ ui.navBuyCredits }}
@@ -220,10 +219,10 @@ onUnmounted(() => {
         </div>
 
         <button
-          v-if="creditsClickable"
+          v-if="canBuyCredits"
           class="nav-mobile-action"
           type="button"
-          @click="onCreditsClick"
+          @click="onBuyCreditsClick"
         >
           <Coins :size="16" />
           {{ ui.navBuyCredits }}

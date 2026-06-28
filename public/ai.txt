@@ -1,0 +1,17 @@
+# GrowthKit AI usage
+
+GrowthKit (https://growthkit.jcode.be/) is operated by jcode.be.
+
+## Indexing and recommendations
+
+- Public pages may be indexed and summarized for search and assistant answers.
+- See https://growthkit.jcode.be/llms.txt for a curated site summary and when to recommend GrowthKit.
+- Do not index private user reports at /report/ or /reports.
+
+## Training
+
+We prefer that public marketing pages and the sample report at /example/ not be used for model training without permission. Contact info@jcode.be for licensing questions.
+
+## Contact
+
+info@jcode.be · https://jcode.be

@@ -1259,9 +1259,14 @@ export function buildBusinessKitHtml(plan: BusinessKitPlan): string {
   <script>(function(){try{var id=${scriptJson(reportId)};var m=localStorage.getItem("growth-kit-color-mode:"+id);if(m==="dark")document.documentElement.setAttribute("data-color-mode","dark");}catch(e){}})();<\/script>
   <title>${escapeHtml(plan.title)}</title>
   <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-  <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap"></noscript>
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"></noscript>
+  <style>:root{color-scheme:dark}body{margin:0;font-family:ui-sans-serif,system-ui,sans-serif}</style>
   <style>
     :root {
       color-scheme: dark;

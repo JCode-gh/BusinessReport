@@ -6,12 +6,14 @@ import { buildBusinessKitHtml } from '../businessKit';
 import { patchHtmlForEditing } from '../patchHtmlForEditing';
 import { getExampleReportPlan } from '../exampleReports';
 import { useLanguage } from '../composables/useLanguage';
+import type { ReportLanguage } from '../composables/useLanguage';
 import { useGenerateCTA } from '../composables/useGenerateCTA';
 
 const props = withDefaults(
   defineProps<{
     variant?: 'hero' | 'section' | 'page';
     hideGenerate?: boolean;
+    language?: ReportLanguage;
   }>(),
   { variant: 'hero', hideGenerate: false },
 );
@@ -24,15 +26,22 @@ const router = useRouter();
 const { ui, siteLanguage } = useLanguage();
 const { generateButtonLabel } = useGenerateCTA();
 
+const reportLanguage = computed(() => props.language ?? siteLanguage.value);
+
 const reportHtml = computed(() => {
-  const plan = getExampleReportPlan(siteLanguage.value);
+  const plan = getExampleReportPlan(reportLanguage.value);
   return patchHtmlForEditing(
     buildBusinessKitHtml({ ...plan, showBranding: props.variant === 'page' }),
   );
 });
 
 function openFullExample() {
-  router.push('/example');
+  const lang = reportLanguage.value;
+  if (lang === 'nl') {
+    router.push('/example');
+  } else {
+    router.push(`/example/${lang}`);
+  }
 }
 
 function onGenerate() {

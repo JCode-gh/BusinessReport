@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { ArrowLeft } from 'lucide-vue-next';
 import SiteHeader from '../components/SiteHeader.vue';
 import AuthModal from '../AuthModal.vue';
@@ -9,58 +9,36 @@ import NotificationToast from '../components/NotificationToast.vue';
 import ExampleReportShowcase from '../components/ExampleReportShowcase.vue';
 import SiteFooter from '../components/SiteFooter.vue';
 import { useLanguage } from '../composables/useLanguage';
-import { getExampleReportSeo } from '../exampleReports';
+import type { ReportLanguage } from '../composables/useLanguage';
 import { navigateToGenerate } from '../composables/useGenerateNavigation';
 import { track } from '../analytics';
 
+const props = defineProps<{
+  lang?: ReportLanguage;
+}>();
+
 const router = useRouter();
-const { ui, siteLanguage } = useLanguage();
+const route = useRoute();
+const { ui, siteLanguage, setSiteLanguage } = useLanguage();
 const showAuthModal = ref(false);
 const showPaywallModal = ref(false);
+
+const exampleLanguage = computed<ReportLanguage>(() => {
+  if (props.lang) return props.lang;
+  if (route.name === 'example-lang' && typeof route.params.lang === 'string') {
+    return route.params.lang as ReportLanguage;
+  }
+  return siteLanguage.value;
+});
 
 function goGenerate() {
   navigateToGenerate(router);
 }
 
-function updateExampleSeo() {
-  const seo = getExampleReportSeo(siteLanguage.value);
-  document.title = seo.title;
-
-  const upsert = (selector: string, create: () => HTMLElement, attr: string, value: string) => {
-    let el = document.head.querySelector(selector) as HTMLElement | null;
-    if (!el) {
-      el = create();
-      document.head.appendChild(el);
-    }
-    el.setAttribute(attr, value);
-  };
-
-  upsert(
-    'meta[name="description"]',
-    () => {
-      const m = document.createElement('meta');
-      m.setAttribute('name', 'description');
-      return m;
-    },
-    'content',
-    seo.description,
-  );
-
-  upsert(
-    'link[rel="canonical"]',
-    () => {
-      const l = document.createElement('link');
-      l.setAttribute('rel', 'canonical');
-      return l;
-    },
-    'href',
-    seo.canonical,
-  );
-}
-
-watch(siteLanguage, updateExampleSeo, { immediate: true });
-
 onMounted(() => {
+  if (props.lang && props.lang !== siteLanguage.value) {
+    setSiteLanguage(props.lang, true);
+  }
   track('example_viewed');
 });
 </script>
@@ -80,7 +58,7 @@ onMounted(() => {
         </router-link>
       </div>
 
-      <ExampleReportShowcase variant="page" @generate="goGenerate" />
+      <ExampleReportShowcase variant="page" :language="exampleLanguage" @generate="goGenerate" />
     </main>
 
     <SiteFooter />

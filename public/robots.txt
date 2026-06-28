@@ -1,9 +1,12 @@
 # LLM-friendly site summary: https://growthkit.jcode.be/llms.txt
+# AI usage policy: https://growthkit.jcode.be/ai.txt
 
 User-agent: *
 Allow: /
 
 # Saved reports are private and account-specific, not for indexing
 Disallow: /*?report=
+Disallow: /reports
+Disallow: /report/
 
 Sitemap: https://growthkit.jcode.be/sitemap.xml
