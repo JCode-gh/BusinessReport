@@ -72,9 +72,9 @@ export function minifyDistCssPlugin(): Plugin {
           minify: true,
         });
 
-        if (code.length < input.length) {
+        if (code.length <= input.length) {
           writeFileSync(path, code);
-          saved += input.length - code.length;
+          if (code.length < input.length) saved += input.length - code.length;
         }
       }
 

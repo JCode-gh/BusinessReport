@@ -1,4 +1,5 @@
 import { buildInlineFontFaceHtml, buildSystemFontOverrideHtml } from "./fonts";
+import { minifyReportCss } from "./minifyCss";
 import { POLLINATIONS_API_KEY, POLLINATIONS_MODEL } from "./pollinationsConfig";
 
 export type BusinessKitLanguage = "en" | "nl" | "fr" | "de";
@@ -555,7 +556,7 @@ export function buildBusinessKitHtml(
     ...plan.actionPlan.map((item) => `${item.day}:${item.task}`),
   ].join("|"))}`;
 
-  return `<!doctype html>
+  const html = `<!doctype html>
 <html lang="${escapeHtml(labels.htmlLang)}" data-report-id="${escapeHtml(reportId)}" data-color-mode="light">
 <head>
   <meta charset="utf-8">
@@ -2346,6 +2347,11 @@ export function buildBusinessKitHtml(
   ${interactiveReportScript(reportId, labels)}
 </body>
 </html>`;
+
+  return html.replace(
+    /<style>([\s\S]*?)<\/style>/g,
+    (_, css) => `<style>${minifyReportCss(css)}</style>`,
+  );
 }
 
 function brandingFooter(labels: ReportLabels): string {

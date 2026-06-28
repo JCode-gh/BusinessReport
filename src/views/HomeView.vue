@@ -306,22 +306,11 @@ async function activatePaymentOnReturn(sessionId: string | null) {
 onMounted(async () => {
   localStorage.removeItem('business-kit-draft');
 
-  // OAuth redirect returns need auth immediately; otherwise main.ts idle init is enough.
-  initAuth();
-  const { completeGoogleRedirectSignIn } = await import('../firebase');
-  const googleSignIn = completeGoogleRedirectSignIn().catch((e) => {
-    showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');
-  });
-
-  // Payment return is handled first — don't block on Google redirect recovery.
   if (isPaymentReturn) {
+    initAuth();
     await activatePaymentOnReturn(paymentSessionId);
-    await googleSignIn;
-  } else {
-    await googleSignIn;
   }
 
-  // Auto-open wizard if pending generate after auth
   if (user.value && pendingGenerate.value) {
     pendingGenerate.value = false;
     if (await ensureCredits()) {
@@ -340,18 +329,20 @@ onMounted(async () => {
       :show-paywall="() => (showPaywallModal = true)"
     />
 
-    <GenerationLoader v-if="status === 'loading'" />
+    <main>
+      <GenerationLoader v-if="status === 'loading'" />
 
-    <ResultScreen
-      v-if="showResultScreen"
-      @open-report="handleOpenReport"
-      @download-pdf="handleDownloadPdf"
-      @go-home="handleGoHome"
-      @retry="handleRetry"
-      @show-auth="showAuthModal = true"
-    />
+      <ResultScreen
+        v-else-if="showResultScreen"
+        @open-report="handleOpenReport"
+        @download-pdf="handleDownloadPdf"
+        @go-home="handleGoHome"
+        @retry="handleRetry"
+        @show-auth="showAuthModal = true"
+      />
 
-    <section v-if="!showResultScreen && status !== 'loading'" id="brief" class="hero-section" aria-labelledby="page-title">
+      <template v-else>
+        <section id="brief" class="hero-section" aria-labelledby="page-title">
       <div class="studio-layout">
         <div class="hero-content">
           <p class="eyebrow">{{ ui.heroEyebrow }}</p>
@@ -395,15 +386,11 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section
-      v-if="!showResultScreen && status !== 'loading'"
-      class="example-section"
-      aria-labelledby="example-section-title"
-    >
-      <ExampleReportShowcase variant="section" hide-generate @generate="openWizard" />
-    </section>
+        <section class="example-section" aria-labelledby="example-section-title">
+          <ExampleReportShowcase variant="section" hide-generate @generate="openWizard" />
+        </section>
 
-    <section v-if="!showResultScreen && status !== 'loading'" id="output" class="proof-section" :aria-label="ui.proofAria">
+        <section id="output" class="proof-section" :aria-label="ui.proofAria">
       <article class="proof-card">
         <TrendingUp :size="24" />
         <h2>{{ ui.proofCards[0].title }}</h2>
@@ -419,7 +406,9 @@ onMounted(async () => {
         <h2>{{ ui.proofCards[2].title }}</h2>
         <p>{{ ui.proofCards[2].body }}</p>
       </article>
-    </section>
+        </section>
+      </template>
+    </main>
 
     <SiteFooter v-if="!showResultScreen && status !== 'loading'" />
 

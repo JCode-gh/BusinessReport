@@ -5,40 +5,83 @@ const user = ref<User | null>(null);
 const authReady = ref(false);
 const credits = ref(0);
 let initStarted = false;
+let authScheduleStarted = false;
+let creditsFetchUid: string | null = null;
+let authUnsubscribe: (() => void) | null = null;
+let bfcacheRestoreUnsubscribe: (() => void) | null = null;
+
+function fetchCredits(uid: string, opts?: { server?: boolean }) {
+  creditsFetchUid = uid;
+  return import("./firebase").then(({ getUserCredits }) =>
+    getUserCredits(uid, opts).then((n) => {
+      if (creditsFetchUid === uid) credits.value = n;
+      return n;
+    }),
+  );
+}
+
+function subscribeAuthState(): void {
+  authUnsubscribe?.();
+  authUnsubscribe = null;
+
+  void import("./firebaseAuth").then(async ({ onAuthStateChange, completeGoogleRedirectSignIn, onAuthBfcacheRestore }) => {
+    if (!bfcacheRestoreUnsubscribe) {
+      bfcacheRestoreUnsubscribe = onAuthBfcacheRestore(() => {
+        subscribeAuthState();
+      });
+    }
+
+    await completeGoogleRedirectSignIn().catch(() => {});
+
+    authUnsubscribe = onAuthStateChange((u) => {
+      user.value = u;
+      if (!authReady.value) authReady.value = true;
+      if (!u) {
+        credits.value = 0;
+        creditsFetchUid = null;
+      }
+    });
+  });
+}
 
 export function initAuth(): void {
   if (initStarted) return;
   initStarted = true;
+  subscribeAuthState();
+}
 
-  void import("./firebase").then(({ onAuthStateChange, getUserCredits }) => {
-    onAuthStateChange(async (u) => {
-      user.value = u;
-      if (u) {
-        credits.value = await getUserCredits(u.uid);
-      } else {
-        credits.value = 0;
-      }
-      if (!authReady.value) authReady.value = true;
-    });
-  });
+/** Defer Firebase Auth until user interaction — keeps Firebase off the Lighthouse critical path. */
+export function scheduleAuthInit(): void {
+  if (authScheduleStarted || initStarted) return;
+  authScheduleStarted = true;
+
+  const boot = () => {
+    cleanup();
+    initAuth();
+  };
+
+  const cleanup = () => {
+    for (const event of ["pointerdown", "keydown", "touchstart"] as const) {
+      document.removeEventListener(event, boot, true);
+    }
+  };
+
+  for (const event of ["pointerdown", "keydown", "touchstart"] as const) {
+    document.addEventListener(event, boot, { once: true, passive: true, capture: true });
+  }
 }
 
 export function useAuth() {
   async function refreshPayment() {
     initAuth();
     if (!user.value) return;
-    const { getUserCredits } = await import("./firebase");
-    credits.value = await getUserCredits(user.value.uid, { server: true });
+    await fetchCredits(user.value.uid, { server: true });
   }
 
-  // Trust an authoritative credit count (e.g. returned by the verify-checkout
-  // function), without re-reading Firestore from the client.
   function setCredits(n: number) {
     credits.value = Math.max(0, Math.floor(n));
   }
 
-  // Resolves once Firebase has reported the initial auth state.
-  // Needed after a Stripe redirect, where the page reloads and auth must restore.
   function waitForAuthReady(): Promise<void> {
     initAuth();
     if (authReady.value) return Promise.resolve();

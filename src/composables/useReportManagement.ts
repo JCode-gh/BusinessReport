@@ -10,27 +10,37 @@ const savedReports = ref<ReportSummary[]>([]);
 const savedReportsLoading = ref(false);
 const saveState = ref<'idle' | 'saving' | 'saved'>('idle');
 const pendingSave = ref(false);
+let reportsLoadedForUid: string | null = null;
 
-watch(
-  user,
-  async (newUser) => {
-    if (newUser) {
-      savedReportsLoading.value = true;
-      try {
-        const { listReports } = await import('../firebase');
-        savedReports.value = await listReports(newUser.uid);
-      } catch {
-        savedReports.value = [];
-      } finally {
-        savedReportsLoading.value = false;
-      }
-    } else {
-      savedReports.value = [];
-      savedReportsLoading.value = false;
-    }
-  },
-  { immediate: true }
-);
+async function refreshSavedReports(force = false) {
+  const uid = user.value?.uid;
+  if (!uid) {
+    savedReports.value = [];
+    savedReportsLoading.value = false;
+    reportsLoadedForUid = null;
+    return;
+  }
+  if (!force && reportsLoadedForUid === uid && !savedReportsLoading.value) return;
+
+  savedReportsLoading.value = true;
+  try {
+    const { listReports } = await import('../firebase');
+    savedReports.value = await listReports(uid);
+    reportsLoadedForUid = uid;
+  } catch {
+    savedReports.value = [];
+  } finally {
+    savedReportsLoading.value = false;
+  }
+}
+
+watch(user, (newUser) => {
+  if (!newUser) {
+    savedReports.value = [];
+    savedReportsLoading.value = false;
+    reportsLoadedForUid = null;
+  }
+});
 
 function waitForInitialReportsLoad(): Promise<void> {
   if (!user.value) return Promise.resolve();
@@ -61,6 +71,7 @@ export function useReportManagement() {
         listReports(user.value.uid)
           .then((r) => {
             savedReports.value = r;
+            reportsLoadedForUid = user.value!.uid;
           })
           .catch(() => {});
       }
@@ -143,6 +154,7 @@ export function useReportManagement() {
     deleteReportById,
     updateReportTitle,
     patchReportHtml,
+    refreshSavedReports,
     waitForInitialReportsLoad,
   };
 }

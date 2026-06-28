@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const { siteLanguage, ui, setSiteLanguage } = useLanguage();
-const { user, credits } = useAuth();
+const { user, credits, refreshPayment } = useAuth();
 
 const accountMenuOpen = ref(false);
 const mobileMenuOpen = ref(false);
@@ -48,12 +48,20 @@ function onBuyCreditsClick() {
 
 function toggleAccountMenu() {
   mobileMenuOpen.value = false;
-  accountMenuOpen.value = !accountMenuOpen.value;
+  const opening = !accountMenuOpen.value;
+  accountMenuOpen.value = opening;
+  if (opening && user.value) {
+    void refreshPayment();
+  }
 }
 
 function toggleMobileMenu() {
   accountMenuOpen.value = false;
-  mobileMenuOpen.value = !mobileMenuOpen.value;
+  const opening = !mobileMenuOpen.value;
+  mobileMenuOpen.value = opening;
+  if (opening && user.value) {
+    void refreshPayment();
+  }
 }
 
 function closeMenus() {
@@ -79,7 +87,7 @@ function handleMobileSignIn() {
 
 async function handleSignOut() {
   closeMenus();
-  const { signOut } = await import('../firebase');
+  const { signOut } = await import('../firebaseAuth');
   await signOut();
 }
 

@@ -27,6 +27,7 @@ const {
   openSavedReport,
   deleteReportById,
   updateReportTitle,
+  refreshSavedReports,
 } = useReportManagement();
 
 const showAuthModal = ref(false);
@@ -38,6 +39,7 @@ const renameValue = ref('');
 
 onMounted(async () => {
   await waitForAuthReady();
+  await refreshSavedReports(true);
 });
 
 watch(

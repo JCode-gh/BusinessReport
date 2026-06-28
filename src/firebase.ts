@@ -1,35 +1,12 @@
-import { initializeApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  getRedirectResult,
-  signInWithPopup,
-  signInWithRedirect,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  signOut as firebaseSignOut,
-  type User,
-} from "firebase/auth";
 import type { Firestore } from "firebase/firestore";
+import type { User } from "firebase/auth";
 import type { BusinessKitPlan } from "./businessKit";
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string,
-};
-
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
+import { getFirebaseApp } from "./firebaseAuth";
+import { registerBfcacheRelease } from "./bfcacheLifecycle";
 
 let dbPromise: Promise<Firestore> | null = null;
 let firestoreModulePromise: Promise<typeof import("firebase/firestore")> | null = null;
+let bfcacheHookRegistered = false;
 
 function getFirestoreModule() {
   if (!firestoreModulePromise) {
@@ -38,14 +15,21 @@ function getFirestoreModule() {
   return firestoreModulePromise;
 }
 
-// Force long polling instead of WebChannel. Auto-detect still makes a WebChannel
-// attempt first, which throws "client is offline" on networks/browsers that block
-// it (Safari, VPNs, ad blockers, corporate firewalls) before it can fall back.
-// Forcing long polling skips that failing attempt entirely for a stable connection.
+function registerFirestoreBfcacheHookOnce(): void {
+  if (bfcacheHookRegistered) return;
+  bfcacheHookRegistered = true;
+  registerBfcacheRelease(releaseFirestoreForBfcache);
+}
+
 async function getDb(): Promise<Firestore> {
+  registerFirestoreBfcacheHookOnce();
+
   if (!dbPromise) {
-    dbPromise = getFirestoreModule().then(({ initializeFirestore }) =>
-      initializeFirestore(app, { experimentalForceLongPolling: true }),
+    dbPromise = getFirestoreModule().then(({ initializeFirestore, memoryLocalCache }) =>
+      initializeFirestore(getFirebaseApp(), {
+        localCache: memoryLocalCache(),
+        experimentalForceLongPolling: true,
+      }),
     );
   }
   return dbPromise;
@@ -66,6 +50,17 @@ export async function releaseFirestoreForBfcache(): Promise<void> {
   }
 }
 
+async function withFirestore<T>(
+  fn: (mod: typeof import("firebase/firestore"), db: Firestore) => Promise<T>,
+): Promise<T> {
+  try {
+    const [mod, db] = await Promise.all([getFirestoreModule(), getDb()]);
+    return await fn(mod, db);
+  } finally {
+    await releaseFirestoreForBfcache();
+  }
+}
+
 export type StoredReport = {
   id: string;
   uid: string;
@@ -75,173 +70,99 @@ export type StoredReport = {
   updatedAt: unknown;
 };
 
-export async function saveReport(plan: BusinessKitPlan, uid: string): Promise<string> {
-  const [{ collection, doc, setDoc, serverTimestamp }, db] = await Promise.all([
-    getFirestoreModule(),
-    getDb(),
-  ]);
-  const ref = doc(collection(db, "reports"));
-  await setDoc(ref, {
-    uid,
-    plan,
-    editedHtml: null,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function loadReport(id: string, currentUid: string): Promise<StoredReport | null> {
-  const [{ doc, getDoc }, db] = await Promise.all([getFirestoreModule(), getDb()]);
-  const snap = await getDoc(doc(db, "reports", id));
-  if (!snap.exists()) return null;
-  
-  const data = snap.data();
-  const report = { id: snap.id, ...data } as StoredReport;
-  
-  // Access control: only the owner can load the report
-  if (report.uid !== currentUid) {
-    throw new Error("Access denied: You don't have permission to view this report");
-  }
-  
-  return report;
-}
-
 export type ReportSummary = {
   id: string;
   title: string;
   createdAt: number;
 };
 
+export async function saveReport(plan: BusinessKitPlan, uid: string): Promise<string> {
+  return withFirestore(async ({ collection, doc, setDoc, serverTimestamp }, db) => {
+    const ref = doc(collection(db, "reports"));
+    await setDoc(ref, {
+      uid,
+      plan,
+      editedHtml: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return ref.id;
+  });
+}
+
+export async function loadReport(id: string, currentUid: string): Promise<StoredReport | null> {
+  return withFirestore(async ({ doc, getDoc }, db) => {
+    const snap = await getDoc(doc(db, "reports", id));
+    if (!snap.exists()) return null;
+
+    const data = snap.data();
+    const report = { id: snap.id, ...data } as StoredReport;
+
+    if (report.uid !== currentUid) {
+      throw new Error("Access denied: You don't have permission to view this report");
+    }
+
+    return report;
+  });
+}
+
 export async function listReports(uid: string): Promise<ReportSummary[]> {
-  const [{ collection, query, where, limit, getDocs }, db] = await Promise.all([
-    getFirestoreModule(),
-    getDb(),
-  ]);
-  const q = query(
-    collection(db, "reports"),
-    where("uid", "==", uid),
-    limit(20),
-  );
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => ({
-      id: d.id,
-      title: (d.data().plan as BusinessKitPlan)?.title ?? "Report",
-      createdAt: (d.data().createdAt?.toMillis?.() ?? 0) as number,
-    }))
-    .sort((a, b) => b.createdAt - a.createdAt);
+  return withFirestore(async ({ collection, query, where, limit, getDocs }, db) => {
+    const q = query(collection(db, "reports"), where("uid", "==", uid), limit(20));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({
+        id: d.id,
+        title: (d.data().plan as BusinessKitPlan)?.title ?? "Report",
+        createdAt: (d.data().createdAt?.toMillis?.() ?? 0) as number,
+      }))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  });
 }
 
 export async function deleteReport(id: string): Promise<void> {
-  const [{ doc, deleteDoc }, db] = await Promise.all([getFirestoreModule(), getDb()]);
-  await deleteDoc(doc(db, "reports", id));
+  await withFirestore(async ({ doc, deleteDoc }, db) => {
+    await deleteDoc(doc(db, "reports", id));
+  });
 }
 
 export async function patchReport(id: string, editedHtml: string): Promise<void> {
-  const [{ doc, setDoc, serverTimestamp }, db] = await Promise.all([
-    getFirestoreModule(),
-    getDb(),
-  ]);
-  await setDoc(
-    doc(db, "reports", id),
-    { editedHtml, updatedAt: serverTimestamp() },
-    { merge: true },
-  );
+  await withFirestore(async ({ doc, setDoc, serverTimestamp }, db) => {
+    await setDoc(doc(db, "reports", id), { editedHtml, updatedAt: serverTimestamp() }, { merge: true });
+  });
 }
 
 export async function renameReport(id: string, title: string, editedHtml: string): Promise<void> {
-  const [{ doc, updateDoc, serverTimestamp }, db] = await Promise.all([
-    getFirestoreModule(),
-    getDb(),
-  ]);
-  await updateDoc(doc(db, "reports", id), {
-    "plan.title": title,
-    editedHtml,
-    updatedAt: serverTimestamp(),
+  await withFirestore(async ({ doc, updateDoc, serverTimestamp }, db) => {
+    await updateDoc(doc(db, "reports", id), {
+      "plan.title": title,
+      editedHtml,
+      updatedAt: serverTimestamp(),
+    });
   });
 }
 
-// Rename from the homepage list (no HTML available — clears editedHtml so it rebuilds on next open)
 export async function renameReportTitle(id: string, title: string): Promise<void> {
-  const [{ doc, updateDoc, serverTimestamp }, db] = await Promise.all([
-    getFirestoreModule(),
-    getDb(),
-  ]);
-  await updateDoc(doc(db, "reports", id), {
-    "plan.title": title,
-    editedHtml: null,
-    updatedAt: serverTimestamp(),
+  await withFirestore(async ({ doc, updateDoc, serverTimestamp }, db) => {
+    await updateDoc(doc(db, "reports", id), {
+      "plan.title": title,
+      editedHtml: null,
+      updatedAt: serverTimestamp(),
+    });
   });
-}
-
-export function onAuthStateChange(cb: (user: User | null) => void) {
-  return onAuthStateChanged(auth, cb);
-}
-
-// Popup flow uses postMessage instead of third-party cookies, so it keeps working
-// even when authDomain differs from the app's domain (modern browsers block the
-// cross-domain storage that signInWithRedirect relies on). Falls back to redirect
-// only when the popup itself can't open.
-export async function signInWithGoogle(): Promise<void> {
-  try {
-    await signInWithPopup(auth, googleProvider);
-  } catch (err) {
-    const code = (err as { code?: string })?.code ?? "";
-    if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
-      await signInWithRedirect(auth, googleProvider);
-      return;
-    }
-    // auth/popup-closed-by-user, cancelled-popup-request, etc. — let the caller handle it
-    throw err;
-  }
-}
-
-export async function completeGoogleRedirectSignIn(): Promise<User | null> {
-  const result = await getRedirectResult(auth);
-  return result?.user ?? null;
-}
-
-export async function signInWithEmail(email: string, password: string): Promise<void> {
-  await signInWithEmailAndPassword(auth, email, password);
-}
-
-// Returns true when a verification email was sent (email/password accounts must
-// verify before they qualify for the free report — Google accounts are already
-// verified and skip this entirely).
-export async function signUpWithEmail(email: string, password: string): Promise<boolean> {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
-  try {
-    await sendEmailVerification(cred.user);
-    return true;
-  } catch (e) {
-    console.error("[signUpWithEmail] verification email failed", e);
-    return false;
-  }
-}
-
-export async function signOut(): Promise<void> {
-  await firebaseSignOut(auth);
 }
 
 export async function getUserCredits(uid: string, opts?: { server?: boolean }): Promise<number> {
   try {
-    const [{ doc, getDoc, getDocFromServer }, db] = await Promise.all([
-      getFirestoreModule(),
-      getDb(),
-    ]);
-    const snap = opts?.server
-      ? await getDocFromServer(doc(db, "users", uid))
-      : await getDoc(doc(db, "users", uid));
-    const credits = !snap.exists()
-      ? 0
-      : (() => {
-          const val = snap.data()?.credits;
-          return typeof val === "number" ? Math.max(0, val) : 0;
-        })();
-    return credits;
+    return await withFirestore(async ({ doc, getDoc, getDocFromServer }, db) => {
+      const snap = opts?.server
+        ? await getDocFromServer(doc(db, "users", uid))
+        : await getDoc(doc(db, "users", uid));
+      if (!snap.exists()) return 0;
+      const val = snap.data()?.credits;
+      return typeof val === "number" ? Math.max(0, val) : 0;
+    });
   } catch (e) {
-    // A denied read (e.g. Firestore rules not deployed) must not crash the app
     console.error("[getUserCredits] read failed — check Firestore rules for /users", e);
     return 0;
   }
@@ -249,11 +170,9 @@ export async function getUserCredits(uid: string, opts?: { server?: boolean }): 
 
 export async function decrementCredits(uid: string): Promise<boolean> {
   try {
-    const [{ doc, updateDoc, increment }, db] = await Promise.all([
-      getFirestoreModule(),
-      getDb(),
-    ]);
-    await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
+    await withFirestore(async ({ doc, updateDoc, increment }, db) => {
+      await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
+    });
     return true;
   } catch (e) {
     console.error("[decrementCredits] update failed — check Firestore rules for /users", e);
@@ -261,56 +180,4 @@ export async function decrementCredits(uid: string): Promise<boolean> {
   }
 }
 
-export function hasClaimedFreeCredit(uid: string): boolean {
-  try {
-    return localStorage.getItem(`gk_free_claimed_${uid}`) === '1';
-  } catch {
-    return false;
-  }
-}
-
-// Claims the one-time free trial credit for a new user. The grant happens
-// server-side (Firebase Admin) because Firestore rules forbid the client from
-// increasing its own credits. Idempotent on the server, so calling it again is
-// harmless; a per-device localStorage flag just avoids redundant requests.
-// Returns the new credit balance, or null if nothing was claimed.
-export async function claimFreeCredit(user: User): Promise<number | null> {
-  // Anonymous guests don't qualify for the free report (that would be the easiest
-  // farming vector); they'd be rejected server-side anyway, so skip the round-trip.
-  if (user.isAnonymous) return null;
-
-  const guardKey = `gk_free_claimed_${user.uid}`;
-  try {
-    if (localStorage.getItem(guardKey)) return null;
-  } catch {
-    // localStorage unavailable (private mode) — fall through and rely on the server flag
-  }
-
-  try {
-    const token = await user.getIdToken();
-    const res = await fetch("/.netlify/functions/grant-free-credit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { credits?: number; granted?: boolean; reason?: string };
-
-    // A numeric balance means the server reached a final decision for this account
-    // (granted, or already-claimed). Cache it so we don't re-ask on every load.
-    // Soft denials (unverified email, etc.) omit `credits` — do NOT cache those,
-    // so the user can still claim once they verify.
-    if (typeof data.credits === "number") {
-      try {
-        localStorage.setItem(guardKey, "1");
-      } catch {
-        // ignore — best-effort cache only
-      }
-      return data.credits;
-    }
-    return null;
-  } catch (e) {
-    console.error("[claimFreeCredit] request failed", e);
-    return null;
-  }
-}
+export type { User };

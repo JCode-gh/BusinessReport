@@ -104,7 +104,8 @@ onMounted(async () => {
 
 <template>
   <div class="product-shell">
-    <section class="inline-report-section">
+    <main>
+      <section class="inline-report-section">
       <div class="inline-report-bar">
         <button class="inline-back-btn" type="button" @click="goHome">
           <ArrowLeft :size="15" />
@@ -157,6 +158,7 @@ onMounted(async () => {
         :title="ui.reportViewerTitle"
       />
     </section>
+    </main>
 
     <NotificationToast />
   </div>

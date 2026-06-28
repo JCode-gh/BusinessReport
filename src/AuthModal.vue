@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { X } from "lucide-vue-next";
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from "./firebase";
+import { initAuth } from "./useAuth";
 import { getAuthErrorMessage } from "./authErrors";
 import { useNotification } from "./composables/useNotification";
 
@@ -225,6 +225,8 @@ async function handleGoogle() {
   loading.value = true;
   errorMsg.value = "";
   try {
+    initAuth();
+    const { signInWithGoogle } = await import("./firebaseAuth");
     await signInWithGoogle();
     // Popup resolved in place → sign-in succeeded, close the modal.
     // (If the popup was blocked and it fell back to a redirect, the page has
@@ -244,6 +246,8 @@ async function handleSignIn() {
   loading.value = true;
   errorMsg.value = "";
   try {
+    initAuth();
+    const { signInWithEmail } = await import("./firebaseAuth");
     await signInWithEmail(email.value, password.value);
     close();
   } catch (e) {
@@ -265,6 +269,8 @@ async function handleSignUp() {
   loading.value = true;
   errorMsg.value = "";
   try {
+    initAuth();
+    const { signUpWithEmail } = await import("./firebaseAuth");
     await signUpWithEmail(email.value, password.value);
     close();
     // Email/password accounts must verify before continuing — tell them.
