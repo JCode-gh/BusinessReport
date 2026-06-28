@@ -24,25 +24,25 @@ const seoByLanguage: Record<ReportLanguage, ExampleReportSeo> = {
   nl: {
     title: 'Voorbeeld groeirapport — GrowthKit',
     description:
-      'Bekijk een volledig AI-groeirapport voor een Belgische webstudio: positionering, scorecard, 30-dagen actieplan en sales-templates. Genereer je eigen rapport gratis.',
+      'Bekijk een volledig AI-groeirapport voor een Belgische webstudio: positionering, scorecard, 30-dagen actieplan en sales-templates. Genereer je eigen rapport vanaf €5.',
     canonical: 'https://growthkit.jcode.be/example/',
   },
   en: {
     title: 'Sample growth report — GrowthKit',
     description:
-      'See a full AI growth report for a Belgian web studio: positioning, scorecard, 30-day action plan and sales templates. Generate your own report free.',
+      'See a full AI growth report for a Belgian web studio: positioning, scorecard, 30-day action plan and sales templates. Generate your own from €5.',
     canonical: 'https://growthkit.jcode.be/example/',
   },
   fr: {
     title: 'Exemple de rapport de croissance — GrowthKit',
     description:
-      'Découvrez un rapport de croissance IA complet pour un studio web belge : positionnement, scorecard, plan 30 jours et modèles commerciaux. Générez le vôtre gratuitement.',
+      'Découvrez un rapport de croissance IA complet pour un studio web belge : positionnement, scorecard, plan 30 jours et modèles commerciaux. Générez le vôtre dès 5 €.',
     canonical: 'https://growthkit.jcode.be/example/',
   },
   de: {
     title: 'Beispiel-Wachstumsbericht — GrowthKit',
     description:
-      'Sehen Sie einen vollständigen KI-Wachstumsbericht für ein belgisches Webstudio: Positionierung, Scorecard, 30-Tage-Plan und Verkaufsvorlagen. Erstellen Sie Ihren eigenen Report gratis.',
+      'Sehen Sie einen vollständigen KI-Wachstumsbericht für ein belgisches Webstudio: Positionierung, Scorecard, 30-Tage-Plan und Verkaufsvorlagen. Erstellen Sie Ihren eigenen Report ab 5 €.',
     canonical: 'https://growthkit.jcode.be/example/',
   },
 };
@@ -65,9 +65,9 @@ const EXAMPLE_CTA_HTML = `<header class="gk-example-cta" style="position:sticky;
   <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div>
       <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#d6a4e3">Voorbeeldrapport</p>
-      <p style="margin:0;font-size:15px;font-weight:700">Zo ziet een GrowthKit-rapport eruit — <a href="https://growthkit.jcode.be/?ref=example" style="color:#d6a4e3">genereer je eigen gratis</a></p>
+      <p style="margin:0;font-size:15px;font-weight:700">Zo ziet een GrowthKit-rapport eruit — <a href="https://growthkit.jcode.be/?ref=example" style="color:#d6a4e3">genereer je eigen vanaf €5</a></p>
     </div>
-    <a href="https://growthkit.jcode.be/?ref=example" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#d6a4e3,#6f6acf);color:#fff;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap">Gratis rapport starten →</a>
+    <a href="https://growthkit.jcode.be/?ref=example" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;background:linear-gradient(135deg,#d6a4e3,#6f6acf);color:#fff;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap">Rapport genereren →</a>
   </div>
 </header>`;
 

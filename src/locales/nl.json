@@ -1,6 +1,6 @@
 {
   "brandHomeAria": "GrowthKit Studio startpagina",
-  "siteDocumentTitle": "GrowthKit — Gratis AI-groeirapport voor ondernemers",
+  "siteDocumentTitle": "GrowthKit — AI-groeirapport voor ondernemers",
   "brandSubtitle": "Rapportbouwer van jcode.be",
   "footerByline": "Een tool van",
   "footerVat": "BTW BE0798514094",
@@ -32,11 +32,11 @@
   "includesText": "Scorecard, templates, actieplan",
   "heroEyebrow": "AI-groeistrategie in minuten",
   "heroTitle": "Ondernemers Groeikit",
-  "heroCopy": "Zet een ruwe businessbrief om in een gepolijst consultant-rapport met positionering, aanbod, scorecards, outreach-templates en een praktisch actieplan. Je eerste rapport is gratis.",
-  "heroPrimaryFree": "Genereer je gratis rapport",
+  "heroCopy": "Zet een ruwe businessbrief om in een gepolijst consultant-rapport met positionering, aanbod, scorecards, outreach-templates en een praktisch actieplan. Bekijk het voorbeeldrapport, koop daarna een credit om het jouwe te genereren.",
   "heroPrimaryPaid": "Genereer rapport",
-  "creditCostPerReport": "1 credit per rapport",
-  "heroFreeBadge": "1e rapport gratis · geen kaart nodig",
+  "creditCostPerReport": "1 credit per rapport · vanaf €5",
+  "freeTrialNote": "Gratis proberen?",
+  "freeTrialLink": "Neem contact op",
   "exampleShowcaseAria": "Voorbeeld groeirapport",
   "exampleShowcaseEyebrow": "Voorbeeldoutput",
   "exampleShowcaseTitle": "Zo ziet je rapport eruit",
@@ -260,7 +260,7 @@
     {
       "title": "10. Kosten",
       "paragraphs": [
-        "GrowthKit is een betaalde dienst. Voor het genereren van een rapport heeft u een rapport-credit nodig, die u koopt met een eenmalige betaling — er is geen abonnement. De actuele prijs wordt altijd getoond voordat u betaalt, en nieuwe gebruikers kunnen één gratis credit ontvangen om de dienst eerst te proberen.",
+        "GrowthKit is een betaalde dienst. Voor het genereren van een rapport heeft u een rapport-credit nodig, die u koopt met een eenmalige betaling — er is geen abonnement. De actuele prijs wordt altijd getoond voordat u betaalt. Gratis proefperiodes zijn op aanvraag beschikbaar via https://jcode.be.",
         "Betalingen worden veilig verwerkt door onze betaalprovider Stripe; wij zien of bewaren uw volledige kaartgegevens nooit. Prijzen worden in euro weergegeven en eventuele toepasselijke belastingen worden bij het afrekenen vermeld. Gekochte credits blijven beschikbaar op uw account en vervallen niet.",
         "Omdat elk rapport onmiddellijk wordt gegenereerd en aan u geleverd, zijn aankopen doorgaans niet-restitueerbaar zodra het rapport is gegenereerd, behalve waar restitutie wettelijk verplicht is. Als een betaling mislukt of een rapport niet correct wordt gegenereerd, neem dan contact op via https://jcode.be en wij lossen het op."
       ]

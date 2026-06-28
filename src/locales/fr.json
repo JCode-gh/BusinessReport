@@ -1,6 +1,6 @@
 {
   "brandHomeAria": "Accueil GrowthKit Studio",
-  "siteDocumentTitle": "GrowthKit — Rapport de croissance IA gratuit pour entrepreneurs",
+  "siteDocumentTitle": "GrowthKit — Rapport de croissance IA pour entrepreneurs",
   "brandSubtitle": "Générateur de rapport par jcode.be",
   "footerByline": "Un outil de",
   "footerVat": "BTW BE0798514094",
@@ -32,11 +32,11 @@
   "includesText": "Scorecard, modèles, plan d'action",
   "heroEyebrow": "Stratégie de croissance IA en minutes",
   "heroTitle": "Kit de croissance entrepreneur",
-  "heroCopy": "Transformez un brief business brut en rapport de consultant soigné avec positionnement, offres, scorecards, modèles d'outreach et plan d'action pratique. Votre premier rapport est gratuit.",
-  "heroPrimaryFree": "Générez votre rapport gratuit",
+  "heroCopy": "Transformez un brief business brut en rapport de consultant soigné avec positionnement, offres, scorecards, modèles d'outreach et plan d'action pratique. Consultez l'exemple, puis achetez un crédit pour générer le vôtre.",
   "heroPrimaryPaid": "Générer un rapport",
-  "creditCostPerReport": "1 crédit par rapport",
-  "heroFreeBadge": "1er rapport gratuit · sans carte",
+  "creditCostPerReport": "1 crédit par rapport · à partir de 5 €",
+  "freeTrialNote": "Essai gratuit ?",
+  "freeTrialLink": "Contactez-nous",
   "exampleShowcaseAria": "Exemple de rapport de croissance",
   "exampleShowcaseEyebrow": "Exemple de sortie",
   "exampleShowcaseTitle": "Voici à quoi ressemble votre rapport",
@@ -260,7 +260,7 @@
     {
       "title": "10. Tarifs",
       "paragraphs": [
-        "GrowthKit est un service payant. La génération d'un rapport nécessite un crédit de rapport, acheté via un paiement unique — il n'y a pas d'abonnement. Le prix actuel est toujours affiché avant le paiement, et les nouveaux utilisateurs peuvent recevoir un crédit gratuit pour essayer le service.",
+        "GrowthKit est un service payant. La génération d'un rapport nécessite un crédit de rapport, acheté via un paiement unique — il n'y a pas d'abonnement. Le prix actuel est toujours affiché avant le paiement. Des essais gratuits sont disponibles sur demande via https://jcode.be.",
         "Les paiements sont traités en toute sécurité par notre prestataire de paiement, Stripe ; nous ne voyons ni ne stockons jamais vos coordonnées de carte complètes. Les prix sont indiqués en euros et les taxes éventuelles applicables sont indiquées au moment du paiement. Les crédits achetés restent disponibles sur votre compte et n'expirent pas.",
         "Comme chaque rapport est généré et livré immédiatement, les achats sont généralement non remboursables une fois le rapport généré, sauf lorsqu'un remboursement est exigé par le droit de la consommation applicable. Si un paiement échoue ou qu'un rapport ne se génère pas correctement, contactez-nous via https://jcode.be et nous y remédierons."
       ]

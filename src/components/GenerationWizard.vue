@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const { ui, siteLanguage } = useLanguage();
-const { showFreeOffer, creditCostLabel } = useGenerateCTA();
+const { creditCostLabel } = useGenerateCTA();
 const { canGenerate, resetBriefForm, fillTestData } = useReportGeneration();
 const { showNotification } = useNotification();
 
@@ -36,10 +36,8 @@ const wizardProgress = computed(() =>
   Math.round(((currentStep.value + 1) / WIZARD_STEP_COUNT) * 100)
 );
 
-const wizardGenerateLabel = computed(() =>
-  showFreeOffer.value
-    ? ui.value.actionGenerate
-    : `${ui.value.actionGenerate} · ${creditCostLabel.value}`,
+const wizardGenerateLabel = computed(
+  () => `${ui.value.actionGenerate} · ${creditCostLabel.value}`,
 );
 
 const tonePresets = computed(() => ui.value.tonePresets);

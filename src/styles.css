@@ -518,6 +518,19 @@ select {
   color: var(--muted);
 }
 
+.hero-trial-note {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: center;
+}
+
+.hero-trial-note a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .hero-actions-paid {
   display: flex;
   flex-direction: column;
@@ -536,7 +549,8 @@ select {
     align-items: flex-start;
   }
 
-  .hero-credit-cost {
+  .hero-credit-cost,
+  .hero-trial-note {
     text-align: left;
   }
 }

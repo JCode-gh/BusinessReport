@@ -1,6 +1,6 @@
 {
   "brandHomeAria": "GrowthKit Studio Startseite",
-  "siteDocumentTitle": "GrowthKit — Kostenloser KI-Wachstumsbericht für Unternehmer",
+  "siteDocumentTitle": "GrowthKit — KI-Wachstumsbericht für Unternehmer",
   "brandSubtitle": "Report-Builder von jcode.be",
   "footerByline": "Ein Tool von",
   "footerVat": "BTW BE0798514094",
@@ -32,11 +32,11 @@
   "includesText": "Scorecard, Templates, Aktionsplan",
   "heroEyebrow": "KI-Wachstumsstrategie in Minuten",
   "heroTitle": "Wachstumskit für Unternehmer",
-  "heroCopy": "Verwandle ein grobes Business-Briefing in einen polierten Consultant-Report mit Positionierung, Angeboten, Scorecards, Outreach-Templates und praktischem Aktionsplan. Dein erster Report ist gratis.",
-  "heroPrimaryFree": "Kostenlosen Report erstellen",
+  "heroCopy": "Verwandle ein grobes Business-Briefing in einen polierten Consultant-Report mit Positionierung, Angeboten, Scorecards, Outreach-Templates und praktischem Aktionsplan. Sieh dir das Beispiel an, kaufe dann ein Guthaben für deinen eigenen Report.",
   "heroPrimaryPaid": "Report generieren",
-  "creditCostPerReport": "1 Guthaben pro Report",
-  "heroFreeBadge": "1. Report gratis · ohne Karte",
+  "creditCostPerReport": "1 Guthaben pro Report · ab 5 €",
+  "freeTrialNote": "Kostenlos testen?",
+  "freeTrialLink": "Kontakt aufnehmen",
   "exampleShowcaseAria": "Beispiel-Wachstumsbericht",
   "exampleShowcaseEyebrow": "Beispielausgabe",
   "exampleShowcaseTitle": "So sieht Ihr Bericht aus",
@@ -260,7 +260,7 @@
     {
       "title": "10. Gebühren",
       "paragraphs": [
-        "GrowthKit ist ein kostenpflichtiger Dienst. Für die Erstellung eines Berichts benötigen Sie ein Bericht-Guthaben, das Sie mit einer einmaligen Zahlung erwerben — es gibt kein Abonnement. Der aktuelle Preis wird immer vor der Zahlung angezeigt, und neue Nutzer können ein kostenloses Guthaben erhalten, um den Dienst zunächst auszuprobieren.",
+        "GrowthKit ist ein kostenpflichtiger Dienst. Für die Erstellung eines Berichts benötigen Sie ein Bericht-Guthaben, das Sie mit einer einmaligen Zahlung erwerben — es gibt kein Abonnement. Der aktuelle Preis wird immer vor der Zahlung angezeigt. Kostenlose Testzugänge sind auf Anfrage über https://jcode.be verfügbar.",
         "Zahlungen werden sicher von unserem Zahlungsdienstleister Stripe verarbeitet; wir sehen oder speichern Ihre vollständigen Kartendaten niemals. Preise werden in Euro angegeben und etwaige anfallende Steuern werden beim Checkout ausgewiesen. Erworbenes Guthaben bleibt in Ihrem Konto verfügbar und verfällt nicht.",
         "Da jeder Bericht sofort generiert und an Sie geliefert wird, sind Käufe nach der Erstellung eines Berichts in der Regel nicht erstattungsfähig, außer wenn eine Erstattung nach geltendem Verbraucherrecht erforderlich ist. Falls eine Zahlung fehlschlägt oder ein Bericht nicht korrekt generiert wird, kontaktieren Sie uns über https://jcode.be und wir kümmern uns darum."
       ]

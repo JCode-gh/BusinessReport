@@ -10,6 +10,7 @@ import {
   perReportCents,
   type CreditPlanId,
 } from '../creditPlans';
+import { freeTrialMailtoHref } from '../freeTrialContact';
 
 type Language = 'nl' | 'en' | 'fr' | 'de';
 
@@ -44,6 +45,8 @@ const copy: Record<
     reports: (n: number) => string;
     save: (amount: string) => string;
     stripeNote: string;
+    freeTrialNote: string;
+    freeTrialLink: string;
   }
 > = {
   nl: {
@@ -67,6 +70,8 @@ const copy: Record<
     reports: (n) => (n === 1 ? '1 rapport' : `${n} rapporten`),
     save: (amount) => `Bespaar ${amount}`,
     stripeNote: 'Veilig betalen via Stripe · Visa, Mastercard, iDEAL, Bancontact',
+    freeTrialNote: 'Gratis proberen?',
+    freeTrialLink: 'Neem contact op',
   },
   en: {
     eyebrow: 'One-time payment',
@@ -89,6 +94,8 @@ const copy: Record<
     reports: (n) => (n === 1 ? '1 report' : `${n} reports`),
     save: (amount) => `Save ${amount}`,
     stripeNote: 'Secure payment via Stripe · Visa, Mastercard, iDEAL, Bancontact',
+    freeTrialNote: 'Want a free trial?',
+    freeTrialLink: 'Contact us',
   },
   fr: {
     eyebrow: 'Paiement unique',
@@ -111,6 +118,8 @@ const copy: Record<
     reports: (n) => (n === 1 ? '1 rapport' : `${n} rapports`),
     save: (amount) => `Économisez ${amount}`,
     stripeNote: 'Paiement sécurisé via Stripe · Visa, Mastercard, iDEAL, Bancontact',
+    freeTrialNote: 'Essai gratuit ?',
+    freeTrialLink: 'Contactez-nous',
   },
   de: {
     eyebrow: 'Einmalige Zahlung',
@@ -133,11 +142,14 @@ const copy: Record<
     reports: (n) => (n === 1 ? '1 Bericht' : `${n} Berichte`),
     save: (amount) => `${amount} sparen`,
     stripeNote: 'Sichere Zahlung via Stripe · Visa, Mastercard, iDEAL, Bancontact',
+    freeTrialNote: 'Kostenlos testen?',
+    freeTrialLink: 'Kontakt aufnehmen',
   },
 };
 
 const lang = computed<Language>(() => props.language ?? 'nl');
 const c = computed(() => copy[lang.value]);
+const freeTrialMailto = computed(() => freeTrialMailtoHref(lang.value));
 
 const singlePlan = CREDIT_PLANS[0];
 
@@ -257,6 +269,10 @@ async function startCheckout() {
         </button>
 
         <p class="paywall-stripe-note">{{ c.stripeNote }}</p>
+        <p class="paywall-trial-note">
+          {{ c.freeTrialNote }}
+          <a :href="freeTrialMailto">{{ c.freeTrialLink }}</a>
+        </p>
       </div>
     </div>
   </Teleport>
@@ -474,6 +490,18 @@ async function startCheckout() {
   text-align: center;
   font-size: 0.75rem;
   color: var(--muted-dim);
+}
+
+.paywall-trial-note {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted-dim);
+}
+
+.paywall-trial-note a {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 @media (max-width: 520px) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { TrendingUp, MessageSquareText, ShieldCheck, Gift, Sparkles, ArrowRight } from 'lucide-vue-next';
+import { TrendingUp, MessageSquareText, ShieldCheck, Sparkles, ArrowRight } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
 import { useGenerateCTA } from '../composables/useGenerateCTA';
 import { clearGenerateLaunchQuery, wantsGenerateLaunch } from '../composables/useGenerateNavigation';
@@ -21,11 +21,12 @@ import AuthModal from '../AuthModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
 import ExampleReportShowcase from '../components/ExampleReportShowcase.vue';
 import SiteFooter from '../components/SiteFooter.vue';
+import { freeTrialMailtoHref } from '../freeTrialContact';
 
 const router = useRouter();
 const route = useRoute();
 const { ui, siteLanguage } = useLanguage();
-const { showFreeOffer, generateLabel, creditCostLabel } = useGenerateCTA();
+const { generateLabel, creditCostLabel } = useGenerateCTA();
 const { status, beginGeneration, generateBusinessKit, dismissError, currentPlan, currentHtml, showResultScreen } =
   useReportGeneration();
 const { savedReportId, doSaveReport, openSavedReport } = useReportManagement();
@@ -37,6 +38,8 @@ const showAuthModal = ref(false);
 const showPaywallModal = ref(false);
 const authModalPurpose = ref<'save' | 'generate' | undefined>();
 const pendingGenerate = ref(false);
+
+const freeTrialMailto = computed(() => freeTrialMailtoHref(siteLanguage.value));
 
 // Stripe redirect: detect and react before onMounted so the wizard opens immediately
 // and Generate clicks don't flash the paywall while verify-checkout runs.
@@ -356,11 +359,11 @@ onMounted(async () => {
                 {{ generateLabel }}
                 <ArrowRight :size="17" />
               </button>
-              <p v-if="showFreeOffer" class="hero-free-badge">
-                <Gift :size="15" />
-                {{ ui.heroFreeBadge }}
+              <p class="hero-credit-cost">{{ creditCostLabel }}</p>
+              <p class="hero-trial-note">
+                {{ ui.freeTrialNote }}
+                <a :href="freeTrialMailto">{{ ui.freeTrialLink }}</a>
               </p>
-              <p v-else class="hero-credit-cost">{{ creditCostLabel }}</p>
             </div>
           </div>
 

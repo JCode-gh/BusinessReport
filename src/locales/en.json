@@ -1,6 +1,6 @@
 {
   "brandHomeAria": "GrowthKit Studio home",
-  "siteDocumentTitle": "GrowthKit — Free AI growth report for entrepreneurs",
+  "siteDocumentTitle": "GrowthKit — AI growth report for entrepreneurs",
   "brandSubtitle": "Report builder by jcode.be",
   "footerByline": "A tool by",
   "footerVat": "BTW BE0798514094",
@@ -32,11 +32,11 @@
   "includesText": "Scorecard, templates, action plan",
   "heroEyebrow": "AI growth strategy in minutes",
   "heroTitle": "Entrepreneur Growth Kit",
-  "heroCopy": "Turn a rough business brief into a polished consultant-style growth report with positioning, offers, scorecards, outreach templates, and a practical action plan. Your first report is free.",
-  "heroPrimaryFree": "Generate your free report",
-  "heroPrimaryPaid": "Generate report",
-  "creditCostPerReport": "1 credit per report",
-  "heroFreeBadge": "1st report free · no card required",
+  "heroCopy": "Turn a rough business brief into a polished consultant-style growth report with positioning, offers, scorecards, outreach templates, and a practical action plan. See the sample report, then buy a credit to generate yours.",
+  "heroPrimaryPaid": "Generate growth report",
+  "creditCostPerReport": "1 credit per report · from €5",
+  "freeTrialNote": "Want a free trial?",
+  "freeTrialLink": "Contact us",
   "exampleShowcaseAria": "Sample growth report",
   "exampleShowcaseEyebrow": "Sample output",
   "exampleShowcaseTitle": "This is what your report looks like",
@@ -260,7 +260,7 @@
     {
       "title": "10. Fees",
       "paragraphs": [
-        "GrowthKit is a paid service. Generating a report requires a report credit, bought through a one-time payment — there is no subscription. The current price is always shown before you pay, and new users may receive one free credit to try the service first.",
+        "GrowthKit is a paid service. Generating a report requires a report credit, bought through a one-time payment — there is no subscription. The current price is always shown before you pay. Free trials are available on request via https://jcode.be.",
         "Payments are processed securely by our payment provider, Stripe; we never see or store your full card details. Prices are shown in euros, and any applicable taxes are indicated at checkout. Purchased credits remain available in your account and do not expire.",
         "Because each report is generated and delivered to you immediately, purchases are generally non-refundable once the report has been generated, except where a refund is required by applicable consumer law. If a payment fails or a report does not generate correctly, contact us via https://jcode.be and we will put it right."
       ]

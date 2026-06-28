@@ -81,7 +81,7 @@ const authCopyMap: Record<Language, AuthCopy> = {
     fillEmailPassword: "Vul je e-mail en wachtwoord in.",
     passwordMinLength: "Wachtwoord moet minimaal 6 tekens bevatten.",
     verifyEmailTitle: "Bevestig je e-mail",
-    verifyEmailBody: "We hebben je een verificatielink gestuurd. Bevestig je e-mail en meld je opnieuw aan om je gratis rapport te ontgrendelen.",
+    verifyEmailBody: "We hebben je een verificatielink gestuurd. Bevestig je e-mail en meld je opnieuw aan om verder te gaan.",
   },
   en: {
     titleSignup: "Create an account",
@@ -109,7 +109,7 @@ const authCopyMap: Record<Language, AuthCopy> = {
     fillEmailPassword: "Fill in your email and password.",
     passwordMinLength: "Password must be at least 6 characters.",
     verifyEmailTitle: "Verify your email",
-    verifyEmailBody: "We sent you a verification link. Verify your email and sign in again to unlock your free report.",
+    verifyEmailBody: "We sent you a verification link. Verify your email and sign in again to continue.",
   },
   fr: {
     titleSignup: "Créer un compte",
@@ -137,7 +137,7 @@ const authCopyMap: Record<Language, AuthCopy> = {
     fillEmailPassword: "Remplissez votre e-mail et votre mot de passe.",
     passwordMinLength: "Le mot de passe doit contenir au moins 6 caractères.",
     verifyEmailTitle: "Vérifiez votre e-mail",
-    verifyEmailBody: "Nous vous avons envoyé un lien de vérification. Vérifiez votre e-mail et reconnectez-vous pour débloquer votre rapport gratuit.",
+    verifyEmailBody: "Nous vous avons envoyé un lien de vérification. Vérifiez votre e-mail et reconnectez-vous pour continuer.",
   },
   de: {
     titleSignup: "Konto erstellen",
@@ -165,7 +165,7 @@ const authCopyMap: Record<Language, AuthCopy> = {
     fillEmailPassword: "Geben Sie Ihre E-Mail und Ihr Passwort ein.",
     passwordMinLength: "Passwort muss mindestens 6 Zeichen lang sein.",
     verifyEmailTitle: "E-Mail bestätigen",
-    verifyEmailBody: "Wir haben Ihnen einen Bestätigungslink geschickt. Bestätigen Sie Ihre E-Mail und melden Sie sich erneut an, um Ihren kostenlosen Bericht freizuschalten.",
+    verifyEmailBody: "Wir haben Ihnen einen Bestätigungslink geschickt. Bestätigen Sie Ihre E-Mail und melden Sie sich erneut an, um fortzufahren.",
   },
 };
 
@@ -267,7 +267,7 @@ async function handleSignUp() {
   try {
     await signUpWithEmail(email.value, password.value);
     close();
-    // Email/password accounts must verify before the free report unlocks — tell them.
+    // Email/password accounts must verify before continuing — tell them.
     showNotification(copy.value.verifyEmailTitle, copy.value.verifyEmailBody, "success");
   } catch (e) {
     errorMsg.value = friendlyError(e);
