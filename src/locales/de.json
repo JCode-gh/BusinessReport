@@ -1,7 +1,9 @@
 {
   "brandHomeAria": "GrowthKit Studio Startseite",
+  "siteDocumentTitle": "GrowthKit — Kostenloser KI-Wachstumsbericht für Unternehmer",
   "brandSubtitle": "Report-Builder von jcode.be",
   "footerByline": "Ein Tool von",
+  "footerVat": "BTW BE0798514094",
   "languageSwitcherLabel": "Sprache ändern",
   "loadingAria": "Report wird generiert",
   "generatingReport": "Report wird generiert auf",
@@ -143,6 +145,8 @@
   "savedReportsEmpty": "Noch keine gespeicherten Reports.",
   "savedReportOpen": "Öffnen",
   "navAccountMenu": "Kontomenü",
+  "navOpenMenu": "Menü öffnen",
+  "navCloseMenu": "Menü schließen",
   "navMyReports": "Meine Berichte",
   "reportsPageTitle": "Deine Berichte",
   "reportsPageLead": "Alle Wachstumsberichte, die du generiert und in deinem Konto gespeichert hast.",

@@ -32,6 +32,7 @@ const OG_LOCALES: Record<ReportLanguage, string> = {
 const FALLBACK_LANGUAGE: ReportLanguage = 'en';
 const languagePreferenceStorageKey = 'business-kit-language';
 const languageExplicitStorageKey = 'business-kit-language-explicit';
+const SUPPORTED_LANGUAGES = new Set<ReportLanguage>(['en', 'nl', 'fr', 'de']);
 
 const siteLanguage = ref<ReportLanguage>(FALLBACK_LANGUAGE);
 
@@ -52,13 +53,40 @@ function readLanguagePreference(): ReportLanguage | null {
   return value === null ? null : normalizeLanguage(value);
 }
 
-function detectBrowserLanguage(): ReportLanguage {
-  const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+function languageFromTag(raw: unknown): ReportLanguage | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const code = raw.toLowerCase().split('-')[0];
+  return SUPPORTED_LANGUAGES.has(code as ReportLanguage) ? (code as ReportLanguage) : null;
+}
+
+function readDocumentLanguage(): ReportLanguage | null {
+  return languageFromTag(document.documentElement.lang);
+}
+
+export function detectBrowserLanguage(): ReportLanguage {
+  const candidates =
+    typeof navigator !== 'undefined' && navigator.languages?.length
+      ? navigator.languages
+      : typeof navigator !== 'undefined' && navigator.language
+        ? [navigator.language]
+        : [];
+
   for (const raw of candidates) {
-    const code = raw.toLowerCase().split('-')[0];
-    if (code === 'nl' || code === 'en' || code === 'fr' || code === 'de') return code;
+    const language = languageFromTag(raw);
+    if (language) return language;
   }
-  return FALLBACK_LANGUAGE;
+
+  return readDocumentLanguage() ?? FALLBACK_LANGUAGE;
+}
+
+function resolveSiteLanguage(): ReportLanguage {
+  const langParam = getLangParam();
+  if (langParam) return langParam;
+
+  const explicitSaved = readExplicitLanguagePreference();
+  if (explicitSaved) return explicitSaved;
+
+  return detectBrowserLanguage();
 }
 
 function persistLanguagePreference(language: ReportLanguage) {
@@ -76,8 +104,11 @@ function upsertHeadTag(selector: string, create: () => HTMLElement, attr: string
 }
 
 function updateSeoHead(language: ReportLanguage, explicit: boolean) {
-  const description = translations[language].heroCopy;
+  const copy = translations[language];
+  const description = copy.heroCopy;
   const canonical = explicit ? `${SITE_ORIGIN}/?lang=${language}` : `${SITE_ORIGIN}/`;
+
+  document.title = copy.siteDocumentTitle;
 
   upsertHeadTag(
     'meta[name="description"]',
@@ -181,21 +212,13 @@ function getLangParam(): ReportLanguage | null {
 
 export function initializeLanguage(): ReportLanguage {
   const langParam = getLangParam();
-  if (langParam) {
-    setSiteLanguage(langParam, true);
-    return langParam;
-  }
-
-  const explicitSaved = readExplicitLanguagePreference();
-  if (explicitSaved) {
-    setSiteLanguage(explicitSaved, false);
-    return explicitSaved;
-  }
-
-  const detected = detectBrowserLanguage();
-  setSiteLanguage(detected, false);
-  return detected;
+  const language = resolveSiteLanguage();
+  setSiteLanguage(language, langParam !== null);
+  return language;
 }
+
+siteLanguage.value = resolveSiteLanguage();
+document.documentElement.lang = siteLanguage.value;
 
 export function useLanguage() {
   const ui = computed(() => translations[siteLanguage.value]);

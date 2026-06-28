@@ -1,7 +1,9 @@
 {
   "brandHomeAria": "Accueil GrowthKit Studio",
+  "siteDocumentTitle": "GrowthKit — Rapport de croissance IA gratuit pour entrepreneurs",
   "brandSubtitle": "Générateur de rapport par jcode.be",
   "footerByline": "Un outil de",
+  "footerVat": "BTW BE0798514094",
   "languageSwitcherLabel": "Changer la langue",
   "loadingAria": "Rapport en cours de génération",
   "generatingReport": "Génération du rapport en",
@@ -143,6 +145,8 @@
   "savedReportsEmpty": "Aucun rapport sauvegardé pour l'instant.",
   "savedReportOpen": "Ouvrir",
   "navAccountMenu": "Menu du compte",
+  "navOpenMenu": "Ouvrir le menu",
+  "navCloseMenu": "Fermer le menu",
   "navMyReports": "Mes rapports",
   "reportsPageTitle": "Vos rapports",
   "reportsPageLead": "Tous les rapports de croissance générés et enregistrés sur votre compte.",

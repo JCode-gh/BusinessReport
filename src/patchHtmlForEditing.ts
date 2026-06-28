@@ -1,9 +1,19 @@
+import { buildBusinessKitHtml, type BusinessKitPlan } from './businessKit';
+
+/** Viewer HTML with color-mode toggle, mobile overrides, and iframe bridge. */
+export function prepareReportHtmlForViewer(plan: BusinessKitPlan, editedHtml?: string | null): string {
+  const fresh = patchHtmlForEditing(buildBusinessKitHtml(plan));
+  if (editedHtml?.includes('data-color-mode-toggle')) {
+    return patchHtmlForEditing(editedHtml);
+  }
+  return fresh;
+}
+
 const MOBILE_STYLES = `
 <style id="iframe-mobile-styles">
 @media (max-width: 600px) {
-  body { background: #fff; }
   .page { width: 100% !important; margin: 0 !important; border-radius: 0 !important; border: none !important; box-shadow: none !important; }
-  .cover { padding: 28px 20px 32px !important; }
+  .cover { padding: 28px 20px 32px !important; border-radius: 0 !important; }
   .cover h1 { font-size: clamp(1.6rem, 7vw, 2.6rem) !important; }
   .cover-subtitle { font-size: 0.95rem !important; margin-bottom: 20px !important; }
   .workspace { margin: -20px 12px 0 !important; padding: 16px !important; grid-template-columns: 1fr !important; gap: 14px !important; }

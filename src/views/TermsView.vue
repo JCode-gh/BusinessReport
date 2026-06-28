@@ -5,12 +5,12 @@ import SiteHeader from '../components/SiteHeader.vue';
 import AuthModal from '../AuthModal.vue';
 import PaywallModal from '../components/PaywallModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
+import SiteFooter from '../components/SiteFooter.vue';
 import { useLanguage } from '../composables/useLanguage';
 
 const { ui, siteLanguage, initializeLanguage } = useLanguage();
 const showAuthModal = ref(false);
 const showPaywallModal = ref(false);
-const currentYear = new Date().getFullYear();
 
 onMounted(() => {
   initializeLanguage();
@@ -41,13 +41,7 @@ onMounted(() => {
       </section>
     </main>
 
-    <footer class="site-footer">
-      <p>
-        © {{ currentYear }} · {{ ui.footerByline }}
-        <a href="https://jcode.be" target="_blank" rel="noopener noreferrer">jcode.be</a>
-        · <router-link to="/terms">{{ ui.termsLink }}</router-link>
-      </p>
-    </footer>
+    <SiteFooter />
 
     <AuthModal v-model="showAuthModal" :language="siteLanguage" />
     <PaywallModal v-model="showPaywallModal" :language="siteLanguage" />

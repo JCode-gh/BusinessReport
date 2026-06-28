@@ -7,6 +7,7 @@ import AuthModal from '../AuthModal.vue';
 import PaywallModal from '../components/PaywallModal.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import NotificationToast from '../components/NotificationToast.vue';
+import SiteFooter from '../components/SiteFooter.vue';
 import { useLanguage } from '../composables/useLanguage';
 import { useGenerateCTA } from '../composables/useGenerateCTA';
 import { navigateToGenerate } from '../composables/useGenerateNavigation';
@@ -34,7 +35,6 @@ const showConfirmDelete = ref(false);
 const pendingDeleteId = ref<string | null>(null);
 const renamingReportId = ref<string | null>(null);
 const renameValue = ref('');
-const currentYear = new Date().getFullYear();
 
 onMounted(() => {
   document.title = `${ui.value.reportsPageTitle} · GrowthKit Studio`;
@@ -191,13 +191,7 @@ function goGenerate() {
       </ul>
     </main>
 
-    <footer class="site-footer">
-      <p>
-        © {{ currentYear }} · {{ ui.footerByline }}
-        <a href="https://jcode.be" target="_blank" rel="noopener noreferrer">jcode.be</a>
-        · <router-link to="/terms">{{ ui.termsLink }}</router-link>
-      </p>
-    </footer>
+    <SiteFooter />
 
     <AuthModal v-model="showAuthModal" :language="siteLanguage" />
     <PaywallModal v-model="showPaywallModal" :language="siteLanguage" />
