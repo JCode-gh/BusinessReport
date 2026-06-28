@@ -10,7 +10,7 @@ import {
 
 type GenerateStatus = 'idle' | 'loading' | 'success' | 'error';
 
-export const WIZARD_STEP_COUNT = 8;
+export const WIZARD_STEP_COUNT = 9;
 
 const defaultLanguage: ReportLanguage = 'en';
 
@@ -28,6 +28,8 @@ export type WizardFieldKey =
   | 'goal'
   | 'channels'
   | 'pricePoint'
+  | 'alreadyWorking'
+  | 'inProgress'
   | 'tone';
 
 const WIZARD_STEP_FIELDS: Record<number, WizardFieldKey[]> = {
@@ -38,7 +40,8 @@ const WIZARD_STEP_FIELDS: Record<number, WizardFieldKey[]> = {
   4: ['problem'],
   5: ['goal'],
   6: ['channels', 'pricePoint'],
-  7: ['tone'],
+  7: ['alreadyWorking'],
+  8: ['tone'],
 };
 
 export function getWizardStepMissingFields(step: number): WizardFieldKey[] {
@@ -60,6 +63,8 @@ export const form = reactive({
   goal: '',
   channels: '',
   pricePoint: '',
+  alreadyWorking: '',
+  inProgress: '',
   region: '',
   tone: '',
   language: defaultLanguage as ReportLanguage,
@@ -210,6 +215,8 @@ export function useReportGeneration() {
     form.goal = '';
     form.channels = '';
     form.pricePoint = '';
+    form.alreadyWorking = '';
+    form.inProgress = '';
     form.region = '';
     form.tone = '';
     form.language = language;
@@ -226,6 +233,8 @@ export function useReportGeneration() {
     form.goal = '3 nieuwe projecten binnenhalen van €2.500+ binnen 30 dagen en de gemiddelde projectwaarde verhogen van €1.800 naar €3.000';
     form.channels = 'Mond-tot-mond en doorverwijzingen, LinkedIn (sporadisch), af en toe lokale netwerkevenementen';
     form.pricePoint = 'Huidig: €800–€2.500 per project, doel: €2.500–€5.000 per project';
+    form.alreadyWorking = 'Referrals leveren ~60% van projecten; maandelijks care plan (€99/mo) actief bij 3 klanten; LinkedIn posts 1–2x per week';
+    form.inProgress = 'Case study-pagina op website; nieuw premium pakket (€3.500+) in voorbereiding';
     form.tone = 'Direct, zelfverzekerd, premium maar toegankelijk — niet corporate';
   }
 

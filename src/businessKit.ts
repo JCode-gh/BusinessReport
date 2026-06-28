@@ -12,6 +12,8 @@ export type BusinessKitRequest = {
   goal?: string;
   channels?: string;
   pricePoint?: string;
+  alreadyWorking?: string;
+  inProgress?: string;
   region?: string;
   tone?: string;
   language: BusinessKitLanguage;
@@ -588,8 +590,19 @@ Core problem they face: ${request.problem || "Not provided"}
 Growth goal (30 days): ${request.goal || "Not provided"}
 Active channels: ${request.channels || "Not provided"}
 Current / target price point: ${request.pricePoint || "Not provided"}
+Already working (live systems, channels, offers): ${request.alreadyWorking || "Not provided"}
+In progress now: ${request.inProgress || "Not provided"}
 Region / market: ${request.region || "Not provided"}
 Report tone: ${request.tone || "Clear, direct, premium, practical"}
+
+ANTI-DUPLICATION (mandatory)
+============================
+The brief lists what the business ALREADY has or is BUILDING. Before writing quickWins, actionPlan, strategySections moves, scorecard nextMove, or templates:
+- Do NOT recommend starting something the brief marks as already working or in progress — unless the brief explicitly says it is failing.
+- Instead recommend the NEXT level: optimize, systematize, scale, measure, or fix what is broken.
+- Example: if LinkedIn is an active channel, do not say "start posting on LinkedIn" — say how to turn sporadic posts into outbound or conversion.
+- Example: if a recurring offer already exists, do not say "add a retainer" — say how to increase attach rate or pitch it at delivery.
+- If "already working" says they are starting fresh, treat everything as greenfield.
 
 COMPETITIVE CONTEXT
 ===================
@@ -647,6 +660,7 @@ QUALITY RULES (never break these):
 - Action plan items must start with an action verb (Write, Build, Launch, Send, Create, Record, Set up) and state a concrete deliverable. Bad: "Work on positioning". Good: "Write a one-sentence value proposition using the formula: We help [audience] achieve [outcome] without [obstacle]."
 - If a field is missing from the brief, make a clearly-labeled assumption and work with it — never output a generic placeholder.
 - Tone must match the brief's requested style throughout.
+- Never recommend starting a channel, system, or offer the brief lists as already working or in progress — recommend the next optimization step instead.
 
 EXAMPLES OF GOOD VS BAD OUTPUT (follow the GOOD examples exactly):
 

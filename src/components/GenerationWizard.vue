@@ -55,6 +55,8 @@ function fieldLabel(key: WizardFieldKey): string {
     goal: ui.value.goal,
     channels: ui.value.channels,
     pricePoint: ui.value.pricePoint,
+    alreadyWorking: ui.value.alreadyWorking,
+    inProgress: ui.value.inProgress,
     tone: ui.value.reportTone,
   };
   return labels[key];
@@ -406,9 +408,42 @@ watch(
               </div>
             </template>
 
-            <!-- Step 7: Taal + Toon + Generate -->
+            <!-- Step 7: Already in place -->
             <template v-else-if="currentStep === 7">
-              <p class="wz-eyebrow">08 — {{ ui.reportLanguage }}</p>
+              <p class="wz-eyebrow">08 — {{ ui.alreadyWorking }}</p>
+              <h2 class="wz-question">{{ ui.currentSetupQuestion }}</h2>
+              <div class="wz-fields">
+                <label
+                  class="wz-field wz-field--full"
+                  :class="{ 'wz-field--error': isFieldInvalid('alreadyWorking') }"
+                  data-field="alreadyWorking"
+                >
+                  <span class="wz-label">{{ ui.alreadyWorking }}</span>
+                  <textarea
+                    v-model="form.alreadyWorking"
+                    rows="3"
+                    :placeholder="ui.alreadyWorkingPlaceholder"
+                    @keydown="onTextareaKey"
+                    @input="clearInvalidField('alreadyWorking')"
+                  ></textarea>
+                  <span v-if="isFieldInvalid('alreadyWorking')" class="wz-field-error">{{ ui.validationFieldRequired }}</span>
+                </label>
+                <label class="wz-field wz-field--full" data-field="inProgress">
+                  <span class="wz-label">{{ ui.inProgress }}</span>
+                  <textarea
+                    v-model="form.inProgress"
+                    rows="3"
+                    :placeholder="ui.inProgressPlaceholder"
+                    @keydown="onTextareaKey"
+                  ></textarea>
+                  <span class="wz-hint">⌘ + Enter ↵</span>
+                </label>
+              </div>
+            </template>
+
+            <!-- Step 8: Taal + Toon + Generate -->
+            <template v-else-if="currentStep === 8">
+              <p class="wz-eyebrow">09 — {{ ui.reportLanguage }}</p>
               <h2 class="wz-question">{{ ui.reportLanguage }} &amp; {{ ui.reportTone }}</h2>
               <div class="wz-fields">
                 <label class="wz-field">
