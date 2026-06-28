@@ -8,6 +8,13 @@ const notification = reactive({
 });
 
 let notificationTimer: number | null = null;
+let notificationsCssLoaded = false;
+
+function ensureNotificationsCss(): void {
+  if (notificationsCssLoaded) return;
+  notificationsCssLoaded = true;
+  void import('../styles/notifications.css');
+}
 
 export function useNotification() {
   function showNotification(
@@ -15,6 +22,7 @@ export function useNotification() {
     message: string,
     type: 'error' | 'success' | 'info' = 'error'
   ) {
+    ensureNotificationsCss();
     if (notificationTimer) {
       clearTimeout(notificationTimer);
     }

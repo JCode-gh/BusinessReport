@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ArrowRight, ExternalLink, Sparkles } from 'lucide-vue-next';
-import { buildBusinessKitHtml } from '../businessKit';
-import { patchHtmlForEditing } from '../patchHtmlForEditing';
 import { getExampleReportPlan } from '../exampleReports';
 import { useLanguage } from '../composables/useLanguage';
 import type { ReportLanguage } from '../composables/useLanguage';
@@ -27,12 +25,64 @@ const { ui, siteLanguage } = useLanguage();
 const { generateButtonLabel } = useGenerateCTA();
 
 const reportLanguage = computed(() => props.language ?? siteLanguage.value);
+const reportHtml = ref('');
+const rootEl = ref<HTMLElement | null>(null);
 
-const reportHtml = computed(() => {
+let previewLoaded = false;
+let observer: IntersectionObserver | null = null;
+
+async function loadPreviewHtml(force = false) {
+  if (previewLoaded && !force) return;
+  previewLoaded = true;
+
+  const [{ buildBusinessKitHtml }, { patchHtmlForEditing }] = await Promise.all([
+    import('../businessKit'),
+    import('../patchHtmlForEditing'),
+  ]);
+
   const plan = getExampleReportPlan(reportLanguage.value);
-  return patchHtmlForEditing(
+  reportHtml.value = patchHtmlForEditing(
     buildBusinessKitHtml({ ...plan, showBranding: props.variant === 'page' }),
   );
+}
+
+function schedulePreviewLoad() {
+  if (props.variant === 'page') {
+    void loadPreviewHtml();
+    return;
+  }
+
+  if (props.variant === 'section') {
+    observer?.disconnect();
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer?.disconnect();
+          observer = null;
+          void loadPreviewHtml();
+        }
+      },
+      { rootMargin: '320px 0px' },
+    );
+    if (rootEl.value) observer.observe(rootEl.value);
+    return;
+  }
+
+  const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200));
+  idle(() => {
+    void loadPreviewHtml();
+  });
+}
+
+watch(reportLanguage, () => {
+  reportHtml.value = '';
+  void loadPreviewHtml(true);
+});
+
+onMounted(schedulePreviewLoad);
+
+onUnmounted(() => {
+  observer?.disconnect();
 });
 
 function openFullExample() {
@@ -51,6 +101,7 @@ function onGenerate() {
 
 <template>
   <div
+    ref="rootEl"
     class="example-showcase"
     :class="[`example-showcase--${variant}`]"
     :aria-label="ui.exampleShowcaseAria"

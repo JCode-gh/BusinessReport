@@ -12,22 +12,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import {
-  initializeFirestore,
-  collection,
-  doc,
-  setDoc,
-  getDoc,
-  getDocFromServer,
-  getDocs,
-  deleteDoc,
-  updateDoc,
-  increment,
-  query,
-  where,
-  limit,
-  serverTimestamp,
-} from "firebase/firestore";
+import type { Firestore } from "firebase/firestore";
 import type { BusinessKitPlan } from "./businessKit";
 
 const firebaseConfig = {
@@ -41,14 +26,45 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+
+let dbPromise: Promise<Firestore> | null = null;
+let firestoreModulePromise: Promise<typeof import("firebase/firestore")> | null = null;
+
+function getFirestoreModule() {
+  if (!firestoreModulePromise) {
+    firestoreModulePromise = import("firebase/firestore");
+  }
+  return firestoreModulePromise;
+}
+
 // Force long polling instead of WebChannel. Auto-detect still makes a WebChannel
 // attempt first, which throws "client is offline" on networks/browsers that block
 // it (Safari, VPNs, ad blockers, corporate firewalls) before it can fall back.
 // Forcing long polling skips that failing attempt entirely for a stable connection.
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-});
-export const googleProvider = new GoogleAuthProvider();
+async function getDb(): Promise<Firestore> {
+  if (!dbPromise) {
+    dbPromise = getFirestoreModule().then(({ initializeFirestore }) =>
+      initializeFirestore(app, { experimentalForceLongPolling: true }),
+    );
+  }
+  return dbPromise;
+}
+
+/** Tear down Firestore before page enters bfcache (long polling blocks restoration). */
+export async function releaseFirestoreForBfcache(): Promise<void> {
+  if (!dbPromise) return;
+
+  const pendingDb = dbPromise;
+  dbPromise = null;
+
+  try {
+    const [{ terminate }, db] = await Promise.all([getFirestoreModule(), pendingDb]);
+    await terminate(db);
+  } catch {
+    // Best-effort — page may already be unloading.
+  }
+}
 
 export type StoredReport = {
   id: string;
@@ -60,6 +76,10 @@ export type StoredReport = {
 };
 
 export async function saveReport(plan: BusinessKitPlan, uid: string): Promise<string> {
+  const [{ collection, doc, setDoc, serverTimestamp }, db] = await Promise.all([
+    getFirestoreModule(),
+    getDb(),
+  ]);
   const ref = doc(collection(db, "reports"));
   await setDoc(ref, {
     uid,
@@ -72,6 +92,7 @@ export async function saveReport(plan: BusinessKitPlan, uid: string): Promise<st
 }
 
 export async function loadReport(id: string, currentUid: string): Promise<StoredReport | null> {
+  const [{ doc, getDoc }, db] = await Promise.all([getFirestoreModule(), getDb()]);
   const snap = await getDoc(doc(db, "reports", id));
   if (!snap.exists()) return null;
   
@@ -93,6 +114,10 @@ export type ReportSummary = {
 };
 
 export async function listReports(uid: string): Promise<ReportSummary[]> {
+  const [{ collection, query, where, limit, getDocs }, db] = await Promise.all([
+    getFirestoreModule(),
+    getDb(),
+  ]);
   const q = query(
     collection(db, "reports"),
     where("uid", "==", uid),
@@ -109,10 +134,15 @@ export async function listReports(uid: string): Promise<ReportSummary[]> {
 }
 
 export async function deleteReport(id: string): Promise<void> {
+  const [{ doc, deleteDoc }, db] = await Promise.all([getFirestoreModule(), getDb()]);
   await deleteDoc(doc(db, "reports", id));
 }
 
 export async function patchReport(id: string, editedHtml: string): Promise<void> {
+  const [{ doc, setDoc, serverTimestamp }, db] = await Promise.all([
+    getFirestoreModule(),
+    getDb(),
+  ]);
   await setDoc(
     doc(db, "reports", id),
     { editedHtml, updatedAt: serverTimestamp() },
@@ -121,6 +151,10 @@ export async function patchReport(id: string, editedHtml: string): Promise<void>
 }
 
 export async function renameReport(id: string, title: string, editedHtml: string): Promise<void> {
+  const [{ doc, updateDoc, serverTimestamp }, db] = await Promise.all([
+    getFirestoreModule(),
+    getDb(),
+  ]);
   await updateDoc(doc(db, "reports", id), {
     "plan.title": title,
     editedHtml,
@@ -130,6 +164,10 @@ export async function renameReport(id: string, title: string, editedHtml: string
 
 // Rename from the homepage list (no HTML available — clears editedHtml so it rebuilds on next open)
 export async function renameReportTitle(id: string, title: string): Promise<void> {
+  const [{ doc, updateDoc, serverTimestamp }, db] = await Promise.all([
+    getFirestoreModule(),
+    getDb(),
+  ]);
   await updateDoc(doc(db, "reports", id), {
     "plan.title": title,
     editedHtml: null,
@@ -188,6 +226,10 @@ export async function signOut(): Promise<void> {
 
 export async function getUserCredits(uid: string, opts?: { server?: boolean }): Promise<number> {
   try {
+    const [{ doc, getDoc, getDocFromServer }, db] = await Promise.all([
+      getFirestoreModule(),
+      getDb(),
+    ]);
     const snap = opts?.server
       ? await getDocFromServer(doc(db, "users", uid))
       : await getDoc(doc(db, "users", uid));
@@ -207,6 +249,10 @@ export async function getUserCredits(uid: string, opts?: { server?: boolean }): 
 
 export async function decrementCredits(uid: string): Promise<boolean> {
   try {
+    const [{ doc, updateDoc, increment }, db] = await Promise.all([
+      getFirestoreModule(),
+      getDb(),
+    ]);
     await updateDoc(doc(db, "users", uid), { credits: increment(-1) });
     return true;
   } catch (e) {

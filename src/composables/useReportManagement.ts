@@ -1,15 +1,7 @@
 import { ref, watch } from 'vue';
 import { useAuth } from '../useAuth';
 import type { BusinessKitPlan } from '../businessKit';
-import {
-  saveReport,
-  loadReport,
-  listReports,
-  patchReport,
-  renameReportTitle,
-  deleteReport,
-  type ReportSummary,
-} from '../firebase';
+import type { ReportSummary } from '../firebase';
 
 const { user } = useAuth();
 
@@ -25,6 +17,7 @@ watch(
     if (newUser) {
       savedReportsLoading.value = true;
       try {
+        const { listReports } = await import('../firebase');
         savedReports.value = await listReports(newUser.uid);
       } catch {
         savedReports.value = [];
@@ -57,6 +50,7 @@ export function useReportManagement() {
     if (!user.value || !plan) return null;
     saveState.value = 'saving';
     try {
+      const { saveReport, listReports } = await import('../firebase');
       const id = await saveReport(plan, user.value.uid);
       savedReportId.value = id;
       saveState.value = 'saved';
@@ -86,6 +80,7 @@ export function useReportManagement() {
       return null;
     }
     try {
+      const { loadReport } = await import('../firebase');
       const stored = await loadReport(id, user.value.uid);
       if (!stored) return null;
       savedReportId.value = id;
@@ -98,6 +93,7 @@ export function useReportManagement() {
 
   async function deleteReportById(id: string) {
     try {
+      const { deleteReport } = await import('../firebase');
       await deleteReport(id);
       savedReports.value = savedReports.value.filter((r) => r.id !== id);
       if (savedReportId.value === id) {
@@ -112,6 +108,7 @@ export function useReportManagement() {
 
   async function updateReportTitle(id: string, newTitle: string) {
     try {
+      const { renameReportTitle } = await import('../firebase');
       await renameReportTitle(id, newTitle);
       const report = savedReports.value.find((r) => r.id === id);
       if (report) {
@@ -126,6 +123,7 @@ export function useReportManagement() {
 
   async function patchReportHtml(id: string, html: string) {
     try {
+      const { patchReport } = await import('../firebase');
       await patchReport(id, html);
       return true;
     } catch (e) {

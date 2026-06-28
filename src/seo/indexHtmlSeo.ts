@@ -94,7 +94,7 @@ export function buildNoscriptHomeContent(language: ReportLanguage = DEFAULT_LANG
     .join('\n        ');
 
   return `<main style="max-width:720px;margin:40px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6;color:#1a1630">
-        <p style="font-size:0.85rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6f6acf">${escapeHtml(copy.heroEyebrow)}</p>
+        <p style="font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6f6acf">${escapeHtml(copy.heroEyebrow)}</p>
         <h1>${escapeHtml(copy.heroTitle)} — GrowthKit</h1>
         <p>${escapeHtml(copy.heroCopy)}</p>
         <p>${escapeHtml(copy.metaDescription)}</p>

@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { BriefcaseBusiness, ChevronDown, Coins, FileText, Languages, LogIn, LogOut, Menu, X } from 'lucide-vue-next';
 import { useLanguage, languageOptions } from '../composables/useLanguage';
 import { useAuth } from '../useAuth';
-import { signOut } from '../firebase';
 
 const props = defineProps<{
   showAuthModal: () => void;
@@ -80,6 +79,7 @@ function handleMobileSignIn() {
 
 async function handleSignOut() {
   closeMenus();
+  const { signOut } = await import('../firebase');
   await signOut();
 }
 
@@ -248,6 +248,28 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.nav-signin-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.nav-signin-btn:hover {
+  border-color: rgba(214, 164, 227, 0.45);
+  background: rgba(214, 164, 227, 0.08);
+  color: #d6a4e3;
+}
+
 .nav-user-menu {
   position: relative;
 }
@@ -268,6 +290,30 @@ onUnmounted(() => {
 .nav-user-chip[aria-expanded='true'] {
   border-color: rgba(214, 164, 227, 0.45);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.nav-user-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  flex-shrink: 0;
+}
+
+.nav-user-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-user-chevron {

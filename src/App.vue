@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAppBoot } from './composables/useAppBoot';
 import { useLanguage } from './composables/useLanguage';
 import { applyRouteSeo, isExplicitLangParam } from './seo/routeSeo';
 import type { ReportLanguage } from './composables/useLanguage';
-import AppBootSplash from './components/AppBootSplash.vue';
 
-const { bootComplete } = useAppBoot();
 const route = useRoute();
 const { siteLanguage } = useLanguage();
 
@@ -26,6 +23,5 @@ watch([() => route.fullPath, siteLanguage], syncRouteSeo, { immediate: true });
 </script>
 
 <template>
-  <AppBootSplash v-if="!bootComplete" />
-  <router-view v-else />
+  <router-view />
 </template>

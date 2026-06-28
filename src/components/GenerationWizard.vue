@@ -10,6 +10,7 @@ import {
   WIZARD_STEP_COUNT,
   type WizardFieldKey,
 } from '../composables/useReportGeneration';
+import '../styles/wizard.css';
 import { REPORT_THEMES, type ReportThemeKey } from '../businessKit';
 import { useNotification } from '../composables/useNotification';
 

@@ -27,6 +27,7 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@resvg/resvg-js": "^2.6.2",
+    "lightningcss": "^1.32.0",
     "typescript": "^5.9.3",
     "vue-tsc": "^3.1.8"
   }

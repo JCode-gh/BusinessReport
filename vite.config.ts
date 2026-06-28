@@ -11,7 +11,7 @@ import {
 } from "./src/seo/indexHtmlSeo";
 import { buildJsonLdBlocks, buildSitemapXml } from "./src/seo/jsonLd";
 import { writeStaticSeoPages } from "./src/seo/staticPages";
-import { asyncCssPlugin, criticalCssPlugin } from "./src/seo/asyncAssets";
+import { asyncCssPlugin, criticalCssPlugin, minifyDistCssPlugin } from "./src/seo/asyncAssets";
 
 function seoIndexHtmlPlugin(): Plugin {
   return {
@@ -77,9 +77,24 @@ function seoPagesPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [vue(), criticalCssPlugin(), seoIndexHtmlPlugin(), asyncCssPlugin(), seoPagesPlugin()],
+  plugins: [vue(), criticalCssPlugin(), seoIndexHtmlPlugin(), asyncCssPlugin(), seoPagesPlugin(), minifyDistCssPlugin()],
   server: {
     port: 5173,
+  },
+  build: {
+    cssMinify: "lightningcss",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/firebase/") || id.includes("node_modules/@firebase/")) {
+            return "firebase";
+          }
+          if (id.includes("businessKitGenerate") || id.includes("jsonrepair")) {
+            return "business-kit-generate";
+          }
+        },
+      },
+    },
   },
   esbuild: {
     drop: ["debugger"],

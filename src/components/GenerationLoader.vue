@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import '../styles/generation.css';
 import { computed } from 'vue';
 import { Clock } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';

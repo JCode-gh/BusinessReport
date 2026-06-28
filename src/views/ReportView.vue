@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import '../styles/report-view.css';
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, Pencil, Printer, LogIn, Save } from 'lucide-vue-next';

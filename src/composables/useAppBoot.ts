@@ -1,17 +1,12 @@
 import { ref, readonly, watch } from 'vue';
 import { useAuth } from '../useAuth';
-import { useReportManagement } from './useReportManagement';
 
 const bootComplete = ref(false);
 
-const { user, waitForAuthReady } = useAuth();
-const { waitForInitialReportsLoad } = useReportManagement();
+const { waitForAuthReady } = useAuth();
 
 async function runInitialBoot() {
   await waitForAuthReady();
-  if (user.value) {
-    await waitForInitialReportsLoad();
-  }
   bootComplete.value = true;
 }
 

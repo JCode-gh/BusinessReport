@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import '../styles/result.css';
 import { computed } from 'vue';
 import { AlertCircle, CheckCircle2, FileText, LogIn, Sparkles } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';

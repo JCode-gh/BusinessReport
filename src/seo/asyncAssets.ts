@@ -1,13 +1,8 @@
 import type { Plugin } from 'vite';
-import { CRITICAL_CSS, FONT_PRECONNECT } from '../fonts';
-
-function buildPreconnectHtml(): string {
-  return FONT_PRECONNECT.map(({ href, crossOrigin }) =>
-    crossOrigin
-      ? `<link rel="preconnect" href="${href}" crossorigin>`
-      : `<link rel="preconnect" href="${href}">`,
-  ).join('\n    ');
-}
+import { transform } from 'lightningcss';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { CRITICAL_CSS, buildLcpFontPreloadHtml } from '../fonts';
 
 /** Turn Vite-injected stylesheet links into non-render-blocking preload/onload links. */
 export function asyncCssPlugin(): Plugin {
@@ -42,11 +37,50 @@ export function criticalCssPlugin(): Plugin {
     name: 'critical-css',
     transformIndexHtml(html) {
       if (html.includes('id="critical-css"')) return html;
-      const preconnect = buildPreconnectHtml();
       return html.replace(
         '<meta charset="UTF-8" />',
-        `<meta charset="UTF-8" />\n    <style id="critical-css">${CRITICAL_CSS}</style>\n    ${preconnect}`,
+        `<meta charset="UTF-8" />\n    <style id="critical-css">${CRITICAL_CSS}</style>\n    ${buildLcpFontPreloadHtml()}`,
       );
+    },
+  };
+}
+
+/** Second-pass CSS minify on emitted assets (Lightning CSS is tighter than esbuild alone). */
+export function minifyDistCssPlugin(): Plugin {
+  return {
+    name: 'minify-dist-css',
+    apply: 'build',
+    closeBundle() {
+      const assetsDir = join(process.cwd(), 'dist', 'assets');
+      let saved = 0;
+      let entries: string[];
+
+      try {
+        entries = readdirSync(assetsDir);
+      } catch {
+        return;
+      }
+
+      for (const file of entries) {
+        if (!file.endsWith('.css')) continue;
+
+        const path = join(assetsDir, file);
+        const input = readFileSync(path);
+        const { code } = transform({
+          filename: file,
+          code: input,
+          minify: true,
+        });
+
+        if (code.length < input.length) {
+          writeFileSync(path, code);
+          saved += input.length - code.length;
+        }
+      }
+
+      if (saved > 0) {
+        console.log(`[css] minified dist assets (saved ${saved} bytes)`);
+      }
     },
   };
 }

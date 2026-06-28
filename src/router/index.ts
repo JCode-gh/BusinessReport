@@ -1,8 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
-import ReportView from '../views/ReportView.vue';
-import TermsView from '../views/TermsView.vue';
-import ExampleView from '../views/ExampleView.vue';
 import type { ReportLanguage } from '../composables/useLanguage';
 
 const router = createRouter({
@@ -16,12 +13,12 @@ const router = createRouter({
     {
       path: '/example',
       name: 'example',
-      component: ExampleView,
+      component: () => import('../views/ExampleView.vue'),
     },
     {
       path: '/example/:lang(en|fr|de)',
       name: 'example-lang',
-      component: ExampleView,
+      component: () => import('../views/ExampleView.vue'),
       props: (route) => ({ lang: route.params.lang as ReportLanguage }),
     },
     {
@@ -33,14 +30,14 @@ const router = createRouter({
     {
       path: '/report/:id',
       name: 'report',
-      component: ReportView,
+      component: () => import('../views/ReportView.vue'),
       props: true,
       meta: { noindex: true },
     },
     {
       path: '/terms',
       name: 'terms',
-      component: TermsView,
+      component: () => import('../views/TermsView.vue'),
     },
   ],
   scrollBehavior(to, from, savedPosition) {

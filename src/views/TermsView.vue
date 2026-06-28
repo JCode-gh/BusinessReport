@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import '../styles/legal.css';
 import { ref, onMounted } from 'vue';
 import { ArrowLeft } from 'lucide-vue-next';
 import SiteHeader from '../components/SiteHeader.vue';

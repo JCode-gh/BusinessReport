@@ -1,12 +1,9 @@
 import { ref, reactive, computed } from 'vue';
 import type { ReportLanguage } from './useLanguage';
-import type { ReportThemeKey, BusinessKitPlan, RetryInfo } from '../businessKit';
-import {
-  buildBusinessKitHtml,
-  businessKitFileName,
-  createBusinessKit,
-  ESTIMATED_RESPONSE_CHARS,
-} from '../businessKit';
+import type { ReportThemeKey, BusinessKitPlan } from '../businessKit';
+import type { RetryInfo } from '../businessKitGenerate';
+
+const ESTIMATED_RESPONSE_CHARS = 22_000;
 
 type GenerateStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -172,6 +169,8 @@ export function useReportGeneration() {
 
     try {
       await wait(650);
+      const [{ createBusinessKit }, { buildBusinessKitHtml, businessKitFileName }] =
+        await Promise.all([import('../businessKitGenerate'), import('../businessKit')]);
       const kit = await createBusinessKit(
         { ...form },
         startWaitingRoom,

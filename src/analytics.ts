@@ -27,20 +27,28 @@ export function initAnalytics(): void {
   if (initialised || !PLAUSIBLE_DOMAIN || typeof document === "undefined") return;
   initialised = true;
 
-  const script = document.createElement("script");
-  script.defer = true;
-  script.setAttribute("data-domain", PLAUSIBLE_DOMAIN);
-  script.src = PLAUSIBLE_SRC;
-  document.head.appendChild(script);
+  const load = () => {
+    const script = document.createElement("script");
+    script.defer = true;
+    script.setAttribute("data-domain", PLAUSIBLE_DOMAIN);
+    script.src = PLAUSIBLE_SRC;
+    document.head.appendChild(script);
 
-  // Queue events fired before the script finishes loading.
-  window.plausible =
-    window.plausible ||
-    function (...args: unknown[]) {
-      (window.plausible as unknown as { q?: unknown[] }).q =
-        (window.plausible as unknown as { q?: unknown[] }).q || [];
-      (window.plausible as unknown as { q: unknown[] }).q.push(args);
-    };
+    window.plausible =
+      window.plausible ||
+      function (...args: unknown[]) {
+        (window.plausible as unknown as { q?: unknown[] }).q =
+          (window.plausible as unknown as { q?: unknown[] }).q || [];
+        (window.plausible as unknown as { q: unknown[] }).q.push(args);
+      };
+  };
+
+  const schedule =
+    typeof window.requestIdleCallback === "function"
+      ? (cb: () => void) => window.requestIdleCallback(cb, { timeout: 3000 })
+      : (cb: () => void) => window.addEventListener("load", cb, { once: true });
+
+  schedule(load);
 }
 
 /** Funnel events — kept as a union so call sites stay consistent. */

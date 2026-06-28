@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, computed, defineAsyncComponent } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { TrendingUp, MessageSquareText, ShieldCheck, Sparkles, ArrowRight } from 'lucide-vue-next';
 import { useLanguage } from '../composables/useLanguage';
@@ -8,20 +8,22 @@ import { clearGenerateLaunchQuery, wantsGenerateLaunch } from '../composables/us
 import { useReportGeneration } from '../composables/useReportGeneration';
 import { useReportManagement } from '../composables/useReportManagement';
 import { useNotification } from '../composables/useNotification';
-import { useAuth } from '../useAuth';
-import { completeGoogleRedirectSignIn, decrementCredits } from '../firebase';
+import { useAuth, initAuth } from '../useAuth';
 import { getAuthErrorMessage } from '../authErrors';
 import { track } from '../analytics';
 import SiteHeader from '../components/SiteHeader.vue';
-import GenerationWizard from '../components/GenerationWizard.vue';
-import GenerationLoader from '../components/GenerationLoader.vue';
-import ResultScreen from '../components/ResultScreen.vue';
-import PaywallModal from '../components/PaywallModal.vue';
-import AuthModal from '../AuthModal.vue';
-import NotificationToast from '../components/NotificationToast.vue';
-import ExampleReportShowcase from '../components/ExampleReportShowcase.vue';
 import SiteFooter from '../components/SiteFooter.vue';
 import { freeTrialMailtoHref } from '../freeTrialContact';
+
+const ExampleReportShowcase = defineAsyncComponent(
+  () => import('../components/ExampleReportShowcase.vue'),
+);
+const GenerationLoader = defineAsyncComponent(() => import('../components/GenerationLoader.vue'));
+const GenerationWizard = defineAsyncComponent(() => import('../components/GenerationWizard.vue'));
+const ResultScreen = defineAsyncComponent(() => import('../components/ResultScreen.vue'));
+const PaywallModal = defineAsyncComponent(() => import('../components/PaywallModal.vue'));
+const AuthModal = defineAsyncComponent(() => import('../AuthModal.vue'));
+const NotificationToast = defineAsyncComponent(() => import('../components/NotificationToast.vue'));
 
 const router = useRouter();
 const route = useRoute();
@@ -142,6 +144,7 @@ async function handleGenerate() {
   }
 
   const creditsBefore = credits.value;
+  const { decrementCredits } = await import('../firebase');
   const deducted = await decrementCredits(user.value.uid);
   await refreshPayment();
   if (!deducted || credits.value >= creditsBefore) {
@@ -303,6 +306,9 @@ async function activatePaymentOnReturn(sessionId: string | null) {
 onMounted(async () => {
   localStorage.removeItem('business-kit-draft');
 
+  // OAuth redirect returns need auth immediately; otherwise main.ts idle init is enough.
+  initAuth();
+  const { completeGoogleRedirectSignIn } = await import('../firebase');
   const googleSignIn = completeGoogleRedirectSignIn().catch((e) => {
     showNotification(ui.value.signIn, getAuthErrorMessage(e, siteLanguage.value), 'error');
   });
